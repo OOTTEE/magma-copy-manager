@@ -1,7 +1,8 @@
 import { FastifyServerOptions } from 'fastify';
+import { serverConfig } from '../config/server.config';
 
 export const loggerConfig: FastifyServerOptions['logger'] = {
-    level: process.env.LOG_LEVEL || 'info',
+    level: serverConfig.logLevel,
     transport: {
         target: 'pino-pretty',
         options: {

@@ -1,9 +1,10 @@
 import { buildApp } from './app';
 import dotenv from 'dotenv';
+import { loggerConfig } from './middleware/logger';
 dotenv.config();
 
 const server = buildApp({
-    logger: true
+    logger: loggerConfig
 });
 
 const start = async () => {

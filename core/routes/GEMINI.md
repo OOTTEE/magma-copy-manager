@@ -177,6 +177,6 @@
         - invoice: string
 
 ### ErrorResponse
-    - track_id: string
+    - trace-id: string
     - error_type: string
     - message: string

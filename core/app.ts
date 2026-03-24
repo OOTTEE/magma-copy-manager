@@ -12,6 +12,7 @@ export function buildApp(opts: FastifyServerOptions = {}): FastifyInstance {
     // Auto-load routes
     app.register(AutoLoad, {
         dir: join(__dirname, 'routes'),
+        routeParams: true,
         options: { prefix: '/' }
     });
 

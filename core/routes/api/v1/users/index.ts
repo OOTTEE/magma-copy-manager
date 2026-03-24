@@ -1,75 +1,60 @@
-import { FastifyPluginAsync, RouteShorthandOptions } from 'fastify';
-import { copiesService } from '../../../../services/copies.service';
+import { FastifyPluginAsync } from 'fastify';
+import { usersService } from '../../../../services/users.service';
 
-const schema: RouteShorthandOptions = {
-    schema: {
-        querystring: {
-            type: 'object',
-            properties: {
-                from: { type: 'string', format: 'date' },
-                to: { type: 'string', format: 'date' }
-            }
-        },
-        response: {
-            200: {
-                type: 'array',
-                items: {
-                    type: 'object',
-                    properties: {
-                        datetime: { type: 'string', format: 'date-time' },
-                        count: {
-                            type: 'object',
-                            properties: {
-                                "a4-color": { type: 'integer' },
-                                "a4-bw": { type: 'integer' },
-                                "a3-color": { type: 'integer' },
-                                "a3-bw": { type: 'integer' },
-                                "sra3-color": { type: 'integer' },
-                                "sra3-bw": { type: 'integer' }
-                            }
-                        },
-                        total: {
-                            type: 'object',
-                            properties: {
-                                "a4-color": { type: 'integer' },
-                                "a4-bw": { type: 'integer' },
-                                "a3-color": { type: 'integer' },
-                                "a3-bw": { type: 'integer' },
-                                "sra3-color": { type: 'integer' },
-                                "sra3-bw": { type: 'integer' }
-                            }
-                        },
-                        _links: {
-                            type: 'object',
-                            properties: {
-                                self: { type: 'string' },
-                                user: { type: 'string' }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
+const usersRoute: FastifyPluginAsync = async (fastify) => {
+  // fastify-autoload prefix rule means this executes under /api/v1/users
 
-interface CopiesQuery {
-    from?: string;
-    to?: string;
-}
+  fastify.get('/', { preValidation: [fastify.authenticate, fastify.requireRole('admin')] }, async (request, reply) => {
+    const users = await usersService.getAll();
+    const payload = users.map(u => ({
+      printUser: u.printUser,
+      nexudusUser: u.nexudusUser,
+      role: u.role,
+      _links: { self: `/api/v1/users/${u.id}`, copies: `/api/v1/users/${u.id}/copies` }
+    }));
+    return reply.send(payload);
+  });
 
-interface CopiesParams {
-    userId: string;
-}
+  fastify.get<{ Params: { id: string } }>('/:id', { preValidation: [fastify.authenticate, fastify.requireRole('admin')] }, async (request, reply) => {
+    const user = await usersService.getById(request.params.id);
+    if (!user) return reply.status(404).send({ error_type: 'not_found', message: 'User not found' });
 
-const userCopiesRoute: FastifyPluginAsync = async (fastify, opts) => {
-    fastify.get<{ Params: CopiesParams, Querystring: CopiesQuery }>('/:userId/copies', 
-        { ...schema, onRequest: [fastify.authenticate, fastify.requireRole('customer')] }, 
-        async (request, reply) => {
-        const { userId } = request.params;
-        const { from, to } = request.query;
-        return await copiesService.getUserCopies(userId, from, to);
-    })
-}
+    return reply.send({
+      printUser: user.printUser,
+      nexudusUser: user.nexudusUser,
+      role: user.role,
+      _links: { self: `/api/v1/users/${user.id}`, copies: `/api/v1/users/${user.id}/copies` }
+    });
+  });
 
-export default userCopiesRoute;
+  fastify.post('/', { preValidation: [fastify.authenticate, fastify.requireRole('admin')] }, async (request, reply) => {
+    const body: any = request.body;
+    const user = await usersService.create(body);
+    return reply.send({
+      printUser: user.printUser,
+      nexudusUser: user.nexudusUser,
+      role: user.role,
+      _links: { self: `/api/v1/users/${user.id}`, copies: `/api/v1/users/${user.id}/copies` }
+    });
+  });
+
+  fastify.patch<{ Params: { id: string } }>('/:id', { preValidation: [fastify.authenticate, fastify.requireRole('admin')] }, async (request, reply) => {
+    const body = request.body;
+    const user = await usersService.update(request.params.id, body);
+    if (!user) return reply.status(404).send({ error_type: 'not_found', message: 'User not found' });
+
+    return reply.send({
+      printUser: user.printUser,
+      nexudusUser: user.nexudusUser,
+      role: user.role,
+      _links: { self: `/api/v1/users/${user.id}`, copies: `/api/v1/users/${user.id}/copies` }
+    });
+  });
+
+  fastify.delete<{ Params: { id: string } }>('/:id', { preValidation: [fastify.authenticate, fastify.requireRole('admin')] }, async (request, reply) => {
+    await usersService.delete(request.params.id);
+    return reply.status(202).send();
+  });
+};
+
+export default usersRoute;

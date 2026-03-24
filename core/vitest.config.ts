@@ -4,11 +4,8 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'node',
-    poolOptions: {
-      threads: {
-        isolate: false
-      }
-    },
-    fileParallelism: false
+    isolate: false,
+    fileParallelism: false,
+    exclude: ['dist/**', 'node_modules/**']
   },
 });

@@ -55,19 +55,19 @@ The backend application is a REST API that will manage copy usage for the member
     - userId: string, format: uuid
     - datetime: string, format: date
     - count: object
-        - a4-color: number
-        - a4-bw: number
-        - a3-color: number
-        - a3-bw: number
-        - sra3-color: number
-        - sra3-bw: number
+        - color_$3: number
+        - bw_$3: number
+        - color_$3: number
+        - bw_$3: number
+        - color_$3: number
+        - bw_$3: number
     - total: object
-        - a4-color: number
-        - a4-bw: number
-        - a3-color: number
-        - a3-bw: number
-        - sra3-color: number
-        - sra3-bw: number
+        - color_$3: number
+        - bw_$3: number
+        - color_$3: number
+        - bw_$3: number
+        - color_$3: number
+        - bw_$3: number
     - total: number
     - from: string, format: date
     - to: string, format: date

@@ -47,22 +47,10 @@ As this project is in its initial setup phase, no build or execution commands ar
 - each coworker will store a row per month of copys made by him. 
 
 
-## DB Schema
+## Domain model
 
-Table: Users
-- id: string
-- printUser: string
-- nexudusUser: string
-
-Table: Copies
-- id: string
-- userId: string, FK<Users.id>
-- from: string
-- to: string
-- a4-copies: number
-- a3-copies: number
-- sra3-copies: number
-- color-copies: number
-- bw-copies: number
-- total-copies: number
-
+- The system has 'users' and 'copies' 
+- A 'user' can have multiple 'copies'
+- A 'copy' is a record of a user's copy activity.
+- A 'copy' has a 'from' and 'to' date, a 'userId', and a 'copies' property.
+- A 'copy' can have multiple 'copies' of different types (A4, A3, SRA3, Color, B&W)

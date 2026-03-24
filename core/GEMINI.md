@@ -17,6 +17,12 @@ The backend application is a REST API that will manage copy usage for the member
 - Drizzle + SQLite
 - Nexudus API client
 - Playwright
+- JWT for authentication
+
+### Authentication strategy
+- Users authenticate via `username` and `password`. Passwords must be hashed using a strong algorithm (e.g. `argon2` or `bcrypt`) before persisting.
+- The authentication generates a 5-minute bounded JWT Bearer session token.
+- Roles (`admin`, `customer`) govern permissions and route access.
 
 
 ### Folder Structure
@@ -27,7 +33,9 @@ The backend application is a REST API that will manage copy usage for the member
         - playwright/: Playwright scripts
         - routes/: API routes
         - services/: Business logic
-        - utils/: Utility functions
+        - config/: Configuration
+        - middleware/: Middleware
+
 
 ### Layering
 - routes: API routes

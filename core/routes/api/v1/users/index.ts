@@ -63,7 +63,9 @@ interface CopiesParams {
 }
 
 const userCopiesRoute: FastifyPluginAsync = async (fastify, opts) => {
-    fastify.get<{ Params: CopiesParams, Querystring: CopiesQuery }>('/:userId/copies', schema, async (request, reply) => {
+    fastify.get<{ Params: CopiesParams, Querystring: CopiesQuery }>('/:userId/copies', 
+        { ...schema, onRequest: [fastify.authenticate, fastify.requireRole('customer')] }, 
+        async (request, reply) => {
         const { userId } = request.params;
         const { from, to } = request.query;
         return await copiesService.getUserCopies(userId, from, to);

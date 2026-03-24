@@ -2,67 +2,86 @@
 # API Endpoints summary
 ## Endpoint list
 
+### Authentication
+#### Login
+    - Path: POST '/api/v1/auth/login'
+    - Description: Authenticate user and issue a 5-minute session token.
+    - Request body
+        - username: string
+        - password: string
+    - Response:
+        - 200: OK
+            - payload: { token: string }
+        - 401: Unauthorized
+            - payload: Error (error_type: 'unauthorized')
+        - 500: Internal Server Error
+            - payload: Error (error_type: 'internal_server_error')
+
 ### Users
 #### Get all users 
     - Path: GET '/api/v1/users'
-    - Description: Get all user
+    - Description: Get all user.
     - Response: 
         - 200: OK
-            - payload: UserResponse[]
+            - payload: #User[]
         - 401: Unauthorized
-            - payload: ErrorResponse (error_type: 'unauthorized')
+            - payload: Error (error_type: 'unauthorized')
         - 500: Internal Server Error
-            - payload: ErrorResponse (error_type: 'internal_server_error')
+            - payload: Error (error_type: 'internal_server_error')
 
 #### Get a user
     - Path: GET '/api/v1/users/{user-id}'
-    - Description: Get a user
+    - Description: Get a user.
     - Response:
         - 200: OK
-            - payload: UserResponse
+            - payload: #User
         - 401: Unauthorized
-            - payload: ErrorResponse (error_type: 'unauthorized')
+            - payload: Error (error_type: 'unauthorized')
         - 500: Internal Server Error
-            - payload: ErrorResponse (error_type: 'internal_server_error')
+            - payload: Error (error_type: 'internal_server_error')
 
 #### Add user
     - Path: POST '/api/v1/users'
-    - Description: Add a new user
+    - Description: Add a new user, All fields are mandatory.
     - Request body
+        - username: string
+        - password: string
+        - role: string
         - printUser: string
         - nexudusUser: string
     - Response:
         - 200: OK
-            - payload: UserResponse
+            - payload: #User
         - 401: Unauthorized
-            - payload: ErrorResponse (error_type: 'unauthorized')
+            - payload: Error (error_type: 'unauthorized')
         - 500: Internal Server Error
-            - payload: ErrorResponse (error_type: 'internal_server_error')
+            - payload: Error (error_type: 'internal_server_error')
 
 #### Delete user
     - Path: DELETE '/api/v1/users/{user-id}'
     - Description: Delete a user
     - Response:
-        - 200: OK
-            - payload: UserResponse
+        - 202: Accepted
         - 401: Unauthorized
-            - payload: ErrorResponse (error_type: 'unauthorized')
+            - payload: Error (error_type: 'unauthorized')
         - 500: Internal Server Error
-            - payload: ErrorResponse (error_type: 'internal_server_error')
+            - payload: Error (error_type: 'internal_server_error')
 
 #### Update a user
-    - Path: PUT '/api/v1/users/{user-id}'
-    - Description: Update a user
+    - Path: PATCH '/api/v1/users/{user-id}'
+    - Description: Update a user. The fields are optional and if not provided will not be updated.
     - Request body
         - printUser: string
         - nexudusUser: string
+        - role: string
+        - password: string
     - Response:
         - 200: OK
-            - payload: UserResponse
+            - payload: #User
         - 401: Unauthorized
-            - payload: ErrorResponse (error_type: 'unauthorized')
+            - payload: Error (error_type: 'unauthorized')
         - 500: Internal Server Error
-            - payload: ErrorResponse (error_type: 'internal_server_error')  
+            - payload: Error (error_type: 'internal_server_error')  
 
 ### Copies
 #### Get all copies for a user
@@ -73,71 +92,116 @@
         - to: string, optional
     - Response:
         - 200: OK
-            - payload: CopiesResponse[]
+            - payload: #Copies[]
         - 401: Unauthorized
-            - payload: ErrorResponse (error_type: 'unauthorized')
+            - payload: Error (error_type: 'unauthorized')
         - 500: Internal Server Error
-            - payload: ErrorResponse (error_type: 'internal_server_error')
+            - payload: Error (error_type: 'internal_server_error')
+
+#### Add copies for a user
+    - Path: PUT '/api/v1/users/{user-id}/copies'
+    - Description: Add copies for a user, Required 'admin' role. All fields are mandatory.
+    - Request body: #Copies
+    - Response:
+        - 200: OK
+            - payload: #Copies
+        - 401: Unauthorized
+            - payload: Error (error_type: 'unauthorized')
+        - 500: Internal Server Error
+            - payload: Error (error_type: 'internal_server_error')
 
 #### Update copies for a user
-    - Path: PUT '/api/v1/users/{user-id}/copies'
-    - Description: Update copies for a user
-    - Request body
-        - from: string
-        - to: string
-        - a4-copies: number
-        - a3-copies: number
-        - sra3-copies: number
-        - color-copies: number
-        - bw-copies: number
+    - Path: PATCH '/api/v1/users/{user-id}/copies/{copy-id}'
+    - Description: Update copies for a user, Required 'admin' role. The fields are optional and if not provided will not be updated.
+    - Request body: #Copies
     - Response:
         - 200: OK
-            - payload: CopiesResponse
+            - payload: #Copies
         - 401: Unauthorized
-            - payload: ErrorResponse (error_type: 'unauthorized')
+            - payload: Error (error_type: 'unauthorized')
         - 500: Internal Server Error
-            - payload: ErrorResponse (error_type: 'internal_server_error')
-#### Add copies for a user
-    - Path: POST '/api/v1/users/{user-id}/copies'
-    - Description: Add copies for a user
-    - Request body
-        - from: string
-        - to: string
-        - a4-copies: number
-        - a3-copies: number
-        - sra3-copies: number
-        - color-copies: number
-        - bw-copies: number
-    - Response:
-        - 200: OK
-            - payload: CopiesResponse
-        - 401: Unauthorized
-            - payload: ErrorResponse (error_type: 'unauthorized')
-        - 500: Internal Server Error
-            - payload: ErrorResponse (error_type: 'internal_server_error')  
+            - payload: Error (error_type: 'internal_server_error')
 
 #### Delete copies for a user
-    - Path: DELETE '/api/v1/users/{user-id}/copies'
-    - Description: Delete copies for a user
+    - Path: DELETE '/api/v1/users/{user-id}/copies/{copy-id}'
+    - Description: Delete copies for a user, Required 'admin' role. 
+    - Response:
+        - 202: Accepted
+        - 401: Unauthorized
+            - payload: Error (error_type: 'unauthorized')
+        - 500: Internal Server Error
+            - payload: Error (error_type: 'internal_server_error')  
+
+### Invoices
+
+#### Get all invoices for a user
+    - Path: GET '/api/v1/users/{user-id}/invoices'
+    - Description: Get all invoices for a user, the from and to are optional and if not provided will get all invoices for the user. The from and to are in ISO 8601 format (YYYY-MM-DD).
+    - Query parameters
+        - from: string, optional
+        - to: string, optional
     - Response:
         - 200: OK
-            - payload: CopiesResponse
+            - payload: #Invoice[]
         - 401: Unauthorized
-            - payload: ErrorResponse (error_type: 'unauthorized')
+            - payload: Error (error_type: 'unauthorized')
         - 500: Internal Server Error
-            - payload: ErrorResponse (error_type: 'internal_server_error')  
+            - payload: Error (error_type: 'internal_server_error')
 
+#### Get an invoice
+    - Path: GET '/api/v1/users/{user-id}/invoices/{invoice-id}'
+    - Description: Get an invoice for a user.
+    - Response:
+        - 200: OK
+            - payload: #Invoice
+        - 401: Unauthorized
+            - payload: Error (error_type: 'unauthorized')
+        - 500: Internal Server Error
+            - payload: Error (error_type: 'internal_server_error')
+
+#### Create an invoice
+    - Path: POST '/api/v1/users/{user-id}/invoices'
+    - Description: Create an invoice for a user, Required 'admin' role. All fields are mandatory.
+    - Request body: #Invoice
+    - Response:
+        - 200: OK
+            - payload: #Invoice
+        - 401: Unauthorized
+            - payload: Error (error_type: 'unauthorized')
+        - 500: Internal Server Error
+            - payload: Error (error_type: 'internal_server_error')
+
+#### Update an invoice
+    - Path: PATCH '/api/v1/users/{user-id}/invoices/{invoice-id}'
+    - Description: Update an invoice for a user, Required 'admin' role. The fields are optional and if not provided will not be updated.
+    - Request body: #Invoice
+    - Response:
+        - 200: OK
+            - payload: #Invoice
+        - 401: Unauthorized
+            - payload: Error (error_type: 'unauthorized')
+        - 500: Internal Server Error
+            - payload: Error (error_type: 'internal_server_error')
+
+#### Delete an invoice
+    - Path: DELETE '/api/v1/users/{user-id}/invoices/{invoice-id}'
+    - Description: Delete an invoice for a user, Required 'admin' role. 
+    - Response:
+        - 202: Accepted
+        - 401: Unauthorized
+            - payload: Error (error_type: 'unauthorized')
+        - 500: Internal Server Error
+            - payload: Error (error_type: 'internal_server_error')
 
 ## Rest Objects
-
-### UserResponse
+### User
     - printUser
     - nexudusUser
     - _links
         - self: string
         - copies: string
 
-### CopiesResponse
+### Copies
     - datetime: string, format: date
     - count: object
         - a4-color: number
@@ -157,17 +221,17 @@
         - self: string
         - user: string
 
-### InvoiceResponse
+### Invoice
     - from: string, format: date
     - to: string, format: date
     - total: number
-    - items: InvoiceItemsResponse[]
-    - _links
+    - items: InvoiceItem[]
+    - _links: 
         - self: string
         - user: string
         - items: string
 
-### InvoiceItemsResponse
+### InvoiceItem
     - concept: string
     - quantity: number
     - unitPrice: number
@@ -176,7 +240,7 @@
         - self: string
         - invoice: string
 
-### ErrorResponse
-    - trace-id: string
+### Error
+    - trace_id: string
     - error_type: string
     - message: string

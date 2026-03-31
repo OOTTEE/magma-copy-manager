@@ -8,4 +8,6 @@ export const serverConfig = {
     databaseUrl: process.env.DATABASE_URL || 'sqlite.db',
     port: Number(process.env.PORT) || 3000,
     jwtSecret: process.env.JWT_SECRET || 'super-secret-key-1234567890',
+    printerUrl: process.env.PRINTER_URL || 'http://192.168.0.200',
+    printerAdminPass: process.env.PRINTER_ADMIN_PASS || '12345678',
 };

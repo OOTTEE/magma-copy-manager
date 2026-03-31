@@ -1,5 +1,5 @@
 import { FastifyPluginAsync, FastifyReply, FastifyRequest, RouteShorthandOptions } from 'fastify';
-import { authService } from '../../../../services/auth.service';
+import { authService } from '../../../../services/auth/auth.service';
 
 const schema: RouteShorthandOptions = {
     schema: {

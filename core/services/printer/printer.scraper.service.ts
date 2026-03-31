@@ -1,5 +1,5 @@
 import { firefox, Page } from 'playwright';
-import { serverConfig } from '../config/server.config';
+import { serverConfig } from '../../config/server.config';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 

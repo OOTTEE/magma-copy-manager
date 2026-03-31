@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { FastifyInstance } from 'fastify';
-import { getTestEnv } from '../testEnv';
+import { getTestEnv } from '../../../../testEnv';
 
 describe('POST /api/v1/login', () => {
     let app: FastifyInstance;

@@ -1,6 +1,6 @@
 import '@fastify/swagger';
 import { FastifyPluginAsync } from 'fastify';
-import { invoicesService } from '../../../../../../services/invoices.service';
+import { invoicesService } from '../../../../../../services/invoices/invoices.service';
 
 const errorSchema = {
   type: 'object',

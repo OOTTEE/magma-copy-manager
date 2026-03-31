@@ -10,6 +10,13 @@ export const usersRepository = {
             .where(eq(users.username, username));
         return result.length > 0 ? result[0] : null;
     },
+    findByPrintUser: async (printUser: string) => {
+        const result = await db
+            .select()
+            .from(users)
+            .where(eq(users.printUser, printUser));
+        return result.length > 0 ? result[0] : null;
+    },
     findAll: async () => {
         return await db.select().from(users);
     },

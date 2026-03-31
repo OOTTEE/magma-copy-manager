@@ -1,4 +1,4 @@
-import { reportScrapperService } from '../services/report.scrapper.service';
+import { reportScrapperService } from '../services/report/report.scrapper.service';
 import * as path from 'node:path';
 
 async function main() {
@@ -23,10 +23,8 @@ async function main() {
             acc.a4Bw += curr.a4Bw;
             acc.a3Color += curr.a3Color;
             acc.a3Bw += curr.a3Bw;
-            acc.sra3Color += curr.sra3Color;
-            acc.sra3Bw += curr.sra3Bw;
             return acc;
-        }, { a4Color: 0, a4Bw: 0, a3Color: 0, a3Bw: 0, sra3Color: 0, sra3Bw: 0 });
+        }, { a4Color: 0, a4Bw: 0, a3Color: 0, a3Bw: 0});
 
         console.log('\n[CLI] TOTALS SUMMARY:');
         console.table([totals]);

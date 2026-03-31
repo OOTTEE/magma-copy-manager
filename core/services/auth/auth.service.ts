@@ -1,5 +1,5 @@
 import { FastifyInstance } from 'fastify';
-import { usersRepository } from '../repositories/users.repository';
+import { usersRepository } from '../../repositories/users.repository';
 import * as argon2 from 'argon2';
 
 export const authService = {

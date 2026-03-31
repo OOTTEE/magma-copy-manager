@@ -37,14 +37,10 @@ async function seed() {
         a4Bw: 10,
         a3Color: 2,
         a3Bw: 4,
-        sra3Color: 1,
-        sra3Bw: 2,
         a4ColorTotal: 5,
         a4BwTotal: 10,
         a3ColorTotal: 2,
         a3BwTotal: 4,
-        sra3ColorTotal: 1,
-        sra3BwTotal: 2
     });
 
     await db.insert(invoices).values({

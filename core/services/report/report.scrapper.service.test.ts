@@ -41,24 +41,20 @@ describe('ReportScrapperService', () => {
             a4Color: 15,
             a4Bw: 28,
             a3Color: 5,
-            a3Bw: 11,
-            sra3Color: 0,
-            sra3Bw: 0
+            a3Bw: 11
         });
 
         // Planb (Special case: A3 becomes SRA3)
         // a4Color = (Idx 8 - (Idx 13 * 2)) + (Idx 18 - (Idx 22 * 2)) => (5-2) + (4-4) = 3 + 0 = 3
         // a4Bw = (Idx 9 - (Idx 14 * 2)) + (Idx 19 - (Idx 23 * 2))    => (10-4) + (8-8) = 6 + 0 = 6
-        // sra3Color = Idx 13 + Idx 22 = 1 + 2 = 3
-        // sra3Bw = Idx 14 + Idx 23 = 2 + 4 = 6
+        // a3Color = Idx 13 + Idx 22 = 1 + 2 = 3
+        // a3Bw = Idx 14 + Idx 23 = 2 + 4 = 6
         expect(results[1]).toEqual({
             userName: 'Planb',
             a4Color: 3,
             a4Bw: 6,
-            a3Color: 0,
-            a3Bw: 0,
-            sra3Color: 3,
-            sra3Bw: 6
+            a3Color: 3,
+            a3Bw: 6
         });
     });
 });

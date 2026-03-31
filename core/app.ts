@@ -27,7 +27,8 @@ export function buildApp(opts: FastifyServerOptions = {}): FastifyInstance {
     app.register(AutoLoad, {
         dir: join(__dirname, 'routes'),
         routeParams: true,
-        options: { prefix: '/' }
+        options: { prefix: '/' },
+        ignoreFilter: (path) => path.endsWith('.test.ts') || path.endsWith('testEnv.ts')
     });
 
     return app;

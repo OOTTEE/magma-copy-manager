@@ -17,14 +17,10 @@ export const copies = sqliteTable('copies', {
   a4Bw: integer('a4_bw').notNull().default(0),
   a3Color: integer('a3_color').notNull().default(0),
   a3Bw: integer('a3_bw').notNull().default(0),
-  sra3Color: integer('sra3_color').notNull().default(0),
-  sra3Bw: integer('sra3_bw').notNull().default(0),
   a4ColorTotal: integer('a4_color_total').notNull().default(0),
   a4BwTotal: integer('a4_bw_total').notNull().default(0),
   a3ColorTotal: integer('a3_color_total').notNull().default(0),
   a3BwTotal: integer('a3_bw_total').notNull().default(0),
-  sra3ColorTotal: integer('sra3_color_total').notNull().default(0),
-  sra3BwTotal: integer('sra3_bw_total').notNull().default(0),
 });
 
 export const invoices = sqliteTable('invoices', {

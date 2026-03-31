@@ -1,12 +1,11 @@
 import { FastifyInstance } from 'fastify';
-import { buildApp } from '../app';
-import { usersService } from '../services/users.service';
-import { authService } from '../services/auth.service';
+import { buildApp } from './app';
+import { usersService } from './services/users/users.service';
+import { authService } from './services/auth/auth.service';
 
 let appInstance: FastifyInstance | null = null;
 let adminToken: string | null = null;
 let customerToken: string | null = null;
-let isInitializing = false;
 let initPromise: Promise<void> | null = null;
 
 export const getTestEnv = async () => {

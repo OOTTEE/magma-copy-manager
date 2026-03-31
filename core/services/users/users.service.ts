@@ -1,10 +1,11 @@
-import { usersRepository } from '../repositories/users.repository';
+import { usersRepository } from '../../repositories/users.repository';
 import * as argon2 from 'argon2';
 import crypto from 'crypto';
 
 export const usersService = {
   getAll: async () => await usersRepository.findAll(),
   getById: async (id: string) => await usersRepository.findById(id),
+  getByPrintUser: async (printUser: string) => await usersRepository.findByPrintUser(printUser),
   create: async (data: any) => {
     const hashedPassword = await argon2.hash(data.password);
     const newUser = {

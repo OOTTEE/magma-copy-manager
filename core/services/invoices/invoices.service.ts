@@ -1,4 +1,4 @@
-import { invoicesRepository } from '../repositories/invoices.repository';
+import { invoicesRepository } from '../../repositories/invoices.repository';
 
 export const invoicesService = {
     getUserInvoices: async (userId: string, from?: string, to?: string) => {

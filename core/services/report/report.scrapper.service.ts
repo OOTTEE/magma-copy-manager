@@ -7,8 +7,6 @@ export interface UserCopyReport {
     a4Bw: number;
     a3Color: number;
     a3Bw: number;
-    sra3Color: number;
-    sra3Bw: number;
 }
 
 class ReportScrapperService {
@@ -61,35 +59,15 @@ class ReportScrapperService {
 
             const a4Color = (copyA3A4Color - (copyA3Color * 2)) + (printA3A4Color - (printA3Color * 2));
             const a4Bw = (copyA3A4Bw - (copyA3Bw * 2)) + (printA3A4Bw - (printA3Bw * 2));
-
-            let a3Color = 0;
-            let a3Bw = 0;
-            let sra3Color = 0;
-            let sra3Bw = 0;
-
-            const totalA3Color = copyA3Color + printA3Color;
-            const totalA3Bw = copyA3Bw + printA3Bw;
-
-            if (userName.toLowerCase() === 'planb') {
-                sra3Color = totalA3Color;
-                sra3Bw = totalA3Bw;
-                a3Color = 0;
-                a3Bw = 0;
-            } else {
-                a3Color = totalA3Color;
-                a3Bw = totalA3Bw;
-                sra3Color = 0;
-                sra3Bw = 0;
-            }
+            const  a3Color = copyA3Color + printA3Color;
+            const a3Bw = copyA3Bw + printA3Bw;
 
             reports.push({
                 userName,
                 a4Color,
                 a4Bw,
                 a3Color,
-                a3Bw,
-                sra3Color,
-                sra3Bw
+                a3Bw
             });
         }
 

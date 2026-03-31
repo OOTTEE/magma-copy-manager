@@ -1,6 +1,6 @@
 import { db } from '../db';
 import { copies } from '../db/schema';
-import { eq, and, sql } from 'drizzle-orm';
+import { eq, and, sql, desc } from 'drizzle-orm';
 
 export const copiesRepository = {
     findCopiesByUserId: async (userId: string, from?: string, to?: string) => {
@@ -12,6 +12,15 @@ export const copiesRepository = {
             .select()
             .from(copies)
             .where(and(...conditions));
+    },
+    findLatestByUserId: async (userId: string) => {
+        const result = await db
+            .select()
+            .from(copies)
+            .where(eq(copies.userId, userId))
+            .orderBy(desc(copies.datetime))
+            .limit(1);
+        return result.length > 0 ? result[0] : null;
     },
     findById: async (id: string, userId: string) => {
         const result = await db.select().from(copies).where(and(eq(copies.id, id), eq(copies.userId, userId)));

@@ -66,8 +66,6 @@ Para el calculo de las copias realizadas por el usuario se deben tener en cuenta
 - `a4Bw` = (Index 9 - (Index 14 *2)) + (Index 19 - (Index 23* 2))
 - `a3Color` = (Index 13 + Index 22) (si no es Planb)
 - `a3Bw` = (Index 14 + Index 23) (si no es Planb)
-- `sra3Color` = (Index 13 + Index 22) (si el usuario es Planb)
-- `sra3Bw` = (Index 14 + Index 23) (si el usuario es Planb)
 
 ### Implementación Técnica
 
@@ -77,7 +75,5 @@ La lógica de scraping se basa en una lectura síncrona en `utf16le` y el uso de
 # Ejecución manual desde el root:
 npx tsx core/scripts/parse-report.ts <PATH_AL_REPORTE>
 ```
-
-Una regla importante de negocio es que el usuario `Planb` es el único que realiza copias SRA3, y NUNCA realiza copia A3. Por lo tanto, si el usuario es `Planb`, las copias A3 deben ser 0 y las copias SRA3 deben ser calculadas normalmente. En caso contrario, las copias SRA3 deben ser 0.
 
 El nombre de los usuarios en case senstive.

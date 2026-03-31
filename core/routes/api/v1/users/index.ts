@@ -1,6 +1,6 @@
 import '@fastify/swagger';
 import { FastifyPluginAsync } from 'fastify';
-import { usersService } from '../../../../services/users.service';
+import { usersService } from '../../../../services/users/users.service';
 
 const userSchema = {
   type: 'object',

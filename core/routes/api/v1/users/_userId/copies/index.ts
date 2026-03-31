@@ -1,43 +1,9 @@
 import '@fastify/swagger';
 import { FastifyPluginAsync } from 'fastify';
-import { copiesService } from '../../../../../../services/copies.service';
+import { copiesFacade } from '../../../../../../facades/copies/copies.facade';
+import { errorSchema, copySchema } from '../../../../../schemas';
 
-const errorSchema = {
-  type: 'object',
-  properties: {
-    trace_id: { type: 'string' },
-    error_type: { type: 'string' },
-    message: { type: 'string' }
-  }
-};
 
-const copiesCountSchema = {
-  type: 'object',
-  properties: {
-    a4Color: { type: 'number' },
-    a4Bw: { type: 'number' },
-    a3Color: { type: 'number' },
-    a3Bw: { type: 'number' },
-    sra3Color: { type: 'number' },
-    sra3Bw: { type: 'number' }
-  }
-};
-
-const copySchema = {
-  type: 'object',
-  properties: {
-    datetime: { type: 'string', format: 'date-time' },
-    count: copiesCountSchema,
-    total: copiesCountSchema,
-    _links: {
-      type: 'object',
-      properties: {
-        self: { type: 'string' },
-        user: { type: 'string' }
-      }
-    }
-  }
-};
 
 const copiesRoute: FastifyPluginAsync = async (fastify) => {
 
@@ -67,8 +33,18 @@ const copiesRoute: FastifyPluginAsync = async (fastify) => {
   }, async (request, reply) => {
     const { userId } = request.params;
     const { from, to } = request.query;
-    const result = await copiesService.getUserCopies(userId, from, to);
-    return reply.send(result);
+    const user = request.user as { id: string, role: string };
+    
+    try {
+      const result = await copiesFacade.getUserCopies(user, userId, from, to);
+      return reply.send(result);
+    } catch (error: any) {
+      return reply.status(error.statusCode || 500).send({
+        trace_id: request.id,
+        error_type: error.statusCode === 403 ? "forbidden" : "internal_server_error",
+        message: error.message
+      });
+    }
   });
 
   fastify.put<{ Params: { userId: string } }>('/', {
@@ -89,7 +65,8 @@ const copiesRoute: FastifyPluginAsync = async (fastify) => {
     },
     preValidation: [fastify.authenticate, fastify.requireRole('admin')]
   }, async (request, reply) => {
-    const result = await copiesService.addCopies(request.params.userId, request.body);
+    const user = request.user as { id: string, role: string };
+    const result = await copiesFacade.addCopies(user, request.params.userId, request.body);
     return reply.send(result);
   });
 
@@ -114,7 +91,8 @@ const copiesRoute: FastifyPluginAsync = async (fastify) => {
     },
     preValidation: [fastify.authenticate, fastify.requireRole('admin')]
   }, async (request, reply) => {
-    const result = await copiesService.updateCopies(request.params.copyId, request.params.userId, request.body);
+    const user = request.user as { id: string, role: string };
+    const result = await copiesFacade.updateCopies(user, request.params.copyId, request.params.userId, request.body);
     return reply.send(result);
   });
 
@@ -138,7 +116,8 @@ const copiesRoute: FastifyPluginAsync = async (fastify) => {
     },
     preValidation: [fastify.authenticate, fastify.requireRole('admin')]
   }, async (request, reply) => {
-    await copiesService.deleteCopies(request.params.copyId, request.params.userId);
+    const user = request.user as { id: string, role: string };
+    await copiesFacade.deleteCopies(user, request.params.copyId, request.params.userId);
     return reply.status(202).send();
   });
 };

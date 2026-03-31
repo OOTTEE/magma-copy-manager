@@ -16,14 +16,10 @@ Table: Copies
 - a4Bw: number
 - a3Color: number
 - a3Bw: number
-- sra3Color: number
-- sra3Bw: number
 - a4ColorTotal: number
 - a4BwTotal: number
 - a3ColorTotal: number
 - a3BwTotal: number
-- sra3ColorTotal: number
-- sra3BwTotal: number
 
 Table: Invoices
 - id: string, format: uuid

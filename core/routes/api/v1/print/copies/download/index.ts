@@ -1,6 +1,6 @@
 import '@fastify/swagger';
 import { FastifyPluginAsync } from 'fastify';
-import { printerScraperService } from '../../../../../../services/printer.scraper.service';
+import { printerScraperService } from '../../../../../../services/printer/printer.scraper.service';
 
 const downloadRoute: FastifyPluginAsync = async (fastify) => {
   fastify.post('/', {

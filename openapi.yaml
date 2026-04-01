@@ -1,0 +1,1444 @@
+openapi: 3.0.3
+info:
+  title: Magma API
+  version: 1.0.0
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas: {}
+paths:
+  /api/v1/copies/sync/:
+    post:
+      tags:
+        - Copies
+      description: Triggers the printer copies synchronization. Downloads report,
+        calculates increments and persists data. Admin only.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties: {}
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum:
+                      - success
+                      - partial_success
+                      - error
+                  syncedCount:
+                    type: number
+                  errors:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        user:
+                          type: string
+                        message:
+                          type: string
+                  reportPath:
+                    type: string
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  trace_id:
+                    type: string
+                  error_type:
+                    type: string
+                  message:
+                    type: string
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  trace_id:
+                    type: string
+                  error_type:
+                    type: string
+                  message:
+                    type: string
+        "500":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  trace_id:
+                    type: string
+                  error_type:
+                    type: string
+                  message:
+                    type: string
+  /api/v1/login/:
+    post:
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - username
+                - password
+              properties:
+                username:
+                  type: string
+                password:
+                  type: string
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+                  role:
+                    type: string
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  trace_id:
+                    type: string
+                  error_type:
+                    type: string
+                  message:
+                    type: string
+  /api/v1/print/copies/download/:
+    post:
+      tags:
+        - Printer
+      description: Trigger the printer scraper to download the monthly copies CSV file
+        physically to the backend server.
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  path:
+                    type: string
+        "500":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  error:
+                    type: string
+  /api/v1/reports/monthly:
+    get:
+      tags:
+        - Reports
+      description: Get accumulated copy counts for the current monthly period (27th to
+        27th).
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  period:
+                    type: object
+                    properties:
+                      from:
+                        type: string
+                      to:
+                        type: string
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        username:
+                          type: string
+                        printUser:
+                          type: string
+                        a4Color:
+                          type: integer
+                        a4Bw:
+                          type: integer
+                        a3Color:
+                          type: integer
+                        a3Bw:
+                          type: integer
+                        total:
+                          type: integer
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+  /api/v1/settings/:
+    get:
+      tags:
+        - Settings
+      description: Get all system settings.
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  type: string
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+    patch:
+      tags:
+        - Settings
+      description: Update one or more system settings.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties:
+                type: string
+      responses:
+        "204":
+          description: Default Response
+        "400":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+  /api/v1/users/:
+    get:
+      tags:
+        - Users
+      description: Get all user.
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                    username:
+                      type: string
+                    printUser:
+                      type: string
+                    nexudusUser:
+                      type: string
+                    role:
+                      type: string
+                    _links:
+                      type: object
+                      properties:
+                        self:
+                          type: string
+                        copies:
+                          type: string
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  trace_id:
+                    type: string
+                  error_type:
+                    type: string
+                  message:
+                    type: string
+        "500":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  trace_id:
+                    type: string
+                  error_type:
+                    type: string
+                  message:
+                    type: string
+    post:
+      tags:
+        - Users
+      description: Add a new user, All fields are mandatory.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - username
+                - password
+                - role
+                - printUser
+                - nexudusUser
+              properties:
+                username:
+                  type: string
+                password:
+                  type: string
+                role:
+                  type: string
+                printUser:
+                  type: string
+                nexudusUser:
+                  type: string
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  username:
+                    type: string
+                  printUser:
+                    type: string
+                  nexudusUser:
+                    type: string
+                  role:
+                    type: string
+                  _links:
+                    type: object
+                    properties:
+                      self:
+                        type: string
+                      copies:
+                        type: string
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  trace_id:
+                    type: string
+                  error_type:
+                    type: string
+                  message:
+                    type: string
+        "500":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  trace_id:
+                    type: string
+                  error_type:
+                    type: string
+                  message:
+                    type: string
+  /api/v1/users/{id}:
+    get:
+      tags:
+        - Users
+      description: Get a user.
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: id
+          required: true
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  username:
+                    type: string
+                  printUser:
+                    type: string
+                  nexudusUser:
+                    type: string
+                  role:
+                    type: string
+                  _links:
+                    type: object
+                    properties:
+                      self:
+                        type: string
+                      copies:
+                        type: string
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  trace_id:
+                    type: string
+                  error_type:
+                    type: string
+                  message:
+                    type: string
+        "500":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  trace_id:
+                    type: string
+                  error_type:
+                    type: string
+                  message:
+                    type: string
+    patch:
+      tags:
+        - Users
+      description: Update a user. The fields are optional and if not provided will not
+        be updated.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                printUser:
+                  type: string
+                nexudusUser:
+                  type: string
+                role:
+                  type: string
+                password:
+                  type: string
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: id
+          required: true
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  username:
+                    type: string
+                  printUser:
+                    type: string
+                  nexudusUser:
+                    type: string
+                  role:
+                    type: string
+                  _links:
+                    type: object
+                    properties:
+                      self:
+                        type: string
+                      copies:
+                        type: string
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  trace_id:
+                    type: string
+                  error_type:
+                    type: string
+                  message:
+                    type: string
+        "500":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  trace_id:
+                    type: string
+                  error_type:
+                    type: string
+                  message:
+                    type: string
+    delete:
+      tags:
+        - Users
+      description: Delete a user
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: id
+          required: true
+      responses:
+        "202":
+          description: Default Response
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  trace_id:
+                    type: string
+                  error_type:
+                    type: string
+                  message:
+                    type: string
+        "500":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  trace_id:
+                    type: string
+                  error_type:
+                    type: string
+                  message:
+                    type: string
+  /api/v1/users/{userId}/copies/:
+    get:
+      tags:
+        - Copies
+      description: Get all copies for a user, the from and to are optional.
+      parameters:
+        - schema:
+            type: string
+            format: date
+          in: query
+          name: from
+          required: false
+        - schema:
+            type: string
+            format: date
+          in: query
+          name: to
+          required: false
+        - schema:
+            type: string
+          in: path
+          name: userId
+          required: true
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    datetime:
+                      type: string
+                      format: date-time
+                    count:
+                      type: object
+                      properties:
+                        a4Color:
+                          type: number
+                        a4Bw:
+                          type: number
+                        a3Color:
+                          type: number
+                        a3Bw:
+                          type: number
+                    total:
+                      type: object
+                      properties:
+                        a4Color:
+                          type: number
+                        a4Bw:
+                          type: number
+                        a3Color:
+                          type: number
+                        a3Bw:
+                          type: number
+                    _links:
+                      type: object
+                      properties:
+                        self:
+                          type: string
+                        user:
+                          type: string
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  trace_id:
+                    type: string
+                  error_type:
+                    type: string
+                  message:
+                    type: string
+        "500":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  trace_id:
+                    type: string
+                  error_type:
+                    type: string
+                  message:
+                    type: string
+    put:
+      tags:
+        - Copies
+      description: Add copies for a user, Required admin role.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                datetime:
+                  type: string
+                  format: date-time
+                count:
+                  type: object
+                  properties:
+                    a4Color:
+                      type: number
+                    a4Bw:
+                      type: number
+                    a3Color:
+                      type: number
+                    a3Bw:
+                      type: number
+                total:
+                  type: object
+                  properties:
+                    a4Color:
+                      type: number
+                    a4Bw:
+                      type: number
+                    a3Color:
+                      type: number
+                    a3Bw:
+                      type: number
+                _links:
+                  type: object
+                  properties:
+                    self:
+                      type: string
+                    user:
+                      type: string
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: userId
+          required: true
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  datetime:
+                    type: string
+                    format: date-time
+                  count:
+                    type: object
+                    properties:
+                      a4Color:
+                        type: number
+                      a4Bw:
+                        type: number
+                      a3Color:
+                        type: number
+                      a3Bw:
+                        type: number
+                  total:
+                    type: object
+                    properties:
+                      a4Color:
+                        type: number
+                      a4Bw:
+                        type: number
+                      a3Color:
+                        type: number
+                      a3Bw:
+                        type: number
+                  _links:
+                    type: object
+                    properties:
+                      self:
+                        type: string
+                      user:
+                        type: string
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  trace_id:
+                    type: string
+                  error_type:
+                    type: string
+                  message:
+                    type: string
+        "500":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  trace_id:
+                    type: string
+                  error_type:
+                    type: string
+                  message:
+                    type: string
+  /api/v1/users/{userId}/copies/{copyId}:
+    patch:
+      tags:
+        - Copies
+      description: Update copies for a user, Required admin role.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                datetime:
+                  type: string
+                  format: date-time
+                count:
+                  type: object
+                  properties:
+                    a4Color:
+                      type: number
+                    a4Bw:
+                      type: number
+                    a3Color:
+                      type: number
+                    a3Bw:
+                      type: number
+                total:
+                  type: object
+                  properties:
+                    a4Color:
+                      type: number
+                    a4Bw:
+                      type: number
+                    a3Color:
+                      type: number
+                    a3Bw:
+                      type: number
+                _links:
+                  type: object
+                  properties:
+                    self:
+                      type: string
+                    user:
+                      type: string
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: userId
+          required: true
+        - schema:
+            type: string
+          in: path
+          name: copyId
+          required: true
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  datetime:
+                    type: string
+                    format: date-time
+                  count:
+                    type: object
+                    properties:
+                      a4Color:
+                        type: number
+                      a4Bw:
+                        type: number
+                      a3Color:
+                        type: number
+                      a3Bw:
+                        type: number
+                  total:
+                    type: object
+                    properties:
+                      a4Color:
+                        type: number
+                      a4Bw:
+                        type: number
+                      a3Color:
+                        type: number
+                      a3Bw:
+                        type: number
+                  _links:
+                    type: object
+                    properties:
+                      self:
+                        type: string
+                      user:
+                        type: string
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  trace_id:
+                    type: string
+                  error_type:
+                    type: string
+                  message:
+                    type: string
+        "500":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  trace_id:
+                    type: string
+                  error_type:
+                    type: string
+                  message:
+                    type: string
+    delete:
+      tags:
+        - Copies
+      description: Delete copies for a user, Required admin role.
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: userId
+          required: true
+        - schema:
+            type: string
+          in: path
+          name: copyId
+          required: true
+      responses:
+        "202":
+          description: Default Response
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  trace_id:
+                    type: string
+                  error_type:
+                    type: string
+                  message:
+                    type: string
+        "500":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  trace_id:
+                    type: string
+                  error_type:
+                    type: string
+                  message:
+                    type: string
+  /api/v1/users/{userId}/invoices/:
+    get:
+      tags:
+        - Invoices
+      description: Get all invoices for a user.
+      parameters:
+        - schema:
+            type: string
+            format: date
+          in: query
+          name: from
+          required: false
+        - schema:
+            type: string
+            format: date
+          in: query
+          name: to
+          required: false
+        - schema:
+            type: string
+          in: path
+          name: userId
+          required: true
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    from:
+                      type: string
+                      format: date
+                    to:
+                      type: string
+                      format: date
+                    total:
+                      type: number
+                    items:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          concept:
+                            type: string
+                          quantity:
+                            type: number
+                          unitPrice:
+                            type: number
+                          total:
+                            type: number
+                          _links:
+                            type: object
+                            properties:
+                              self:
+                                type: string
+                              invoice:
+                                type: string
+                    _links:
+                      type: object
+                      properties:
+                        self:
+                          type: string
+                        user:
+                          type: string
+                        items:
+                          type: string
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  trace_id:
+                    type: string
+                  error_type:
+                    type: string
+                  message:
+                    type: string
+        "500":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  trace_id:
+                    type: string
+                  error_type:
+                    type: string
+                  message:
+                    type: string
+    post:
+      tags:
+        - Invoices
+      description: Create an invoice for a user, Required admin role.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                from:
+                  type: string
+                  format: date
+                to:
+                  type: string
+                  format: date
+                total:
+                  type: number
+                items:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      concept:
+                        type: string
+                      quantity:
+                        type: number
+                      unitPrice:
+                        type: number
+                      total:
+                        type: number
+                      _links:
+                        type: object
+                        properties:
+                          self:
+                            type: string
+                          invoice:
+                            type: string
+                _links:
+                  type: object
+                  properties:
+                    self:
+                      type: string
+                    user:
+                      type: string
+                    items:
+                      type: string
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: userId
+          required: true
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  from:
+                    type: string
+                    format: date
+                  to:
+                    type: string
+                    format: date
+                  total:
+                    type: number
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        concept:
+                          type: string
+                        quantity:
+                          type: number
+                        unitPrice:
+                          type: number
+                        total:
+                          type: number
+                        _links:
+                          type: object
+                          properties:
+                            self:
+                              type: string
+                            invoice:
+                              type: string
+                  _links:
+                    type: object
+                    properties:
+                      self:
+                        type: string
+                      user:
+                        type: string
+                      items:
+                        type: string
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  trace_id:
+                    type: string
+                  error_type:
+                    type: string
+                  message:
+                    type: string
+        "500":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  trace_id:
+                    type: string
+                  error_type:
+                    type: string
+                  message:
+                    type: string
+  /api/v1/users/{userId}/invoices/{invoiceId}:
+    get:
+      tags:
+        - Invoices
+      description: Get an invoice for a user.
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: userId
+          required: true
+        - schema:
+            type: string
+          in: path
+          name: invoiceId
+          required: true
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  from:
+                    type: string
+                    format: date
+                  to:
+                    type: string
+                    format: date
+                  total:
+                    type: number
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        concept:
+                          type: string
+                        quantity:
+                          type: number
+                        unitPrice:
+                          type: number
+                        total:
+                          type: number
+                        _links:
+                          type: object
+                          properties:
+                            self:
+                              type: string
+                            invoice:
+                              type: string
+                  _links:
+                    type: object
+                    properties:
+                      self:
+                        type: string
+                      user:
+                        type: string
+                      items:
+                        type: string
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  trace_id:
+                    type: string
+                  error_type:
+                    type: string
+                  message:
+                    type: string
+        "500":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  trace_id:
+                    type: string
+                  error_type:
+                    type: string
+                  message:
+                    type: string
+    patch:
+      tags:
+        - Invoices
+      description: Update an invoice for a user, Required admin role.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                from:
+                  type: string
+                  format: date
+                to:
+                  type: string
+                  format: date
+                total:
+                  type: number
+                items:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      concept:
+                        type: string
+                      quantity:
+                        type: number
+                      unitPrice:
+                        type: number
+                      total:
+                        type: number
+                      _links:
+                        type: object
+                        properties:
+                          self:
+                            type: string
+                          invoice:
+                            type: string
+                _links:
+                  type: object
+                  properties:
+                    self:
+                      type: string
+                    user:
+                      type: string
+                    items:
+                      type: string
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: userId
+          required: true
+        - schema:
+            type: string
+          in: path
+          name: invoiceId
+          required: true
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  from:
+                    type: string
+                    format: date
+                  to:
+                    type: string
+                    format: date
+                  total:
+                    type: number
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        concept:
+                          type: string
+                        quantity:
+                          type: number
+                        unitPrice:
+                          type: number
+                        total:
+                          type: number
+                        _links:
+                          type: object
+                          properties:
+                            self:
+                              type: string
+                            invoice:
+                              type: string
+                  _links:
+                    type: object
+                    properties:
+                      self:
+                        type: string
+                      user:
+                        type: string
+                      items:
+                        type: string
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  trace_id:
+                    type: string
+                  error_type:
+                    type: string
+                  message:
+                    type: string
+        "500":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  trace_id:
+                    type: string
+                  error_type:
+                    type: string
+                  message:
+                    type: string
+    delete:
+      tags:
+        - Invoices
+      description: Delete an invoice for a user, Required admin role.
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: userId
+          required: true
+        - schema:
+            type: string
+          in: path
+          name: invoiceId
+          required: true
+      responses:
+        "202":
+          description: Default Response
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  trace_id:
+                    type: string
+                  error_type:
+                    type: string
+                  message:
+                    type: string
+        "500":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  trace_id:
+                    type: string
+                  error_type:
+                    type: string
+                  message:
+                    type: string

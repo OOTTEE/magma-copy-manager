@@ -15,7 +15,8 @@ const schema: RouteShorthandOptions = {
             200: {
                 type: 'object',
                 properties: {
-                    token: { type: 'string' }
+                    token: { type: 'string' },
+                    role: { type: 'string' }
                 }
             },
             401: {
@@ -33,9 +34,9 @@ const schema: RouteShorthandOptions = {
 const loginRoute: FastifyPluginAsync = async (fastify, opts) => {
     fastify.post('/', schema, async (request: FastifyRequest, reply: FastifyReply) => {
         const { username, password } = request.body as any;
-        const token = await authService.login(fastify, username, password);
+        const result = await authService.login(fastify, username, password);
 
-        if (!token) {
+        if (!result) {
             reply.status(401).send({
                 trace_id: request.id,
                 error_type: "unauthorized",
@@ -44,7 +45,7 @@ const loginRoute: FastifyPluginAsync = async (fastify, opts) => {
             return;
         }
 
-        return { token };
+        return result;
     });
 };
 

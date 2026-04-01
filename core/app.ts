@@ -2,11 +2,19 @@ import Fastify, { FastifyInstance, FastifyServerOptions } from 'fastify';
 import AutoLoad from '@fastify/autoload';
 import swagger from '@fastify/swagger';
 import swaggerUi from '@fastify/swagger-ui';
+import cors from '@fastify/cors';
 import { join } from 'path';
 import { authMiddleware } from './middleware/auth.middleware';
 
 export function buildApp(opts: FastifyServerOptions = {}): FastifyInstance {
     const app = Fastify(opts);
+
+    // Enable CORS for development
+    app.register(cors, {
+        origin: process.env.NODE_ENV !== 'production',
+        methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+        allowedHeaders: ['Content-Type', 'Authorization']
+    });
 
     app.register(swagger, {
         openapi: {

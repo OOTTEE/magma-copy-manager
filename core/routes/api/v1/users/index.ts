@@ -5,6 +5,8 @@ import { usersService } from '../../../../services/users/users.service';
 const userSchema = {
   type: 'object',
   properties: {
+    id: { type: 'string' },
+    username: { type: 'string' },
     printUser: { type: 'string' },
     nexudusUser: { type: 'string' },
     role: { type: 'string' },
@@ -43,6 +45,8 @@ const usersRoute: FastifyPluginAsync = async (fastify) => {
   }, async (request, reply) => {
     const users = await usersService.getAll();
     const payload = users.map(u => ({
+      id: u.id,
+      username: u.username,
       printUser: u.printUser,
       nexudusUser: u.nexudusUser,
       role: u.role,
@@ -72,6 +76,8 @@ const usersRoute: FastifyPluginAsync = async (fastify) => {
     if (!user) return reply.status(404).send({ error_type: 'not_found', message: 'User not found' });
 
     return reply.send({
+      id: user.id,
+      username: user.username,
       printUser: user.printUser,
       nexudusUser: user.nexudusUser,
       role: user.role,
@@ -105,6 +111,8 @@ const usersRoute: FastifyPluginAsync = async (fastify) => {
     const body: any = request.body;
     const user = await usersService.create(body);
     return reply.send({
+      id: user.id,
+      username: user.username,
       printUser: user.printUser,
       nexudusUser: user.nexudusUser,
       role: user.role,
@@ -143,6 +151,8 @@ const usersRoute: FastifyPluginAsync = async (fastify) => {
     if (!user) return reply.status(404).send({ error_type: 'not_found', message: 'User not found' });
 
     return reply.send({
+      id: user.id,
+      username: user.username,
       printUser: user.printUser,
       nexudusUser: user.nexudusUser,
       role: user.role,

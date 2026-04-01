@@ -1,17 +1,33 @@
-# Workflow: New Feature (End-to-End Generator)
+---
+description: Comando para analizar e iniciar el desarrollo de una nueva funcionalidad en Magma.
+---
 
-Este flujo de trabajo permite generar una funcionalidad completa de negocio, coordinando todas las capas de la arquitectura Magma.
+# Workflow: Nueva Funcionalidad (/new-feature)
 
-## Instrucciones
+Este flujo de trabajo activa al **Arquitecto de Funcionalidades** para realizar un análisis de impacto y proponer un plan de implementación validado antes de cualquier cambio en el código.
 
-1. **Contexto**: Leer ficheros `core/ARCHITECTURE.MD`, `core/routes/schemas.ts` y `core/GEMINI.md`.
-2. **Análisis**: Entender la feature a generar y definir los permisos necesarios (RBAC y Ad-hoc).
-3. **Contrato**: Definir los modelos de entrada/respuesta y añadirlos o actualizarlos en [`core/routes/schemas.ts`](file:///Users/ote/IdeaProjects/Magma/core/routes/schemas.ts).
-4. **Capa de Negocio (Service)**: Crear o ampliar el servicio necesario siguiendo `service-developer`.
-5. **Capa de Seguridad y Orquestación (Facade)**: Crear o ampliar la Fachada necesaria siguiendo `facade-developer`. Implementar las reglas de visibilidad ad-hoc.
-6. **Capa de Interfaz (API - Routes)**: Crear el endpoint `index.ts` siguiendo `endpoint-developer`.
-7. **Capa de Testing**: Generar tests unitarios para Service y Facade, y tests de integración para el Endpoint.
-8. **Verificación**: Ejecutar `npm run build` y `npm run test` para asegurar que la nueva funcionalidad cumple con los contratos y reglas de seguridad.
+## 📋 Pasos del Proceso
 
-// turbo
-9. Limpiar ficheros temporales si se crearon durante los tests.
+1. **Invocación**: El usuario lanza el comando con una descripción inicial: `/new-feature [DESCRIPCIÓN]`.
+2. **Descubrimiento (Brainstorming)**:
+   - El asistente leerá la definición de la skill [`feature-architect`](file:///Users/ote/IdeaProjects/Magma/.agents/skills/feature-architect/SKILL.md).
+   - Realizará preguntas de aclaración si la descripción es incompleta.
+3. **Análisis de Impacto**:
+   - Investigación en Core y App para detectar dependencias.
+   - Evaluación obligatoria de **Breaking Changes** y **Security Assessment**.
+4. **Propuesta Estructurada**:
+   - Generación automática del artefacto `implementation_plan.md`.
+5. **Validación**:
+   - El asistente **DEBE DETENERSE** y pedir aprobación al usuario.
+
+---
+
+## 🚀 Uso del Comando
+
+Ejemplo:
+
+```text
+/new-feature "Integrar sistema de facturación con Nexudus API"
+```
+
+El asistente responderá con las fases de la skill y comenzará la fase de descubrimiento.

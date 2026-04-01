@@ -3,7 +3,7 @@ import dotenv from 'dotenv';
 // Load .env configuration
 dotenv.config();
 
-console.log("load node_env=", process.env.NODE_ENV);
+console.log("Environment:", process.env.NODE_ENV);
 
 export const serverConfig = {
     logLevel: process.env.LOG_LEVEL || 'info', // INFO, DEBUG, ERROR, WARN, TRACE

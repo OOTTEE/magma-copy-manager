@@ -15,7 +15,7 @@ export const authService = {
         }
 
         const payload = { id: user.id, role: user.role };
-        const token = fastify.jwt.sign(payload, { expiresIn: '5m' });
-        return token;
+        const token = fastify.jwt.sign(payload, { expiresIn: '8h' });
+        return { token, role: user.role };
     }
 };

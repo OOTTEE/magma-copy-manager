@@ -39,3 +39,9 @@ export const invoiceItems = sqliteTable('invoice_items', {
   unitPrice: integer('unit_price').notNull().default(0),
   total: integer('total').notNull().default(0),
 });
+
+export const settings = sqliteTable('settings', {
+  id: text('id').primaryKey(),
+  key: text('key').notNull().unique(),
+  value: text('value').notNull(),
+});

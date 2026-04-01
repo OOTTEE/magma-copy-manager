@@ -5,14 +5,15 @@
   "main": "index.js",
   "scripts": {
     "dev:watch": "npm run build && concurrently -k -p \"[{name}]\" -n \"TypeScript,App\" -c \"yellow.bold,cyan.bold\" \"npm:watch\" \"npm:dev\"",
-    "dev": "tsx server.ts",
+    "dev": "NODE_ENV=development tsx watch --include . --clear-screen=false server.ts",
     "build": "tsc",
     "start": "node dist/server.js",
     "watch": "tsc -w",
     "db:generate": "drizzle-kit generate",
     "db:push": "drizzle-kit push",
     "test": "npm run build && NODE_ENV=test NODE_OPTIONS=\"--import tsx\" vitest run",
-    "parse-report": "npx tsx scripts/parse-report.ts"
+    "parse-report": "npx tsx scripts/parse-report.ts",
+    "build:openapi": "npx tsx scripts/build-openapi.ts"
   },
   "keywords": [],
   "author": "",
@@ -20,6 +21,7 @@
   "type": "commonjs",
   "dependencies": {
     "@fastify/autoload": "^6.3.1",
+    "@fastify/cors": "^11.2.0",
     "@fastify/jwt": "^10.0.0",
     "@fastify/swagger": "^9.7.0",
     "@fastify/swagger-ui": "^5.2.5",

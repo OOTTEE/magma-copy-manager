@@ -20,6 +20,10 @@ Toda creación de endpoint debe seguir estas pautas:
     * Usar `preValidation: [fastify.authenticate]` para rutas privadas.
     * Usar `fastify.requireRole('admin')` para acciones restringidas.
 6. **Paso de Contexto**: Pasar siempre el objeto `request.user` a los métodos de la Fachada para que esta gestione la visibilidad ad-hoc de los recursos.
+7. **Testing Co-ubicado**: **OBLIGATORIO** crear un archivo `index.test.ts` en el mismo directorio. El test debe validar:
+    * El contrato de respuesta (status codes y estructura JSON).
+    * El comportamiento ante errores (401, 403, 404, 500).
+    * La correcta delegación a la Fachada.
 
 ---
 
@@ -79,4 +83,52 @@ const endpointRoute: FastifyPluginAsync = async (fastify) => {
 };
 
 export default endpointRoute;
+```
+
+## 🧪 Ejemplo de Test (Integration)
+
+```typescript
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import Fastify from 'fastify';
+import { dominioFacade } from './../../../../facades/dominio/dominio.facade';
+import route from './index';
+
+// Mock de la fachada
+vi.mock('./../../../../facades/dominio/dominio.facade', () => ({
+  dominioFacade: {
+    getById: vi.fn()
+  }
+}));
+
+describe('Endpoint: GET /:id', () => {
+  const fastify = Fastify();
+  // Registrar plugins necesarios (auth, decorators, etc.) y la ruta
+  
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('debe retornar 200 y el objeto si la fachada responde correctamente', async () => {
+    const mockData = { id: '123', name: 'Test' };
+    (dominioFacade.getById as any).mockResolvedValue(mockData);
+
+    const response = await fastify.inject({
+      method: 'GET',
+      url: '/123',
+      // Simular login si es necesario vía cabeceras o mock de auth
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(JSON.parse(response.body)).toEqual(mockData);
+    expect(dominioFacade.getById).toHaveBeenCalledWith(expect.anything(), '123');
+  });
+
+  it('debe retornar 401 si no hay autenticación', async () => {
+    const response = await fastify.inject({
+      method: 'GET',
+      url: '/123'
+    });
+    expect(response.statusCode).toBe(401);
+  });
+});
 ```

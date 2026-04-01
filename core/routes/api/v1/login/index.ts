@@ -1,5 +1,5 @@
 import { FastifyPluginAsync, FastifyReply, FastifyRequest, RouteShorthandOptions } from 'fastify';
-import { authService } from '../../../../services/auth/auth.service';
+import { authFacade } from '../../../../facades/auth/auth.facade';
 
 const schema: RouteShorthandOptions = {
     schema: {
@@ -34,18 +34,20 @@ const schema: RouteShorthandOptions = {
 const loginRoute: FastifyPluginAsync = async (fastify, opts) => {
     fastify.post('/', schema, async (request: FastifyRequest, reply: FastifyReply) => {
         const { username, password } = request.body as any;
-        const result = await authService.login(fastify, username, password);
-
-        if (!result) {
-            reply.status(401).send({
-                trace_id: request.id,
-                error_type: "unauthorized",
-                message: "Invalid credentials"
-            });
-            return;
+        
+        try {
+            const result = await authFacade.login(fastify, username, password);
+            return result;
+        } catch (error: any) {
+            if (error.statusCode === 401) {
+                return reply.code(401).send({
+                    trace_id: request.id,
+                    error_type: error.errorType || "unauthorized",
+                    message: error.message
+                });
+            }
+            throw error;
         }
-
-        return result;
     });
 };
 

@@ -7,6 +7,7 @@ interface User {
   printUser: string;
   nexudusUser: string;
   role: string;
+  a3NoPaperMode?: number;
 }
 
 interface EditUserModalProps {
@@ -16,7 +17,8 @@ interface EditUserModalProps {
     username?: string; 
     printUser?: string; 
     nexudusUser?: string; 
-    password?: string 
+    password?: string;
+    a3NoPaperMode?: number;
   }) => Promise<void>;
 }
 
@@ -31,6 +33,7 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ user, onClose, onS
     username: user.username,
     printUser: user.printUser,
     nexudusUser: user.nexudusUser,
+    a3NoPaperMode: user.a3NoPaperMode || 0,
     password: '', 
     confirmPassword: '',
   });
@@ -54,7 +57,8 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ user, onClose, onS
       const dataToSave: any = { 
         username: formData.username,
         printUser: formData.printUser,
-        nexudusUser: formData.nexudusUser
+        nexudusUser: formData.nexudusUser,
+        a3NoPaperMode: formData.a3NoPaperMode
       };
       
       if (formData.password) {
@@ -150,6 +154,26 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ user, onClose, onS
               </div>
             </div>
 
+            {/* A3 No Paper Toggle - Premium Style */}
+            <div className="md:col-span-2 p-6 rounded-3xl bg-slate-50 dark:bg-black/20 border border-slate-100 dark:border-white/5 flex items-center justify-between group hover:border-[#f15a24]/20 transition-all">
+              <div className="flex items-center gap-4">
+                <div className={`p-3 rounded-2xl transition-colors ${formData.a3NoPaperMode ? 'bg-[#f15a24]/10 text-[#f15a24]' : 'bg-slate-200 dark:bg-white/5 text-slate-400'}`}>
+                  <FileTextIcon size={20} />
+                </div>
+                <div>
+                  <p className="text-sm font-black text-slate-700 dark:text-white tracking-tight">Modo A3 Sin Papel</p>
+                  <p className="text-[10px] font-medium text-slate-400 dark:text-white/20">Contabiliza A3 B/N y Color por separado (distinto precio)</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setFormData({...formData, a3NoPaperMode: formData.a3NoPaperMode ? 0 : 1})}
+                className={`relative w-12 h-6 rounded-full transition-colors duration-300 outline-none ${formData.a3NoPaperMode ? 'bg-[#f15a24]' : 'bg-slate-300 dark:bg-white/10'}`}
+              >
+                <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all duration-300 ${formData.a3NoPaperMode ? 'left-7 shadow-lg shadow-black/20' : 'left-1'}`} />
+              </button>
+            </div>
+
             <div className="w-full md:col-span-2 h-px bg-slate-100 dark:bg-white/5 my-2" />
 
             {/* Password */}
@@ -225,6 +249,17 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ user, onClose, onS
     </div>
   );
 };
+
+// Internal icons for modal
+const FileTextIcon = ({ size }: any) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
+    <polyline points="14 2 14 8 20 8" />
+    <line x1="16" y1="13" x2="8" y2="13" />
+    <line x1="16" y1="17" x2="8" y2="17" />
+    <line x1="10" y1="9" x2="8" y2="9" />
+  </svg>
+);
 
 // Internal icon for modal header
 const Edit3 = ({ size, strokeWidth, className }: any) => (

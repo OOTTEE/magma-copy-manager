@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuthStore } from '../../../store/authStore';
-import { api } from '../../../services/api';
+import { useUserStore } from '../../../store/userStore';
 import { UserTable } from '../components/UserTable';
 import { UserCard } from '../components/UserCard';
 import { EditUserModal } from '../components/EditUserModal';
@@ -19,18 +19,11 @@ import {
  * UserAdminPage Component
  * 
  * Main administrative page for user management.
- * Features:
- * - Admin-only access (RoleGuard).
- * - Dual view: Table vs Cards.
- * - Search and manual refresh.
- * - Glassmorphism UI consistent with Magma.
  */
 export const UserAdminPage = () => {
     const { role } = useAuthStore();
+    const { users, isLoading, error, fetchUsers, updateUser } = useUserStore();
     const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
-    const [users, setUsers] = useState<any[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
     const [searchTerm, setSearchTerm] = useState("");
     const [editingUser, setEditingUser] = useState<any>(null);
 
@@ -39,37 +32,16 @@ export const UserAdminPage = () => {
         return <Navigate to="/dashboard" replace />;
     }
 
-    const fetchUsers = async () => {
-        setIsLoading(true);
-        setError(null);
-        try {
-            const { data, error: apiError } = await api.GET("/api/v1/users/");
-            if (apiError) throw apiError;
-            setUsers(data || []);
-        } catch (err: any) {
-            setError(err.message || "Error al cargar la lista de usuarios.");
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
     useEffect(() => {
         fetchUsers();
-    }, []);
+    }, [fetchUsers]);
 
     const handleUpdateUser = async (updatedData: any) => {
         if (!editingUser) return;
-        
         try {
-            const { error: apiError } = await api.PATCH("/api/v1/users/{id}", {
-                params: { path: { id: editingUser.id } },
-                body: updatedData
-            });
-            if (apiError) throw apiError;
-
-            // Refresh local list
-            await fetchUsers();
-        } catch (err: any) {
+            await updateUser(editingUser.id, updatedData);
+            setEditingUser(null);
+        } catch (err) {
             console.error("Error updating user:", err);
             throw err;
         }
@@ -117,7 +89,7 @@ export const UserAdminPage = () => {
                     </button>
                     <div className="w-px h-8 bg-slate-200 dark:bg-white/5 mx-1" />
                     <button 
-                        onClick={fetchUsers}
+                        onClick={() => fetchUsers(true)}
                         disabled={isLoading}
                         className="p-3 text-slate-400 dark:text-white/20 hover:text-indigo-500 hover:bg-slate-50 dark:hover:bg-white/5 rounded-2xl transition-all disabled:opacity-50"
                         title="Refrescar Lista"
@@ -146,14 +118,14 @@ export const UserAdminPage = () => {
             {isLoading && users.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-40 gap-4">
                     <Loader2 size={48} className="text-indigo-500 animate-spin" />
-                    <p className="text-slate-400 dark:text-white/20 font-bold uppercase tracking-widest text-xs">Cargando Usuarios...</p>
+                    <p className="text-slate-400 dark:text-white/20 font-black uppercase tracking-widest text-xs">Cargando Usuarios...</p>
                 </div>
             ) : error ? (
                 <div className="flex flex-col items-center justify-center py-32 p-10 bg-red-500/5 rounded-[3rem] border border-red-500/10 text-center">
                     <AlertCircle size={48} className="text-red-500/40 mb-4" />
                     <h3 className="text-xl font-bold text-red-500 mb-2">Error de Sincronización</h3>
                     <p className="text-slate-400 dark:text-white/20 font-medium max-w-sm mb-8">{error}</p>
-                    <button onClick={fetchUsers} className="px-8 py-3 bg-red-500/10 text-red-500 rounded-2xl font-bold hover:bg-red-500 hover:text-white transition-all">
+                    <button onClick={() => fetchUsers(true)} className="px-8 py-3 bg-red-500/10 text-red-500 rounded-2xl font-bold hover:bg-red-500 hover:text-white transition-all">
                         Intentar de nuevo
                     </button>
                 </div>

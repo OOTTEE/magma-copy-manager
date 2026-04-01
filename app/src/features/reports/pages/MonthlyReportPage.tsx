@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { api } from '../../../services/api';
+import { useReportStore } from '../../../store/reportStore';
 import { ReportTable } from '../components/ReportTable';
 import { ReportCard } from '../components/ReportCard';
 import { 
@@ -17,34 +17,14 @@ import {
  * MonthlyReportPage Component
  * 
  * Main view for monitoring monthly copy consumption across all users.
- * Periods are calculated from 27th to 27th.
  */
 export const MonthlyReportPage = () => {
+    const { monthlyReport: report, isLoading, error, fetchMonthlyReport: fetchReport } = useReportStore();
     const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
-    const [report, setReport] = useState<{ period: any, data: any[] } | null>(null);
-    const [isLoading, setIsLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
-
-    const fetchReport = async () => {
-        setIsLoading(true);
-        setError(null);
-        try {
-            const { data, error: apiError } = await api.GET("/api/v1/reports/monthly", {});
-            if (apiError) throw apiError;
-            
-            // Sort by total descending to facilitate reading
-            const sortedData = (data?.data || []).sort((a: any, b: any) => b.total - a.total);
-            setReport({ ...data, data: sortedData } as any);
-        } catch (err: any) {
-            setError(err.message || "Error al cargar el reporte mensual.");
-        } finally {
-            setIsLoading(false);
-        }
-    };
 
     useEffect(() => {
         fetchReport();
-    }, []);
+    }, [fetchReport]);
 
     const totalA4 = report?.data.reduce((acc, curr) => acc + curr.a4Bw + curr.a4Color, 0) || 0;
     const totalA3 = report?.data.reduce((acc, curr) => acc + curr.a3Bw + curr.a3Color, 0) || 0;
@@ -90,7 +70,7 @@ export const MonthlyReportPage = () => {
                     </button>
                     <div className="w-px h-8 bg-slate-200 dark:bg-white/5 mx-1" />
                     <button 
-                        onClick={fetchReport}
+                        onClick={() => fetchReport(true)}
                         disabled={isLoading}
                         className="p-3 text-slate-400 dark:text-white/20 hover:text-indigo-500 hover:bg-slate-50 dark:hover:bg-white/5 rounded-2xl transition-all"
                     >
@@ -143,7 +123,7 @@ export const MonthlyReportPage = () => {
                     <AlertCircle size={48} className="text-red-500/40 mb-4" />
                     <h3 className="text-xl font-bold text-red-500 mb-2">Error en el Reporte</h3>
                     <p className="text-slate-400 dark:text-white/20 font-medium max-w-sm mb-8">{error}</p>
-                    <button onClick={fetchReport} className="px-8 py-3 bg-red-500/10 text-red-500 rounded-2xl font-bold hover:bg-red-500 hover:text-white transition-all">
+                    <button onClick={() => fetchReport(true)} className="px-8 py-3 bg-red-500/10 text-red-500 rounded-2xl font-bold hover:bg-red-500 hover:text-white transition-all">
                         Intentar de nuevo
                     </button>
                 </div>
@@ -153,7 +133,7 @@ export const MonthlyReportPage = () => {
                         <ReportTable data={report?.data || []} />
                     ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                            {report?.data.map(item => (
+                            {report?.data.map((item: any) => (
                                 <ReportCard key={item.userId} item={item} />
                             ))}
                         </div>
@@ -163,6 +143,7 @@ export const MonthlyReportPage = () => {
         </div>
     );
 };
+;
 
 // Activity icon for footer
 const Activity = ({ size, className }: any) => (

@@ -58,14 +58,15 @@ function App() {
               } 
             />
             
-            {/* User Administration */}
-            <Route path="/users" element={<UserAdminPage />} />
-
-            {/* Placeholders for other pages */}
-            {/* Monthly Reports */}
-            <Route path="/reports" element={<MonthlyReportPage />} />
-            {/* System Settings */}
-            <Route path="/settings" element={<SettingsPage />} />
+            {/* Admin-only Routes */}
+            <Route element={<ProtectedRoute adminOnly />}>
+              {/* User Administration */}
+              <Route path="/users" element={<UserAdminPage />} />
+              {/* Monthly Reports */}
+              <Route path="/reports" element={<MonthlyReportPage />} />
+              {/* System Settings */}
+              <Route path="/settings" element={<SettingsPage />} />
+            </Route>
           </Route>
         </Route>
 

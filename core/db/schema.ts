@@ -7,6 +7,7 @@ export const users = sqliteTable('users', {
   role: text('role').notNull().default('customer'),
   printUser: text('print_user').notNull(),
   nexudusUser: text('nexudus_user').notNull(),
+  a3NoPaperMode: integer('a3_no_paper_mode').notNull().default(0),
 });
 
 export const copies = sqliteTable('copies', {

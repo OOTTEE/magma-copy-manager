@@ -7,6 +7,7 @@ interface User {
   printUser: string;
   nexudusUser: string;
   role: string;
+  a3NoPaperMode?: number;
 }
 
 interface UserTableProps {
@@ -41,7 +42,14 @@ export const UserTable: React.FC<UserTableProps> = ({ users, onEdit }) => {
                   <div className="w-10 h-10 rounded-xl bg-indigo-500/10 flex items-center justify-center text-indigo-500">
                     <UserIcon size={20} strokeWidth={1.5} />
                   </div>
-                  <span className="font-bold text-slate-700 dark:text-white/80">{user.username}</span>
+                  <div className="flex flex-col">
+                    <span className="font-bold text-slate-700 dark:text-white/80">{user.username}</span>
+                    {user.a3NoPaperMode === 1 && (
+                      <span className="text-[9px] font-black uppercase tracking-tighter text-[#f15a24] bg-[#f15a24]/10 px-1.5 py-0.5 rounded-md inline-block w-fit mt-0.5 border border-[#f15a24]/20 animate-pulse">
+                        A3 Sin Papel
+                      </span>
+                    )}
+                  </div>
                 </div>
               </td>
               <td className="px-8 py-5">

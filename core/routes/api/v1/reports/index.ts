@@ -1,5 +1,5 @@
 import { FastifyPluginAsync } from 'fastify';
-import { reportsService } from '../../../../services/reports/reports.service';
+import { reportsFacade } from '../../../../facades/reports/reports.facade';
 
 const reportsRoute: FastifyPluginAsync = async (fastify) => {
   fastify.get('/monthly', {
@@ -29,18 +29,23 @@ const reportsRoute: FastifyPluginAsync = async (fastify) => {
                   a4Bw: { type: 'integer' },
                   a3Color: { type: 'integer' },
                   a3Bw: { type: 'integer' },
+                  sra3Color: { type: 'integer' },
+                  sra3Bw: { type: 'integer' },
+                  a3NoPaperMode: { type: 'boolean' },
                   total: { type: 'integer' }
                 }
               }
             }
           }
         },
-        401: { type: 'object', properties: { message: { type: 'string' } } }
+        401: { type: 'object', properties: { message: { type: 'string' } } },
+        403: { type: 'object', properties: { message: { type: 'string' } } }
       }
     },
     preValidation: [fastify.authenticate]
   }, async (request, reply) => {
-    const report = await reportsService.getMonthlyAccumulation();
+    const user = request.user as { id: string; role: string };
+    const report = await reportsFacade.getMonthlyAccumulation(user);
     return reply.send(report);
   });
 };

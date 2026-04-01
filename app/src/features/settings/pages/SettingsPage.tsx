@@ -19,9 +19,16 @@ import {
  * Manages printer infrastructure and billing cycle parameters.
  */
 export const SettingsPage = () => {
-    const [settings, setSettings] = useState<{ printer_url: string; billing_cycle_day: string }>({
+    const [settings, setSettings] = useState<{ 
+        printer_url: string; 
+        billing_cycle_day: string;
+        price_a3_bw_no_paper: string;
+        price_a3_color_no_paper: string;
+    }>({
         printer_url: '',
-        billing_cycle_day: '27'
+        billing_cycle_day: '27',
+        price_a3_bw_no_paper: '0.05',
+        price_a3_color_no_paper: '0.10'
     });
     const [originalSettings, setOriginalSettings] = useState(settings);
     const [isLoading, setIsLoading] = useState(true);
@@ -37,7 +44,9 @@ export const SettingsPage = () => {
                 const fetched = data as any;
                 const newSettings = {
                     printer_url: fetched.printer_url || '',
-                    billing_cycle_day: fetched.billing_cycle_day || '27'
+                    billing_cycle_day: fetched.billing_cycle_day || '27',
+                    price_a3_bw_no_paper: fetched.price_a3_bw_no_paper || '0.05',
+                    price_a3_color_no_paper: fetched.price_a3_color_no_paper || '0.10'
                 };
                 setSettings(newSettings);
                 setOriginalSettings(newSettings);
@@ -60,6 +69,9 @@ export const SettingsPage = () => {
         const day = parseInt(settings.billing_cycle_day, 10);
         if (isNaN(day) || day < 1 || day > 28) {
             return "El día del ciclo de facturación debe estar entre 1 y 28.";
+        }
+        if (isNaN(parseFloat(settings.price_a3_bw_no_paper)) || isNaN(parseFloat(settings.price_a3_color_no_paper))) {
+            return "Los precios deben ser valores numéricos válidos.";
         }
         return null;
     };
@@ -171,6 +183,44 @@ export const SettingsPage = () => {
                                     <Info size={12} />
                                     Determina el inicio y fin de los reportes (rango 1-28).
                                 </p>
+                            </div>
+                        </div>
+
+                        {/* Divider */}
+                        <div className="h-px w-full bg-slate-100 dark:bg-white/5" />
+
+                        {/* Special Prices Section */}
+                        <div className="space-y-6">
+                            <div className="flex items-center gap-3">
+                                <ShieldCheck size={20} className="text-indigo-500" />
+                                <h3 className="text-lg font-black text-slate-800 dark:text-white tracking-tight">Tarifas A3 (Sin Papel)</h3>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-white/20 ml-2">Precio A3 B/N (sin papel)</label>
+                                    <div className="relative">
+                                        <input 
+                                            type="text"
+                                            value={settings.price_a3_bw_no_paper}
+                                            onChange={(e) => setSettings({...settings, price_a3_bw_no_paper: e.target.value})}
+                                            className="w-full h-16 px-6 rounded-2xl bg-slate-50 dark:bg-black/20 border border-slate-100 dark:border-white/5 text-slate-700 dark:text-white font-bold focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all outline-none"
+                                        />
+                                        <span className="absolute right-6 top-1/2 -translate-y-1/2 text-[10px] font-black text-indigo-500">€ / ud</span>
+                                    </div>
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-white/20 ml-2">Precio A3 Color (sin papel)</label>
+                                    <div className="relative">
+                                        <input 
+                                            type="text"
+                                            value={settings.price_a3_color_no_paper}
+                                            onChange={(e) => setSettings({...settings, price_a3_color_no_paper: e.target.value})}
+                                            className="w-full h-16 px-6 rounded-2xl bg-slate-50 dark:bg-black/20 border border-slate-100 dark:border-white/5 text-slate-700 dark:text-white font-bold focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all outline-none"
+                                        />
+                                        <span className="absolute right-6 top-1/2 -translate-y-1/2 text-[10px] font-black text-[#f15a24]">€ / ud</span>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>

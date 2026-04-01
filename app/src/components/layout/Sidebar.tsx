@@ -16,7 +16,7 @@ const NAV_ITEMS = [
   { path: "/dashboard", label: "General", icon: LayoutDashboard },
   { path: "/users", label: "Usuarios", icon: Users, adminOnly: true },
   { path: "/reports", label: "Reporte Mensual", icon: BarChart, adminOnly: true },
-  { path: "/settings", label: "Ajustes", icon: Settings },
+  { path: "/settings", label: "Ajustes", icon: Settings, adminOnly: true },
 ];
 
 /**

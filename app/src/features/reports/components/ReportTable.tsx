@@ -9,6 +9,8 @@ interface ReportData {
   a4Bw: number;
   a3Color: number;
   a3Bw: number;
+  sra3Color: number;
+  sra3Bw: number;
   total: number;
 }
 
@@ -33,6 +35,8 @@ export const ReportTable: React.FC<ReportTableProps> = ({ data }) => {
             <th className="px-8 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-white/20 text-center text-indigo-500">A4 Color</th>
             <th className="px-8 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-white/20 text-center">A3 B/W</th>
             <th className="px-8 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-white/20 text-center text-[#f15a24]">A3 Color</th>
+            <th className="px-8 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-white/20 text-center">SRA3 B/W</th>
+            <th className="px-8 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-white/20 text-center text-emerald-500">SRA3 Color</th>
             <th className="px-8 py-6 text-right text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-white/20">Total Copias</th>
           </tr>
         </thead>
@@ -54,6 +58,8 @@ export const ReportTable: React.FC<ReportTableProps> = ({ data }) => {
               <td className="px-8 py-5 text-center font-mono text-sm font-bold text-indigo-500">{item.a4Color}</td>
               <td className="px-8 py-5 text-center font-mono text-sm text-slate-600 dark:text-white/60">{item.a3Bw}</td>
               <td className="px-8 py-5 text-center font-mono text-sm font-bold text-[#f15a24]">{item.a3Color}</td>
+              <td className="px-8 py-5 text-center font-mono text-sm text-emerald-500/60 ">{item.sra3Bw}</td>
+              <td className="px-8 py-5 text-center font-mono text-sm font-bold text-emerald-500">{item.sra3Color}</td>
               <td className="px-8 py-5 text-right">
                 <div className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-100 dark:bg-white/5 text-slate-700 dark:text-white font-black text-sm">
                   <FileText size={14} className="text-slate-400" />
@@ -69,6 +75,8 @@ export const ReportTable: React.FC<ReportTableProps> = ({ data }) => {
             <td className="px-8 py-6 text-center text-indigo-500">{data.reduce((acc, curr) => acc + curr.a4Color, 0)}</td>
             <td className="px-8 py-6 text-center text-slate-700 dark:text-white">{data.reduce((acc, curr) => acc + curr.a3Bw, 0)}</td>
             <td className="px-8 py-6 text-center text-[#f15a24]">{data.reduce((acc, curr) => acc + curr.a3Color, 0)}</td>
+            <td className="px-8 py-6 text-center text-emerald-500/60">{data.reduce((acc, curr) => acc + curr.sra3Bw, 0)}</td>
+            <td className="px-8 py-6 text-center text-emerald-500">{data.reduce((acc, curr) => acc + curr.sra3Color, 0)}</td>
             <td className="px-8 py-6 text-right">
                 <div className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-indigo-500 text-white shadow-lg shadow-indigo-500/30">
                     <BarChart3 size={16} />

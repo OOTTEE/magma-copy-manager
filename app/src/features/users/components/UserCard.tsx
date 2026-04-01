@@ -7,6 +7,7 @@ interface User {
   printUser: string;
   nexudusUser: string;
   role: string;
+  a3NoPaperMode?: number;
 }
 
 interface UserCardProps {
@@ -43,12 +44,19 @@ export const UserCard: React.FC<UserCardProps> = ({ user, onEdit }) => {
         <div className="w-20 h-20 rounded-3xl bg-slate-50 dark:bg-white/5 flex items-center justify-center text-slate-400 group-hover:scale-110 group-hover:bg-indigo-500/10 group-hover:text-indigo-500 transition-all duration-500">
           <UserIcon size={40} strokeWidth={1} />
         </div>
-        <h3 className="mt-4 text-xl font-black text-slate-800 dark:text-white tracking-tighter">
+        <h3 className="mt-4 text-xl font-black text-slate-800 dark:text-white tracking-tighter text-center">
           {user.username}
         </h3>
-        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-white/20 mt-1">
-          {user.role}
-        </span>
+        <div className="flex flex-col items-center gap-1.5 mt-1">
+          <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-white/20">
+            {user.role}
+          </span>
+          {user.a3NoPaperMode === 1 && (
+            <span className="text-[9px] font-black uppercase tracking-tighter text-[#f15a24] bg-[#f15a24]/10 px-2 py-0.5 rounded-lg border border-[#f15a24]/20 animate-pulse">
+              Modo A3 Sin Papel
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Technical Data Section */}

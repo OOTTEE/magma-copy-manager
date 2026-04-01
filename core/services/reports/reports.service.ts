@@ -40,25 +40,37 @@ export const reportsService = {
         a4Bw: sql<number>`SUM(${copies.a4Bw})`,
         a3Color: sql<number>`SUM(${copies.a3Color})`,
         a3Bw: sql<number>`SUM(${copies.a3Bw})`,
+        a3NoPaperMode: users.a3NoPaperMode,
       })
       .from(users)
       .leftJoin(copies, eq(users.id, copies.userId))
       .where(and(gte(copies.datetime, fromStr), lte(copies.datetime, toStr)))
-      .groupBy(users.id);
+      .groupBy(users.id, users.a3NoPaperMode);
 
     return {
       period: {
         from: fromStr,
         to: toStr
       },
-      data: results.map(r => ({
-        ...r,
-        a4Color: Number(r.a4Color || 0),
-        a4Bw: Number(r.a4Bw || 0),
-        a3Color: Number(r.a3Color || 0),
-        a3Bw: Number(r.a3Bw || 0),
-        total: Number(r.a4Color || 0) + Number(r.a4Bw || 0) + Number(r.a3Color || 0) + Number(r.a3Bw || 0)
-      }))
+      data: results.map(r => {
+        const isSRA3 = Boolean(r.a3NoPaperMode);
+        const a4Color = Number(r.a4Color || 0);
+        const a4Bw = Number(r.a4Bw || 0);
+        const a3ColorRaw = Number(r.a3Color || 0);
+        const a3BwRaw = Number(r.a3Bw || 0);
+
+        return {
+          ...r,
+          a4Color,
+          a4Bw,
+          a3Color: isSRA3 ? 0 : a3ColorRaw,
+          a3Bw: isSRA3 ? 0 : a3BwRaw,
+          sra3Color: isSRA3 ? a3ColorRaw : 0,
+          sra3Bw: isSRA3 ? a3BwRaw : 0,
+          a3NoPaperMode: isSRA3,
+          total: a4Color + a4Bw + a3ColorRaw + a3BwRaw
+        };
+      })
     };
   }
 };

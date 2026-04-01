@@ -1,5 +1,5 @@
 import { FastifyPluginAsync } from 'fastify';
-import { settingsService } from '../../../../services/settings/settings.service';
+import { settingsFacade } from '../../../../facades/settings/settings.facade';
 
 const settingsRoute: FastifyPluginAsync = async (fastify) => {
   // GET all settings
@@ -18,7 +18,8 @@ const settingsRoute: FastifyPluginAsync = async (fastify) => {
     },
     preValidation: [fastify.authenticate, fastify.requireRole('admin')]
   }, async (request, reply) => {
-    const all = await settingsService.getAllSettings();
+    const user = request.user as { id: string; role: string };
+    const all = await settingsFacade.getAllSettings(user);
     return reply.send(all);
   });
 
@@ -39,28 +40,18 @@ const settingsRoute: FastifyPluginAsync = async (fastify) => {
     },
     preValidation: [fastify.authenticate, fastify.requireRole('admin')]
   }, async (request, reply) => {
+    const user = request.user as { id: string; role: string };
     const updates = request.body as Record<string, string>;
 
-    for (const [key, value] of Object.entries(updates)) {
-      // Validate Printer URL if present
-      if (key === 'printer_url') {
-        if (!value.startsWith('http://') && !value.startsWith('https://')) {
-          return reply.code(400).send({ message: 'Printer URL must start with http:// or https://' });
-        }
+    try {
+      await settingsFacade.updateSettings(user, updates);
+      return reply.code(204).send();
+    } catch (error: any) {
+      if (error.statusCode === 400) {
+        return reply.code(400).send({ message: error.message });
       }
-
-      // Validate Billing Cycle Day if present
-      if (key === 'billing_cycle_day') {
-        const day = parseInt(value, 10);
-        if (isNaN(day) || day < 1 || day > 28) {
-          return reply.code(400).send({ message: 'Billing cycle day must be between 1 and 28' });
-        }
-      }
-
-      await settingsService.updateSetting(key, value);
+      throw error;
     }
-
-    return reply.code(204).send();
   });
 };
 

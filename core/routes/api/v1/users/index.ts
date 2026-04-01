@@ -1,6 +1,6 @@
 import '@fastify/swagger';
 import { FastifyPluginAsync } from 'fastify';
-import { usersService } from '../../../../services/users/users.service';
+import { usersFacade } from '../../../../facades/users/users.facade';
 
 const userSchema = {
   type: 'object',
@@ -10,6 +10,7 @@ const userSchema = {
     printUser: { type: 'string' },
     nexudusUser: { type: 'string' },
     role: { type: 'string' },
+    a3NoPaperMode: { type: 'number' },
     _links: {
       type: 'object',
       properties: {
@@ -38,20 +39,14 @@ const usersRoute: FastifyPluginAsync = async (fastify) => {
       response: {
         200: { type: 'array', items: userSchema },
         401: errorSchema,
+        403: errorSchema,
         500: errorSchema
       }
     },
     preValidation: [fastify.authenticate, fastify.requireRole('admin')]
   }, async (request, reply) => {
-    const users = await usersService.getAll();
-    const payload = users.map(u => ({
-      id: u.id,
-      username: u.username,
-      printUser: u.printUser,
-      nexudusUser: u.nexudusUser,
-      role: u.role,
-      _links: { self: `/api/v1/users/${u.id}`, copies: `/api/v1/users/${u.id}/copies` }
-    }));
+    const user = request.user as { id: string; role: string };
+    const payload = await usersFacade.getAllUsers(user);
     return reply.send(payload);
   });
 
@@ -67,22 +62,21 @@ const usersRoute: FastifyPluginAsync = async (fastify) => {
       response: {
         200: userSchema,
         401: errorSchema,
+        403: errorSchema,
+        404: errorSchema,
         500: errorSchema
       }
     },
     preValidation: [fastify.authenticate, fastify.requireRole('admin')]
   }, async (request, reply) => {
-    const user = await usersService.getById(request.params.id);
-    if (!user) return reply.status(404).send({ error_type: 'not_found', message: 'User not found' });
-
-    return reply.send({
-      id: user.id,
-      username: user.username,
-      printUser: user.printUser,
-      nexudusUser: user.nexudusUser,
-      role: user.role,
-      _links: { self: `/api/v1/users/${user.id}`, copies: `/api/v1/users/${user.id}/copies` }
-    });
+    const user = request.user as { id: string; role: string };
+    try {
+      const result = await usersFacade.getUserById(user, request.params.id);
+      return reply.send(result);
+    } catch (err: any) {
+      if (err.statusCode === 404) return reply.status(404).send({ error_type: 'not_found', message: err.message });
+      throw err;
+    }
   });
 
   fastify.post('/', {
@@ -97,27 +91,23 @@ const usersRoute: FastifyPluginAsync = async (fastify) => {
           password: { type: 'string' },
           role: { type: 'string' },
           printUser: { type: 'string' },
-          nexudusUser: { type: 'string' }
+          nexudusUser: { type: 'string' },
+          a3NoPaperMode: { type: 'number' }
         }
       },
       response: {
         200: userSchema,
         401: errorSchema,
+        403: errorSchema,
         500: errorSchema
       }
     },
     preValidation: [fastify.authenticate, fastify.requireRole('admin')]
   }, async (request, reply) => {
+    const user = request.user as { id: string; role: string };
     const body: any = request.body;
-    const user = await usersService.create(body);
-    return reply.send({
-      id: user.id,
-      username: user.username,
-      printUser: user.printUser,
-      nexudusUser: user.nexudusUser,
-      role: user.role,
-      _links: { self: `/api/v1/users/${user.id}`, copies: `/api/v1/users/${user.id}/copies` }
-    });
+    const result = await usersFacade.createUser(user, body);
+    return reply.send(result);
   });
 
   fastify.patch<{ Params: { id: string } }>('/:id', {
@@ -135,29 +125,29 @@ const usersRoute: FastifyPluginAsync = async (fastify) => {
           printUser: { type: 'string' },
           nexudusUser: { type: 'string' },
           role: { type: 'string' },
-          password: { type: 'string' }
+          password: { type: 'string' },
+          a3NoPaperMode: { type: 'number' }
         }
       },
       response: {
         200: userSchema,
         401: errorSchema,
+        403: errorSchema,
+        404: errorSchema,
         500: errorSchema
       }
     },
     preValidation: [fastify.authenticate, fastify.requireRole('admin')]
   }, async (request, reply) => {
+    const user = request.user as { id: string; role: string };
     const body = request.body;
-    const user = await usersService.update(request.params.id, body);
-    if (!user) return reply.status(404).send({ error_type: 'not_found', message: 'User not found' });
-
-    return reply.send({
-      id: user.id,
-      username: user.username,
-      printUser: user.printUser,
-      nexudusUser: user.nexudusUser,
-      role: user.role,
-      _links: { self: `/api/v1/users/${user.id}`, copies: `/api/v1/users/${user.id}/copies` }
-    });
+    try {
+      const result = await usersFacade.updateUser(user, request.params.id, body);
+      return reply.send(result);
+    } catch (err: any) {
+      if (err.statusCode === 404) return reply.status(404).send({ error_type: 'not_found', message: err.message });
+      throw err;
+    }
   });
 
   fastify.delete<{ Params: { id: string } }>('/:id', {
@@ -172,12 +162,14 @@ const usersRoute: FastifyPluginAsync = async (fastify) => {
       response: {
         202: { type: 'null' },
         401: errorSchema,
+        403: errorSchema,
         500: errorSchema
       }
     },
     preValidation: [fastify.authenticate, fastify.requireRole('admin')]
   }, async (request, reply) => {
-    await usersService.delete(request.params.id);
+    const user = request.user as { id: string; role: string };
+    await usersFacade.deleteUser(user, request.params.id);
     return reply.status(202).send();
   });
 };

@@ -16,6 +16,8 @@ export const settingsService = {
   DEFAULTS: {
     printer_url: 'https://magma-printer.local',
     billing_cycle_day: '27',
+    price_a3_bw_no_paper: '0.05',
+    price_a3_color_no_paper: '0.10',
   } as Record<string, string>,
 
   /**

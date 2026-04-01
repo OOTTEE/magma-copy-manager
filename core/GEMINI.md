@@ -24,6 +24,7 @@ The backend application is a REST API that will manage copy usage for the member
 - The authentication generates a 5-minute bounded JWT Bearer session token.
 - Roles (`admin`, `customer`) govern permissions and route access.
 
+
 ### Folder Structure
     root:
     - core/: Root foldew for backend application
@@ -34,6 +35,7 @@ The backend application is a REST API that will manage copy usage for the member
         - services/: Business logic
         - config/: Configuration
         - middleware/: Middleware
+
 
 ### Layering
 - routes: API routes
@@ -85,3 +87,5 @@ The backend application is a REST API that will manage copy usage for the member
     - quantity: number
     - unitPrice: number
     - total: number 
+
+

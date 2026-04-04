@@ -82,3 +82,13 @@ export const syncResponseSchema = {
         reportPath: { type: 'string' }
     }
 };
+
+export const paginationSchema = {
+    type: 'object',
+    properties: {
+        total_records: { type: 'integer' },
+        current_page: { type: 'integer' },
+        total_pages: { type: 'integer' },
+        limit: { type: 'integer' }
+    }
+};

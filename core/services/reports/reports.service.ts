@@ -10,14 +10,12 @@ import { settingsService } from '../settings/settings.service';
  */
 export const reportsService = {
   /**
-   * Calculates the accumulated copy counts for the current billing period (27th to 27th).
+   * Internal helper to calculate the current billing period dates.
    */
-  getMonthlyAccumulation: async () => {
+  getPeriodDates: async () => {
     const now = new Date();
     const cycleDay = parseInt(await settingsService.getSetting('billing_cycle_day'), 10) || 27;
     
-    // Period Logic: From the Nth of the previous month to the Nth of the current (or next) month.
-    // If today is April 1st and cycleDay is 27, start is March 27th, end is April 27th.
     let startDate = new Date(now.getFullYear(), now.getMonth(), cycleDay, 0, 0, 0);
     if (now.getDate() < cycleDay) {
       startDate.setMonth(startDate.getMonth() - 1);
@@ -27,10 +25,20 @@ export const reportsService = {
     endDate.setMonth(endDate.getMonth() + 1);
     endDate.setSeconds(endDate.getSeconds() - 1);
 
-    const fromStr = startDate.toISOString();
-    const toStr = endDate.toISOString();
+    return {
+      fromStr: startDate.toISOString(),
+      toStr: endDate.toISOString()
+    };
+  },
+
+  /**
+   * Calculates the accumulated copy counts for the current billing period (27th to 27th).
+   */
+  getMonthlyAccumulation: async () => {
+    const { fromStr, toStr } = await reportsService.getPeriodDates();
 
     // Aggregation Query: Summing increments grouped by user
+    // We move copy filters to the JOIN ON condition to keep all users (count zero)
     const results = await db
       .select({
         id: users.id,
@@ -43,34 +51,76 @@ export const reportsService = {
         a3NoPaperMode: users.a3NoPaperMode,
       })
       .from(users)
-      .leftJoin(copies, eq(users.id, copies.userId))
-      .where(and(gte(copies.datetime, fromStr), lte(copies.datetime, toStr)))
+      .leftJoin(copies, and(
+        eq(users.id, copies.userId),
+        gte(copies.datetime, fromStr), 
+        lte(copies.datetime, toStr),
+        sql`${copies.invoiceId} IS NULL`
+      ))
       .groupBy(users.id, users.a3NoPaperMode);
 
     return {
-      period: {
-        from: fromStr,
-        to: toStr
-      },
-      data: results.map(r => {
-        const isSRA3 = Boolean(r.a3NoPaperMode);
-        const a4Color = Number(r.a4Color || 0);
-        const a4Bw = Number(r.a4Bw || 0);
-        const a3ColorRaw = Number(r.a3Color || 0);
-        const a3BwRaw = Number(r.a3Bw || 0);
+      period: { from: fromStr, to: toStr },
+      data: results.map(r => reportsService.mapAccumulationResult(r))
+    };
+  },
 
-        return {
-          ...r,
-          a4Color,
-          a4Bw,
-          a3Color: isSRA3 ? 0 : a3ColorRaw,
-          a3Bw: isSRA3 ? 0 : a3BwRaw,
-          sra3Color: isSRA3 ? a3ColorRaw : 0,
-          sra3Bw: isSRA3 ? a3BwRaw : 0,
-          a3NoPaperMode: isSRA3,
-          total: a4Color + a4Bw + a3ColorRaw + a3BwRaw
-        };
+  /**
+   * Calculates accumulation for a single user.
+   */
+  getMonthlyAccumulationForUser: async (userId: string) => {
+    const { fromStr, toStr } = await reportsService.getPeriodDates();
+
+    const result = await db
+      .select({
+        id: users.id,
+        username: users.username,
+        printUser: users.printUser,
+        a4Color: sql<number>`SUM(${copies.a4Color})`,
+        a4Bw: sql<number>`SUM(${copies.a4Bw})`,
+        a3Color: sql<number>`SUM(${copies.a3Color})`,
+        a3Bw: sql<number>`SUM(${copies.a3Bw})`,
+        a3NoPaperMode: users.a3NoPaperMode,
       })
+      .from(users)
+      .leftJoin(copies, and(
+        eq(users.id, copies.userId),
+        gte(copies.datetime, fromStr), 
+        lte(copies.datetime, toStr),
+        sql`${copies.invoiceId} IS NULL`
+      ))
+      .where(eq(users.id, userId))
+      .groupBy(users.id, users.a3NoPaperMode)
+      .get();
+
+    if (!result) return null;
+
+    return {
+      period: { from: fromStr, to: toStr },
+      data: reportsService.mapAccumulationResult(result)
+    };
+  },
+
+  /**
+   * Maps raw SQL aggregation results to domain reporting object.
+   */
+  mapAccumulationResult: (r: any) => {
+    const isSRA3 = Boolean(r.a3NoPaperMode);
+    const a4Color = Number(r.a4Color || 0);
+    const a4Bw = Number(r.a4Bw || 0);
+    const a3ColorRaw = Number(r.a3Color || 0);
+    const a3BwRaw = Number(r.a3Bw || 0);
+
+    return {
+      ...r,
+      a4Color,
+      a4Bw,
+      a3Color: isSRA3 ? 0 : a3ColorRaw,
+      a3Bw: isSRA3 ? 0 : a3BwRaw,
+      sra3Color: isSRA3 ? a3ColorRaw : 0,
+      sra3Bw: isSRA3 ? a3BwRaw : 0,
+      a3NoPaperMode: isSRA3,
+      total: a4Color + a4Bw + a3ColorRaw + a3BwRaw
     };
   }
 };

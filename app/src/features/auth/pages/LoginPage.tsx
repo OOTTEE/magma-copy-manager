@@ -1,5 +1,6 @@
 import { LoginForm } from "../components/LoginForm";
 import loginBg from "../../../assets/login-bg.png";
+import { useUIStore } from "../../../store/uiStore";
 
 /**
  * LoginPage
@@ -8,6 +9,8 @@ import loginBg from "../../../assets/login-bg.png";
  * Features a high-quality background image and a centered login panel.
  */
 export const LoginPage = () => {
+    const version = useUIStore((state) => state.version);
+
     return (
         <main className="relative min-h-screen w-full flex items-center justify-center p-4 overflow-hidden">
             {/* Background Layer */}
@@ -26,10 +29,17 @@ export const LoginPage = () => {
                 <LoginForm />
             </div>
 
-            {/* Footer / Info */}
+            {/* Version / Info Footer */}
             <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-10 text-center">
-                <p className="text-white/40 text-xs font-medium tracking-widest uppercase">
-                    &copy; 2026 Magma Operations • Built for Premium Coworking
+                <p className="text-white/40 text-[10px] font-black tracking-[0.2em] uppercase">
+                    &copy; {new Date().getFullYear()} Magma Operations • Built for Premium Coworking
+                </p>
+            </div>
+
+            {/* Service Version Badge */}
+            <div className="absolute bottom-8 right-8 z-10 px-3 py-1 rounded-full bg-white/5 border border-white/10 backdrop-blur-sm">
+                <p className="text-white/30 text-[10px] font-black uppercase tracking-widest">
+                    v{version || '1.0.0'}
                 </p>
             </div>
         </main>

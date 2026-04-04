@@ -2,6 +2,10 @@ import { useState, useEffect } from 'react';
 import { useReportStore } from '../../../store/reportStore';
 import { ReportTable } from '../components/ReportTable';
 import { ReportCard } from '../components/ReportCard';
+import { SimulationModal } from '../components/SimulationModal';
+import { InvoiceModal } from '../components/InvoiceModal';
+import { ConfirmationModal } from '../../../components/ConfirmationModal';
+import { api } from '../../../services/api';
 import { 
     LayoutGrid, 
     Table as TableIcon, 
@@ -19,18 +23,107 @@ import {
  * Main view for monitoring monthly copy consumption across all users.
  */
 export const MonthlyReportPage = () => {
-    const { monthlyReport: report, isLoading, error, fetchMonthlyReport: fetchReport } = useReportStore();
+    const { monthlyReport: report, isLoading, isRefreshing, error, fetchMonthlyReport: fetchReport } = useReportStore();
     const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
+    
+    // Simulation & Persistence state
+    const [isSimulating, setIsSimulating] = useState(false);
+    const [simulationData, setSimulationData] = useState<any>(null);
+    const [invoiceStatuses, setInvoiceStatuses] = useState<Record<string, { id: string } | null>>({});
+    const [viewingInvoice, setViewingInvoice] = useState<any>(null);
+    const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
     useEffect(() => {
         fetchReport();
     }, [fetchReport]);
 
+    // Update statuses when report data arrives
+    useEffect(() => {
+        if (!report?.data) return;
+
+        const loadStatuses = async () => {
+            const statuses: Record<string, { id: string } | null> = {};
+            for (const user of report.data) {
+                try {
+                    const { data, response } = await api.GET("/api/v1/billing/invoices/users/{id}/status", {
+                        params: { path: { id: user.id } }
+                    });
+                    statuses[user.id] = (response.status === 200 && data) ? { id: (data as any).id } : null;
+                } catch (err) {
+                    statuses[user.id] = null;
+                }
+            }
+            setInvoiceStatuses(statuses);
+        };
+        loadStatuses();
+    }, [report?.data]);
+
+    const handleSimulate = async (id: string) => {
+        setIsSimulating(true);
+        try {
+            const { data, error } = await api.GET("/api/v1/billing/simulations/users/{id}", {
+                params: { path: { id } }
+            });
+            if (error) throw error;
+            setSimulationData(data);
+        } catch (err: any) {
+            console.error("Simulation error:", err);
+        } finally {
+            setIsSimulating(false);
+        }
+    };
+
+    const handlePersist = async (userId: string) => {
+        try {
+            const { error } = await api.POST("/api/v1/billing/invoices", {
+                body: { userId }
+            });
+            if (error) throw error;
+            
+            // Refresh statuses
+            fetchReport(true);
+        } catch (err) {
+            console.error("Error persisting invoice:", err);
+        }
+    };
+
+    const handleViewInvoice = async (invoiceId: string) => {
+        try {
+            const { data, error } = await api.GET("/api/v1/billing/invoices/{id}", {
+                params: { path: { id: invoiceId } }
+            });
+            if (error) throw error;
+            setViewingInvoice(data);
+        } catch (err) {
+            console.error("Error fetching invoice details:", err);
+        }
+    };
+
+    const handleDeleteInvoice = async (invoiceId: string) => {
+        setConfirmDeleteId(invoiceId);
+    };
+
+    const confirmDelete = async () => {
+        if (!confirmDeleteId) return;
+        
+        try {
+            const { error } = await api.DELETE("/api/v1/billing/invoices/{id}", {
+                params: { path: { id: confirmDeleteId } }
+            });
+            if (error) throw error;
+            fetchReport(true);
+            setConfirmDeleteId(null);
+            setViewingInvoice(null);
+        } catch (err) {
+            console.error("Error deleting invoice:", err);
+        }
+    };
+
     const totalA4 = report?.data.reduce((acc, curr) => acc + curr.a4Bw + curr.a4Color, 0) || 0;
     const totalA3 = report?.data.reduce((acc, curr) => acc + curr.a3Bw + curr.a3Color, 0) || 0;
     const grandTotal = report?.data.reduce((acc, curr) => acc + curr.total, 0) || 0;
 
-    const formatDate = (dateStr: string) => {
+    const formatDate = (dateStr: string | undefined) => {
         if (!dateStr) return "---";
         return new Date(dateStr).toLocaleDateString('es-ES', { day: '2-digit', month: 'long' });
     };
@@ -47,9 +140,18 @@ export const MonthlyReportPage = () => {
                         <h1 className="text-4xl font-black text-slate-800 dark:text-white tracking-tighter">
                             Reporte Mensual
                         </h1>
-                        <div className="flex items-center gap-2 text-sm font-bold text-slate-400 dark:text-white/30 uppercase tracking-[0.2em] mt-1">
-                            <Calendar size={14} className="text-indigo-500" />
-                            Periodo: {formatDate(report?.period.from)} — {formatDate(report?.period.to)}
+                        <div className="flex items-center gap-4 text-sm font-bold uppercase tracking-[0.2em] mt-1 text-slate-400 dark:text-white/30">
+                            <div className="flex items-center gap-2">
+                                <Calendar size={14} className="text-indigo-500" />
+                                Periodo: {formatDate(report?.period.from)} — {formatDate(report?.period.to)}
+                            </div>
+                            
+                            {isRefreshing && (
+                                <div className="flex items-center gap-2 px-3 py-1 bg-indigo-500/10 text-indigo-500 rounded-full animate-in fade-in zoom-in duration-300">
+                                    <Loader2 size={12} className="animate-spin" />
+                                    <span className="text-[10px] font-black">Sincronizando</span>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -130,20 +232,57 @@ export const MonthlyReportPage = () => {
             ) : (
                 <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
                     {viewMode === 'table' ? (
-                        <ReportTable data={report?.data || []} />
+                        <ReportTable 
+                            data={report?.data || []} 
+                            onSimulate={handleSimulate}
+                            invoiceStatuses={invoiceStatuses}
+                            onViewInvoice={handleViewInvoice}
+                        />
                     ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                             {report?.data.map((item: any) => (
-                                <ReportCard key={item.userId} item={item} />
+                                <ReportCard 
+                                    key={item.id} 
+                                    item={item} 
+                                    onSimulate={handleSimulate}
+                                    invoiceStatus={invoiceStatuses[item.id]}
+                                    onViewInvoice={handleViewInvoice}
+                                />
                             ))}
                         </div>
                     )}
                 </div>
             )}
+
+            {/* Simulation Modal */}
+            <SimulationModal 
+                isOpen={!!simulationData || isSimulating}
+                onClose={() => setSimulationData(null)}
+                data={simulationData}
+                onPersist={handlePersist}
+            />
+
+            {/* Persisted Invoice Modal */}
+            <InvoiceModal 
+                isOpen={!!viewingInvoice}
+                onClose={() => setViewingInvoice(null)}
+                data={viewingInvoice}
+                onDelete={handleDeleteInvoice}
+            />
+
+            {/* Global Confirmation Modal */}
+            <ConfirmationModal 
+                isOpen={!!confirmDeleteId}
+                onClose={() => setConfirmDeleteId(null)}
+                onConfirm={confirmDelete}
+                title="¿Eliminar Factura?"
+                message="Esta acción es irreversible. Se liberará el consumo asociado para que pueda volver a ser facturado en el futuro."
+                confirmText="Sí, Eliminar"
+                variant="danger"
+            />
         </div>
     );
 };
-;
 
 // Activity icon for footer
 const Activity = ({ size, className }: any) => (

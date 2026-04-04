@@ -10,6 +10,247 @@ components:
       bearerFormat: JWT
   schemas: {}
 paths:
+  /api/v1/auth/me:
+    get:
+      tags:
+        - Auth
+      description: Get current user profile if token is valid.
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  username:
+                    type: string
+                  role:
+                    type: string
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+  /api/v1/billing/simulations/users/{id}:
+    get:
+      tags:
+        - Billing
+      description: Simulates an invoice for a specific user based on current
+        consumption and settings.
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: id
+          required: true
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  userId:
+                    type: string
+                  username:
+                    type: string
+                  period:
+                    type: object
+                    properties:
+                      from:
+                        type: string
+                      to:
+                        type: string
+                  lines:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        concept:
+                          type: string
+                        quantity:
+                          type: integer
+                        unitPrice:
+                          type: number
+                        total:
+                          type: number
+                  total:
+                    type: number
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        "404":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        "500":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+  /api/v1/billing/invoices:
+    get:
+      tags:
+        - Billing
+      description: List all persisted invoices with pagination and filtering. Admin only.
+      parameters:
+        - schema:
+            type: integer
+            default: 1
+          in: query
+          name: page
+          required: false
+        - schema:
+            type: integer
+            default: 20
+          in: query
+          name: limit
+          required: false
+        - schema:
+            oneOf:
+              - type: string
+              - type: array
+                items:
+                  type: string
+          in: query
+          name: userIds
+          required: false
+        - schema:
+            oneOf:
+              - type: string
+              - type: array
+                items:
+                  type: string
+          in: query
+          name: months
+          required: false
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        userId:
+                          type: string
+                        username:
+                          type: string
+                        from:
+                          type: string
+                        to:
+                          type: string
+                        total:
+                          type: number
+                  pagination:
+                    type: object
+                    properties:
+                      total_records:
+                        type: integer
+                      current_page:
+                        type: integer
+                      total_pages:
+                        type: integer
+                      limit:
+                        type: integer
+    post:
+      tags:
+        - Billing
+      description: Persists and generates a real invoice for a user.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                userId:
+                  type: string
+              required:
+                - userId
+      responses:
+        "200":
+          description: Default Response
+  /api/v1/billing/invoices/users/{id}/status:
+    get:
+      tags:
+        - Billing
+      description: Checks if an invoice exists for the current period for a specific user.
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: id
+          required: true
+      responses:
+        "200":
+          description: Default Response
+  /api/v1/billing/invoices/{id}:
+    delete:
+      tags:
+        - Billing
+      description: Deletes an invoice and releases copies.
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: id
+          required: true
+      responses:
+        "200":
+          description: Default Response
+    get:
+      tags:
+        - Billing
+      description: Returns detail of a specific invoice.
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: id
+          required: true
+      responses:
+        "200":
+          description: Default Response
   /api/v1/copies/sync/:
     post:
       tags:
@@ -88,6 +329,21 @@ paths:
                   error_type:
                     type: string
                   message:
+                    type: string
+  /api/v1/info/:
+    get:
+      tags:
+        - System
+      description: Get service metadata including version.
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  version:
                     type: string
   /api/v1/login/:
     post:
@@ -199,9 +455,24 @@ paths:
                           type: integer
                         a3Bw:
                           type: integer
+                        sra3Color:
+                          type: integer
+                        sra3Bw:
+                          type: integer
+                        a3NoPaperMode:
+                          type: boolean
                         total:
                           type: integer
         "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        "403":
           description: Default Response
           content:
             application/json:
@@ -300,6 +571,8 @@ paths:
                       type: string
                     role:
                       type: string
+                    a3NoPaperMode:
+                      type: number
                     _links:
                       type: object
                       properties:
@@ -308,6 +581,19 @@ paths:
                         copies:
                           type: string
         "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  trace_id:
+                    type: string
+                  error_type:
+                    type: string
+                  message:
+                    type: string
+        "403":
           description: Default Response
           content:
             application/json:
@@ -360,6 +646,8 @@ paths:
                   type: string
                 nexudusUser:
                   type: string
+                a3NoPaperMode:
+                  type: number
       responses:
         "200":
           description: Default Response
@@ -378,6 +666,8 @@ paths:
                     type: string
                   role:
                     type: string
+                  a3NoPaperMode:
+                    type: number
                   _links:
                     type: object
                     properties:
@@ -386,6 +676,19 @@ paths:
                       copies:
                         type: string
         "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  trace_id:
+                    type: string
+                  error_type:
+                    type: string
+                  message:
+                    type: string
+        "403":
           description: Default Response
           content:
             application/json:
@@ -440,6 +743,8 @@ paths:
                     type: string
                   role:
                     type: string
+                  a3NoPaperMode:
+                    type: number
                   _links:
                     type: object
                     properties:
@@ -448,6 +753,32 @@ paths:
                       copies:
                         type: string
         "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  trace_id:
+                    type: string
+                  error_type:
+                    type: string
+                  message:
+                    type: string
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  trace_id:
+                    type: string
+                  error_type:
+                    type: string
+                  message:
+                    type: string
+        "404":
           description: Default Response
           content:
             application/json:
@@ -493,6 +824,8 @@ paths:
                   type: string
                 password:
                   type: string
+                a3NoPaperMode:
+                  type: number
       parameters:
         - schema:
             type: string
@@ -517,6 +850,8 @@ paths:
                     type: string
                   role:
                     type: string
+                  a3NoPaperMode:
+                    type: number
                   _links:
                     type: object
                     properties:
@@ -525,6 +860,32 @@ paths:
                       copies:
                         type: string
         "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  trace_id:
+                    type: string
+                  error_type:
+                    type: string
+                  message:
+                    type: string
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  trace_id:
+                    type: string
+                  error_type:
+                    type: string
+                  message:
+                    type: string
+        "404":
           description: Default Response
           content:
             application/json:
@@ -564,6 +925,19 @@ paths:
         "202":
           description: Default Response
         "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  trace_id:
+                    type: string
+                  error_type:
+                    type: string
+                  message:
+                    type: string
+        "403":
           description: Default Response
           content:
             application/json:

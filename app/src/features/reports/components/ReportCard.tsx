@@ -1,8 +1,8 @@
 import React from 'react';
-import { User, FileText } from 'lucide-react';
+import { User } from 'lucide-react';
 
 interface ReportData {
-  userId: string;
+  id: string;
   username: string;
   printUser: string;
   a4Color: number;
@@ -14,6 +14,9 @@ interface ReportData {
 
 interface ReportCardProps {
   item: ReportData;
+  onSimulate?: (userId: string) => void;
+  onViewInvoice?: (invoiceId: string) => void;
+  invoiceStatus?: { id: string } | null;
 }
 
 /**
@@ -22,7 +25,12 @@ interface ReportCardProps {
  * Grid item for monthly user consumption. 
  * Shows a breakdown by category with high visual impact.
  */
-export const ReportCard: React.FC<ReportCardProps> = ({ item }) => {
+export const ReportCard: React.FC<ReportCardProps> = ({ 
+  item, 
+  onSimulate, 
+  onViewInvoice, 
+  invoiceStatus 
+}) => {
   const colorTotal = item.a4Color + item.a3Color;
   const colorPercentage = item.total > 0 ? (colorTotal / item.total) * 100 : 0;
 
@@ -73,15 +81,34 @@ export const ReportCard: React.FC<ReportCardProps> = ({ item }) => {
         </div>
       </div>
 
-      {/* Footer Total */}
+      {/* Footer Total & Actions */}
       <div className="mt-8 pt-6 border-t border-slate-100 dark:border-white/5 flex items-center justify-between">
-        <div className="flex items-center gap-2 text-slate-400 dark:text-white/20">
-            <FileText size={16} />
-            <span className="text-[10px] font-black uppercase tracking-widest">Acumulado</span>
+        <div className="flex flex-col">
+            <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 dark:text-white/20">Total Copias</span>
+            <span className="text-2xl font-black text-indigo-500 tracking-tighter">{item.total}</span>
         </div>
-        <span className="text-2xl font-black text-indigo-500 tracking-tighter">
-            {item.total}
-        </span>
+        
+        {invoiceStatus ? (
+          <button 
+            onClick={() => onViewInvoice?.(invoiceStatus.id)}
+            className="px-6 py-3 rounded-2xl bg-emerald-500 text-white font-bold text-xs shadow-lg shadow-emerald-500/20 hover:scale-105 active:scale-95 transition-all"
+          >
+            Ver Factura
+          </button>
+        ) : (
+          <button 
+            onClick={() => onSimulate?.(item.id)}
+            disabled={item.total === 0}
+            className={`px-6 py-3 rounded-2xl font-bold text-xs shadow-lg transition-all ${
+              item.total === 0
+                ? "bg-slate-200 text-slate-400 dark:bg-white/5 dark:text-white/20 cursor-not-allowed opacity-50 grayscale"
+                : "bg-indigo-500 text-white shadow-indigo-500/20 hover:scale-105 active:scale-95"
+            }`}
+            title={item.total === 0 ? "No hay consumos registrados para simular" : "Simular Factura"}
+          >
+            Simular
+          </button>
+        )}
       </div>
     </div>
   );

@@ -20,7 +20,9 @@ Toda nueva funcionalidad debe ser validada técnicamente siguiendo estas fases:
 ### Fase 2: Análisis de Impacto y Low-Level Design
 
 - **Esquemas de Datos**: Identificar cambios necesarios en `core/db/schema.ts` o en los esquemas de API a nivel de base de datos.
-- **Rutas y Contratos**: Definir las nuevas rutas en `core/routes/` y los contratos JSON (Input/Output).
+- **Rutas y Contratos**: Definir las nuevas rutas en `core/routes/`.
+  - > [!IMPORTANT]
+  - > **RESTful Design**: El diseño de las rutas **DEBE** seguir estrictamente las guías de la skill [**endpoint-developer**](file:///Users/ote/IdeaProjects/Magma/.agents/skills/endpoint-developer/SKILL.md). Evitar verbos en las URLs y usar plurales para los recursos.
 - **Seguridad**:
   - ¿Qué roles (`admin` vs `customer`) tienen acceso?
   - ¿Cómo se validará la propiedad de los recursos (RBAC)? Esto debe ocurrir en la capa **Facade**.
@@ -29,7 +31,7 @@ Toda nueva funcionalidad debe ser validada técnicamente siguiendo estas fases:
 ### Fase 3: Elaboración del Diseño Técnico (Proposing)
 
 - Generar un `technical_design.md` que incluya:
-  - **Proposed File Changes**: Listado exhaustivo de ficheros a crear (`[NEW]`) o modificar (`[MODIFY]`).
+  - **Proposed File Changes**: Listado exhaustivo de ficheros a crear (`[NEW]`) o modificar (`[MODIFY]`). Al proponer rutas, aplicar el estándar RESTful de la skill de endpoints.
   - **Data Model**: Estructura de tablas y esquemas OpenAPI.
   - **Component Architecture**: Estructura de componentes React y estados.
   - **Testing Strategy**: Plan detallado de tests unitarios, de integración y frontend.

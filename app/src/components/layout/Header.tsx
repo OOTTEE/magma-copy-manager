@@ -14,7 +14,7 @@ export const Header = () => {
     // Map path to section title
     const getPageTitle = (pathname: string) => {
         switch (pathname) {
-            case "/dashboard": return "Panel General";
+            case "/dashboard": return "Inicio";
             case "/users": return "Gestión de Usuarios";
             case "/reports": return "Reporte Mensual";
             case "/settings": return "Ajustes del Sistema";

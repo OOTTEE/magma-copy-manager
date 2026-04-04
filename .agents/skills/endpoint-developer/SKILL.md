@@ -16,14 +16,46 @@ Toda creación de endpoint debe seguir estas pautas:
 2. **Naming**: El punto de entrada es siempre `index.ts`.
 3. **Jerarquía de Llamadas**: **PROHIBIDO** llamar a Servicios o Repositorios. Un Endpoint **SOLO** puede llamar a una **Fachada (Facade)**.
 4. **Reutilización de Esquemas**: **OBLIGATORIO** importar y reutilizar esquemas de `core/routes/schemas.ts` para las respuestas (`response`) y el cuerpo (`body`), manteniendo la consistencia de la API.
-5. **Validación y Seguridad**:
+5. **RESTful Compliance**: Seguir estrictamente las [🌍 Guías de Diseño RESTful](#-guías-de-diseño-restful-mandatorio).
+6. **Validación y Seguridad**:
     * Usar `preValidation: [fastify.authenticate]` para rutas privadas.
     * Usar `fastify.requireRole('admin')` para acciones restringidas.
-6. **Paso de Contexto**: Pasar siempre el objeto `request.user` a los métodos de la Fachada para que esta gestione la visibilidad ad-hoc de los recursos.
-7. **Testing Co-ubicado**: **OBLIGATORIO** crear un archivo `index.test.ts` en el mismo directorio. El test debe validar:
-    * El contrato de respuesta (status codes y estructura JSON).
-    * El comportamiento ante errores (401, 403, 404, 500).
-    * La correcta delegación a la Fachada.
+7. **Paso de Contexto**: Pasar siempre el objeto `request.user` a los métodos de la Fachada para que esta gestione la visibilidad ad-hoc de los recursos.
+8. **Testing Co-ubicado**: **OBLIGATORIO** crear un archivo `index.test.ts` en el mismo directorio.
+
+---
+
+## 🌍 Guías de Diseño RESTful (Mandatorio)
+
+Para mantener la coherencia y profesionalidad de la API de Magma, Gemini **DEBE** aplicar estas reglas:
+
+### 1. Nombres y Recursos
+
+* **Sustantivos en Plural**: Las rutas deben representar colecciones de recursos.
+  * ✅ `/api/v1/users`, `/api/v1/invoices`, `/api/v1/copies`
+  * ❌ `/api/v1/getUser`, `/api/v1/calculateInvoice`
+* **Jerarquía (Nested Resources)**: Reflejar relaciones padre-hijo en la URL.
+  * ✅ `/api/v1/users/:id/copies` (Copias que pertenecen a un usuario).
+
+### 2. Métodos HTTP
+
+* **GET**: Recuperar recursos. Sin efectos secundarios.
+* **POST**: Crear nuevos recursos. Retorna `201 Created`.
+* **PUT**: Reemplazo completo de un recurso. Idempotente.
+* **PATCH**: Actualización parcial de un recurso.
+* **DELETE**: Eliminación de un recurso. Retorna `204 No Content`.
+
+### 3. Códigos de Estado Estándar
+
+| Código | Significado en Magma |
+| :--- | :--- |
+| **200 OK** | Éxito en lectura o actualización. |
+| **201 Created** | Recurso creado con éxito (POST). |
+| **204 No Content** | Éxito sin cuerpo de respuesta (DELETE/PATCH). |
+| **400 Bad Request** | Error de validación de datos (Input). |
+| **401 Unauthorized** | Token JWT ausente o inválido. |
+| **403 Forbidden** | Autenticado, pero sin permisos (o no es dueño del recurso). |
+| **404 Not Found** | El recurso especificado no existe. |
 
 ---
 
@@ -31,10 +63,10 @@ Toda creación de endpoint debe seguir estas pautas:
 
 Para crear un endpoint con éxito, Gemini debe conocer:
 
-* **Ruta HTTP y Método**: (ej: `GET /api/v1/users/:userId/invoices`).
+* **Recurso y Acción**: Qué objeto se manipula y qué se hace con él.
+* **Ruta RESTful**: Definida según las guías anteriores.
 * **Fachada a Invocar**: Qué Fachada y método se utilizará.
-* **Esquema de Respuesta**: Qué modelo de `schemas.ts` se retornará (User, Copy, Invoice, etc.).
-* **Permisos**: Si requiere autenticación o roles específicos.
+* **Esquema de Respuesta**: Qué modelo de `schemas.ts` se retornará.
 
 ---
 
@@ -47,88 +79,42 @@ Gemini **DEBE** leer y aplicar las reglas de estos ficheros:
 
 ---
 
-## 🚀 Plantilla de Ejemplo
+## 🚀 Plantilla de Ejemplo (RESTful)
 
 ```typescript
 import { FastifyPluginAsync } from 'fastify';
-import { dominioFacade } from '../../../../facades/dominio/dominio.facade';
-import { errorSchema, modelSchema } from '../../../../schemas';
+import { usersFacade } from '../../../../facades/users/users.facade';
+import { errorSchema, userSchema } from '../../../../schemas';
 
-const endpointRoute: FastifyPluginAsync = async (fastify) => {
-  fastify.get<{ Params: { id: string } }>('/:id', {
+const usersRoute: FastifyPluginAsync = async (fastify) => {
+  // GET /api/v1/users/:userId
+  fastify.get<{ Params: { userId: string } }>('/:userId', {
     schema: {
-        description: 'Descripción del endpoint',
-        tags: ['Dominio'],
-        params: { type: 'object', properties: { id: { type: 'string' } } },
+        description: 'Obtiene el perfil de un usuario específico',
+        tags: ['Users'],
+        params: { type: 'object', properties: { userId: { type: 'string' } } },
         response: {
-            200: modelSchema,
-            401: errorSchema,
-            500: errorSchema
+            200: userSchema,
+            403: errorSchema,
+            404: errorSchema
         }
     },
     preValidation: [fastify.authenticate]
   }, async (request, reply) => {
-    const user = request.user as { id: string, role: string };
+    const requestingUser = request.user as { id: string, role: string };
+    const { userId } = request.params;
+    
     try {
-      const result = await dominioFacade.getById(user, request.params.id);
+      const result = await usersFacade.getUserProfile(requestingUser, userId);
       return reply.send(result);
     } catch (error: any) {
       return reply.status(error.statusCode || 500).send({
         trace_id: request.id,
-        error_type: "error",
         message: error.message
       });
     }
   });
 };
 
-export default endpointRoute;
-```
-
-## 🧪 Ejemplo de Test (Integration)
-
-```typescript
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import Fastify from 'fastify';
-import { dominioFacade } from './../../../../facades/dominio/dominio.facade';
-import route from './index';
-
-// Mock de la fachada
-vi.mock('./../../../../facades/dominio/dominio.facade', () => ({
-  dominioFacade: {
-    getById: vi.fn()
-  }
-}));
-
-describe('Endpoint: GET /:id', () => {
-  const fastify = Fastify();
-  // Registrar plugins necesarios (auth, decorators, etc.) y la ruta
-  
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
-  it('debe retornar 200 y el objeto si la fachada responde correctamente', async () => {
-    const mockData = { id: '123', name: 'Test' };
-    (dominioFacade.getById as any).mockResolvedValue(mockData);
-
-    const response = await fastify.inject({
-      method: 'GET',
-      url: '/123',
-      // Simular login si es necesario vía cabeceras o mock de auth
-    });
-
-    expect(response.statusCode).toBe(200);
-    expect(JSON.parse(response.body)).toEqual(mockData);
-    expect(dominioFacade.getById).toHaveBeenCalledWith(expect.anything(), '123');
-  });
-
-  it('debe retornar 401 si no hay autenticación', async () => {
-    const response = await fastify.inject({
-      method: 'GET',
-      url: '/123'
-    });
-    expect(response.statusCode).toBe(401);
-  });
-});
+export default usersRoute;
 ```

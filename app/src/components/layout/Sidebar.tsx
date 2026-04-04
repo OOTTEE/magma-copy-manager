@@ -9,13 +9,15 @@ import {
   LogOut, 
   ChevronLeft, 
   ChevronRight,
-  LayoutDashboard
+  LayoutDashboard,
+  Receipt
 } from "lucide-react";
 
 const NAV_ITEMS = [
-  { path: "/dashboard", label: "General", icon: LayoutDashboard },
+  { path: "/dashboard", label: "Inicio", icon: LayoutDashboard },
   { path: "/users", label: "Usuarios", icon: Users, adminOnly: true },
   { path: "/reports", label: "Reporte Mensual", icon: BarChart, adminOnly: true },
+  { path: "/invoices", label: "Facturas", icon: Receipt, adminOnly: true },
   { path: "/settings", label: "Ajustes", icon: Settings, adminOnly: true },
 ];
 
@@ -26,7 +28,7 @@ const NAV_ITEMS = [
  * Collapsible state managed via useUIStore.
  */
 export const Sidebar = () => {
-  const { isSidebarCollapsed, toggleSidebar } = useUIStore();
+  const { isSidebarCollapsed, toggleSidebar, version } = useUIStore();
   const { logout, user, role } = useAuthStore();
 
   const filteredNavItems = NAV_ITEMS.filter(item => !item.adminOnly || role === 'admin');
@@ -114,6 +116,18 @@ export const Sidebar = () => {
             <LogOut size={18} strokeWidth={1.5} />
           </button>
         )}
+
+        {/* Global Version Info */}
+        <div className={`mt-6 flex ${isSidebarCollapsed ? "justify-center" : "px-2 justify-between items-center"}`}>
+            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/5 italic">
+                {isSidebarCollapsed ? `v${version?.split('.')[0] || '1'}` : `v${version || '1.0.0'}`}
+            </span>
+            {!isSidebarCollapsed && (
+                <span className="text-[8px] font-black uppercase tracking-[0.3em] text-white/5">
+                    Magma Core
+                </span>
+            )}
+        </div>
       </div>
     </aside>
   );

@@ -4,29 +4,39 @@ import { api } from '../services/api';
 interface ReportState {
   monthlyReport: { period: any, data: any[] } | null;
   isLoading: boolean;
+  isRefreshing: boolean;
   error: string | null;
   
   // Actions
   fetchMonthlyReport: (force?: boolean) => Promise<void>;
+  reset: () => void;
 }
 
 /**
  * ReportStore
  * 
  * Manages monthly report data.
- * Includes deduplication logic to avoid redundant fetches.
+ * Implements Stale-While-Revalidate (SWR) strategy for background updates.
  */
 export const useReportStore = create<ReportState>((set, get) => ({
   monthlyReport: null,
   isLoading: false,
+  isRefreshing: false,
   error: null,
 
   fetchMonthlyReport: async (force = false) => {
-    // Only fetch if forced or if we don't have the report
-    if (!force && get().monthlyReport !== null) return;
-    if (get().isLoading) return; // Deduplication logic for concurrent calls
+    // Concurrent fetch protection
+    if (get().isLoading || get().isRefreshing) return;
 
-    set({ isLoading: true, error: null });
+    const hasData = get().monthlyReport !== null;
+    
+    // SWR Logic: If we have data AND we are not forcing, we refresh silently.
+    if (hasData && !force) {
+      set({ isRefreshing: true, error: null });
+    } else {
+      set({ isLoading: true, error: null });
+    }
+
     try {
       const { data, error: apiError } = await api.GET("/api/v1/reports/monthly", {});
       if (apiError) throw apiError;
@@ -38,9 +48,12 @@ export const useReportStore = create<ReportState>((set, get) => ({
         monthlyReport: { ...data, data: sortedData } as any 
       });
     } catch (err: any) {
+      console.error("[ReportStore] Error fetching report:", err);
       set({ error: err.message || "Error al cargar el reporte mensual." });
     } finally {
-      set({ isLoading: false });
+      set({ isLoading: false, isRefreshing: false });
     }
-  }
+  },
+
+  reset: () => set({ monthlyReport: null, isLoading: false, isRefreshing: false, error: null })
 }));

@@ -4,39 +4,50 @@ import { api } from '../services/api';
 interface UserState {
   users: any[];
   isLoading: boolean;
+  isRefreshing: boolean;
   error: string | null;
   
   // Actions
   fetchUsers: (force?: boolean) => Promise<void>;
   updateUser: (id: string, data: any) => Promise<void>;
   deleteUser: (id: string) => Promise<void>;
+  reset: () => void;
 }
 
 /**
  * UserStore
  * 
  * Manages user data and operations.
- * Includes deduplication logic to avoid redundant fetches.
+ * Implements Stale-While-Revalidate (SWR) strategy for background updates.
  */
 export const useUserStore = create<UserState>((set, get) => ({
   users: [],
   isLoading: false,
+  isRefreshing: false,
   error: null,
 
   fetchUsers: async (force = false) => {
-    // Only fetch if forced or if we don't have users
-    if (!force && get().users.length > 0) return;
-    if (get().isLoading) return; // Deduplication logic for concurrent calls
+    // Concurrent fetch protection
+    if (get().isLoading || get().isRefreshing) return;
 
-    set({ isLoading: true, error: null });
+    const hasData = get().users.length > 0;
+    
+    // SWR Logic: If we have data AND we are not forcing, we refresh silently.
+    if (hasData && !force) {
+      set({ isRefreshing: true, error: null });
+    } else {
+      set({ isLoading: true, error: null });
+    }
+
     try {
       const { data, error: apiError } = await api.GET("/api/v1/users/");
       if (apiError) throw apiError;
       set({ users: data || [] });
     } catch (err: any) {
+      console.error("[UserStore] Error fetching users:", err);
       set({ error: err.message || "Error al cargar la lista de usuarios." });
     } finally {
-      set({ isLoading: false });
+      set({ isLoading: false, isRefreshing: false });
     }
   },
 
@@ -74,5 +85,7 @@ export const useUserStore = create<UserState>((set, get) => ({
       console.error("Error deleting user:", err);
       throw err;
     }
-  }
+  },
+
+  reset: () => set({ users: [], isLoading: false, isRefreshing: false, error: null })
 }));

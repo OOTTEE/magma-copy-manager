@@ -4,9 +4,11 @@ import { persist } from 'zustand/middleware';
 interface UIState {
   isSidebarCollapsed: boolean;
   isDarkMode: boolean;
+  version: string | null;
   toggleSidebar: () => void;
   setSidebarCollapsed: (collapsed: boolean) => void;
   toggleDarkMode: () => void;
+  setVersion: (version: string) => void;
 }
 
 /**
@@ -20,6 +22,7 @@ export const useUIStore = create<UIState>()(
     (set, get) => ({
       isSidebarCollapsed: false,
       isDarkMode: false,
+      version: null,
       toggleSidebar: () => set({ isSidebarCollapsed: !get().isSidebarCollapsed }),
       setSidebarCollapsed: (collapsed) => set({ isSidebarCollapsed: collapsed }),
       toggleDarkMode: () => {
@@ -31,6 +34,7 @@ export const useUIStore = create<UIState>()(
           document.documentElement.classList.remove('dark');
         }
       },
+      setVersion: (version) => set({ version }),
     }),
     {
       name: 'magma-ui-storage',

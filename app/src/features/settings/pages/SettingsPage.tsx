@@ -9,24 +9,33 @@ import {
     CheckCircle2, 
     AlertCircle,
     Info,
-    ShieldCheck
+    ShieldCheck,
+    Coins
 } from 'lucide-react';
 
 /**
  * SettingsPage Component
  * 
  * Centralized system configuration for Magma admins.
- * Manages printer infrastructure and billing cycle parameters.
+ * Manages printer infrastructure, billing cycle parameters and copy pricing.
  */
 export const SettingsPage = () => {
     const [settings, setSettings] = useState<{ 
         printer_url: string; 
         billing_cycle_day: string;
+        price_a4_bw: string;
+        price_a4_color: string;
+        price_a3_bw: string;
+        price_a3_color: string;
         price_a3_bw_no_paper: string;
         price_a3_color_no_paper: string;
     }>({
         printer_url: '',
         billing_cycle_day: '27',
+        price_a4_bw: '0.05',
+        price_a4_color: '0.15',
+        price_a3_bw: '0.10',
+        price_a3_color: '0.30',
         price_a3_bw_no_paper: '0.05',
         price_a3_color_no_paper: '0.10'
     });
@@ -45,6 +54,10 @@ export const SettingsPage = () => {
                 const newSettings = {
                     printer_url: fetched.printer_url || '',
                     billing_cycle_day: fetched.billing_cycle_day || '27',
+                    price_a4_bw: fetched.price_a4_bw || '0.05',
+                    price_a4_color: fetched.price_a4_color || '0.15',
+                    price_a3_bw: fetched.price_a3_bw || '0.10',
+                    price_a3_color: fetched.price_a3_color || '0.30',
                     price_a3_bw_no_paper: fetched.price_a3_bw_no_paper || '0.05',
                     price_a3_color_no_paper: fetched.price_a3_color_no_paper || '0.10'
                 };
@@ -70,9 +83,20 @@ export const SettingsPage = () => {
         if (isNaN(day) || day < 1 || day > 28) {
             return "El día del ciclo de facturación debe estar entre 1 y 28.";
         }
-        if (isNaN(parseFloat(settings.price_a3_bw_no_paper)) || isNaN(parseFloat(settings.price_a3_color_no_paper))) {
-            return "Los precios deben ser valores numéricos válidos.";
+        
+        const priceKeys = [
+            'price_a4_bw', 'price_a4_color', 
+            'price_a3_bw', 'price_a3_color', 
+            'price_a3_bw_no_paper', 'price_a3_color_no_paper'
+        ];
+        
+        for (const key of priceKeys) {
+            const val = parseFloat((settings as any)[key]);
+            if (isNaN(val) || val < 0) {
+                return "Todos los precios deben ser valores numéricos positivos.";
+            }
         }
+        
         return null;
     };
 
@@ -124,7 +148,7 @@ export const SettingsPage = () => {
                     <h1 className="text-4xl font-black text-slate-800 dark:text-white tracking-tighter">
                         Configuración del Sistema
                     </h1>
-                    <p className="text-slate-500 dark:text-white/40 font-medium">Gestiona la infraestructura y los ciclos de facturación globales.</p>
+                    <p className="text-slate-500 dark:text-white/40 font-medium">Gestiona la infraestructura, tarifas y ciclos de facturación globales.</p>
                 </div>
             </div>
 
@@ -136,7 +160,9 @@ export const SettingsPage = () => {
                         {/* Printer URL Section */}
                         <div className="space-y-6">
                             <div className="flex items-center gap-3">
-                                <Globe size={20} className="text-indigo-500" />
+                                <div className="p-2 rounded-xl bg-slate-100 dark:bg-white/5 text-slate-400">
+                                    <Globe size={18} />
+                                </div>
                                 <h3 className="text-lg font-black text-slate-800 dark:text-white tracking-tight">Infraestructura de Impresión</h3>
                             </div>
                             
@@ -159,10 +185,125 @@ export const SettingsPage = () => {
                         {/* Divider */}
                         <div className="h-px w-full bg-slate-100 dark:bg-white/5" />
 
+                        {/* Standard Pricing Section */}
+                        <div className="space-y-6">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 rounded-xl bg-slate-100 dark:bg-white/5 text-slate-400">
+                                    <Coins size={18} />
+                                </div>
+                                <h3 className="text-lg font-black text-slate-800 dark:text-white tracking-tight">Tarifas de Impresión Estándar</h3>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-8">
+                                {/* A4 Group */}
+                                <div className="space-y-4">
+                                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-white/20">
+                                        Formato A4 (con papel)
+                                    </p>
+                                    <div className="space-y-4">
+                                        <div className="relative">
+                                            <input 
+                                                type="text"
+                                                value={settings.price_a4_bw}
+                                                onChange={(e) => setSettings({...settings, price_a4_bw: e.target.value})}
+                                                className="w-full h-14 px-6 rounded-2xl bg-slate-50 dark:bg-black/20 border border-slate-100 dark:border-white/5 text-slate-700 dark:text-white font-bold focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all outline-none"
+                                            />
+                                            <span className="absolute left-6 -top-2 px-2 bg-white dark:bg-[#1a1818] text-[8px] font-black uppercase tracking-widest text-slate-400">Precio B/N</span>
+                                            <span className="absolute right-6 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-300 dark:text-white/10">€ / ud</span>
+                                        </div>
+                                        <div className="relative">
+                                            <input 
+                                                type="text"
+                                                value={settings.price_a4_color}
+                                                onChange={(e) => setSettings({...settings, price_a4_color: e.target.value})}
+                                                className="w-full h-14 px-6 rounded-2xl bg-slate-50 dark:bg-black/20 border border-slate-100 dark:border-white/5 text-slate-700 dark:text-white font-bold focus:ring-2 focus:ring-[#f15a24]/20 focus:border-[#f15a24] transition-all outline-none"
+                                            />
+                                            <span className="absolute left-6 -top-2 px-2 bg-white dark:bg-[#1a1818] text-[8px] font-black uppercase tracking-widest text-[#f15a24]">Precio Color</span>
+                                            <span className="absolute right-6 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-300 dark:text-white/10">€ / ud</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* A3 Group */}
+                                <div className="space-y-4">
+                                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-white/20">
+                                        Formato A3 (con papel)
+                                    </p>
+                                    <div className="space-y-4">
+                                        <div className="relative">
+                                            <input 
+                                                type="text"
+                                                value={settings.price_a3_bw}
+                                                onChange={(e) => setSettings({...settings, price_a3_bw: e.target.value})}
+                                                className="w-full h-14 px-6 rounded-2xl bg-slate-50 dark:bg-black/20 border border-slate-100 dark:border-white/5 text-slate-700 dark:text-white font-bold focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all outline-none"
+                                            />
+                                            <span className="absolute left-6 -top-2 px-2 bg-white dark:bg-[#1a1818] text-[8px] font-black uppercase tracking-widest text-slate-400">Precio B/N</span>
+                                            <span className="absolute right-6 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-300 dark:text-white/10">€ / ud</span>
+                                        </div>
+                                        <div className="relative">
+                                            <input 
+                                                type="text"
+                                                value={settings.price_a3_color}
+                                                onChange={(e) => setSettings({...settings, price_a3_color: e.target.value})}
+                                                className="w-full h-14 px-6 rounded-2xl bg-slate-50 dark:bg-black/20 border border-slate-100 dark:border-white/5 text-slate-700 dark:text-white font-bold focus:ring-2 focus:ring-[#f15a24]/20 focus:border-[#f15a24] transition-all outline-none"
+                                            />
+                                            <span className="absolute left-6 -top-2 px-2 bg-white dark:bg-[#1a1818] text-[8px] font-black uppercase tracking-widest text-[#f15a24]">Precio Color</span>
+                                            <span className="absolute right-6 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-300 dark:text-white/10">€ / ud</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Divider */}
+                        <div className="h-px w-full bg-slate-100 dark:bg-white/5" />
+
+                        {/* Special Prices Section */}
+                        <div className="space-y-6">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 rounded-xl bg-slate-100 dark:bg-white/5 text-slate-400">
+                                    <ShieldCheck size={18} />
+                                </div>
+                                <h3 className="text-lg font-black text-slate-800 dark:text-white tracking-tight">Tarifas Especiales A3 (Sin Papel)</h3>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-white/20 ml-2">Precio A3 B/N (sin papel)</label>
+                                    <div className="relative">
+                                        <input 
+                                            type="text"
+                                            value={settings.price_a3_bw_no_paper}
+                                            onChange={(e) => setSettings({...settings, price_a3_bw_no_paper: e.target.value})}
+                                            className="w-full h-16 px-6 rounded-2xl bg-slate-50 dark:bg-black/20 border border-slate-100 dark:border-white/5 text-slate-700 dark:text-white font-bold focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all outline-none"
+                                        />
+                                        <span className="absolute right-6 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-300 dark:text-white/10">€ / ud</span>
+                                    </div>
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-white/20 ml-2">Precio A3 Color (sin papel)</label>
+                                    <div className="relative">
+                                        <input 
+                                            type="text"
+                                            value={settings.price_a3_color_no_paper}
+                                            onChange={(e) => setSettings({...settings, price_a3_color_no_paper: e.target.value})}
+                                            className="w-full h-16 px-6 rounded-2xl bg-slate-50 dark:bg-black/20 border border-slate-100 dark:border-white/5 text-slate-700 dark:text-white font-bold focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all outline-none"
+                                        />
+                                        <span className="absolute right-6 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-300 dark:text-white/10">€ / ud</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Divider */}
+                        <div className="h-px w-full bg-slate-100 dark:bg-white/5" />
+
                         {/* Billing Section */}
                         <div className="space-y-6">
                             <div className="flex items-center gap-3">
-                                <Calendar size={20} className="text-[#f15a24]" />
+                                <div className="p-2 rounded-xl bg-slate-100 dark:bg-white/5 text-slate-400">
+                                    <Calendar size={18} />
+                                </div>
                                 <h3 className="text-lg font-black text-slate-800 dark:text-white tracking-tight">Periodos de Facturación</h3>
                             </div>
 
@@ -183,44 +324,6 @@ export const SettingsPage = () => {
                                     <Info size={12} />
                                     Determina el inicio y fin de los reportes (rango 1-28).
                                 </p>
-                            </div>
-                        </div>
-
-                        {/* Divider */}
-                        <div className="h-px w-full bg-slate-100 dark:bg-white/5" />
-
-                        {/* Special Prices Section */}
-                        <div className="space-y-6">
-                            <div className="flex items-center gap-3">
-                                <ShieldCheck size={20} className="text-indigo-500" />
-                                <h3 className="text-lg font-black text-slate-800 dark:text-white tracking-tight">Tarifas A3 (Sin Papel)</h3>
-                            </div>
-
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div className="space-y-2">
-                                    <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-white/20 ml-2">Precio A3 B/N (sin papel)</label>
-                                    <div className="relative">
-                                        <input 
-                                            type="text"
-                                            value={settings.price_a3_bw_no_paper}
-                                            onChange={(e) => setSettings({...settings, price_a3_bw_no_paper: e.target.value})}
-                                            className="w-full h-16 px-6 rounded-2xl bg-slate-50 dark:bg-black/20 border border-slate-100 dark:border-white/5 text-slate-700 dark:text-white font-bold focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all outline-none"
-                                        />
-                                        <span className="absolute right-6 top-1/2 -translate-y-1/2 text-[10px] font-black text-indigo-500">€ / ud</span>
-                                    </div>
-                                </div>
-                                <div className="space-y-2">
-                                    <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-white/20 ml-2">Precio A3 Color (sin papel)</label>
-                                    <div className="relative">
-                                        <input 
-                                            type="text"
-                                            value={settings.price_a3_color_no_paper}
-                                            onChange={(e) => setSettings({...settings, price_a3_color_no_paper: e.target.value})}
-                                            className="w-full h-16 px-6 rounded-2xl bg-slate-50 dark:bg-black/20 border border-slate-100 dark:border-white/5 text-slate-700 dark:text-white font-bold focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all outline-none"
-                                        />
-                                        <span className="absolute right-6 top-1/2 -translate-y-1/2 text-[10px] font-black text-[#f15a24]">€ / ud</span>
-                                    </div>
-                                </div>
                             </div>
                         </div>
                     </div>

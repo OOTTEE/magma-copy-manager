@@ -13,6 +13,7 @@ export const users = sqliteTable('users', {
 export const copies = sqliteTable('copies', {
   id: text('id').primaryKey(),
   userId: text('user_id').notNull().references(() => users.id),
+  invoiceId: text('invoice_id').references(() => invoices.id),
   datetime: text('datetime').notNull(),
   a4Color: integer('a4_color').notNull().default(0),
   a4Bw: integer('a4_bw').notNull().default(0),

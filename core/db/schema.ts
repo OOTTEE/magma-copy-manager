@@ -6,7 +6,7 @@ export const users = sqliteTable('users', {
   password: text('password').notNull(),
   role: text('role').notNull().default('customer'),
   printUser: text('print_user').notNull(),
-  nexudusUser: text('nexudus_user').notNull(),
+  nexudusUser: text('nexudus_user'),
   a3NoPaperMode: integer('a3_no_paper_mode').notNull().default(0),
 });
 
@@ -46,4 +46,14 @@ export const settings = sqliteTable('settings', {
   id: text('id').primaryKey(),
   key: text('key').notNull().unique(),
   value: text('value').notNull(),
+});
+
+export const autoBillingLogs = sqliteTable('auto_billing_logs', {
+  id: text('id').primaryKey(),
+  datetime: text('datetime').notNull(),
+  status: text('status').notNull(), // 'success', 'failed', 'partial'
+  jobType: text('job_type').default('billing'), // 'billing', 'sync'
+  triggerType: text('trigger_type').default('auto'), // 'auto', 'manual'
+  summary: text('summary'),
+  details: text('details').notNull(), // JSON string con resumen por usuario
 });

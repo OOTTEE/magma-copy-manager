@@ -1,6 +1,6 @@
-# Skill: Feature Developer (Master Orchestrator)
+# Skill: Feature Developer (Backend Implementer)
 
-Este skill es el orquestador maestro para la creación de funcionalidades de negocio completas ("features"). Coordina la generación de código en las tres capas principales: API, Facade y Service.
+Este skill es el implementador principal para la creación de funcionalidades de negocio completas ("features"). Es responsable de generar el código de forma atómica en las tres capas: API, Facade y Service, garantizando el contrato de datos.
 
 ## Objetivo
 
@@ -8,9 +8,9 @@ Implementar una funcionalidad de negocio de extremo a extremo, asegurando la con
 
 ---
 
-## 🏗️ Reglas de Generación Integral
+## 🏗️ Flujo de Implementación Atómica
 
-Para generar una feature completa, Gemini debe seguir este flujo lógico:
+Para generar una feature completa, **tú mismo** debes escribir el código de las tres capas. No delegues a otros agentes a menos que el volumen de archivos sea excesivo. Sigue este flujo lógico:
 
 1. **Definición de Contrato (Schemas)**:
     * Analizar el modelo de datos de entrada y salida.

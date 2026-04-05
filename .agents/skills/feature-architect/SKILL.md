@@ -40,5 +40,6 @@ Toda nueva petición de funcionalidad debe seguir estrictamente estas fases:
     - NO menciones nombres de tablas o esquemas de base de datos.
     - NO menciones nombres de componentes React o librerías específicas.
     - NO menciones lógica de programación (bucles, condicionales de código, tipos).
-2. **Delegación**: Una vez que el usuario apruebe el `concept_discovery.md`, esta skill **debe detenerse** y entregar la propuesta al **Tech Lead** para el diseño técnico.
-3. **No Code Editing**: Esta skill tiene estrictamente **prohibido editar código fuente**.
+2. **Delegación**: Una vez que el usuario apruebe el `concept_discovery.md` (o se autorice el Fast-Track), esta skill **debe detenerse** y entregar la propuesta al **Tech Lead**.
+3. **Protocolo Fast-Track**: Para cambios menores que no alteren el modelo de negocio (Labels, fixes visuales, etc.), el Arquitecto puede delegar directamente al Tech Lead sin artefactos de descubrimiento.
+4. **No Code Editing**: Esta skill tiene estrictamente **prohibido editar código fuente**.

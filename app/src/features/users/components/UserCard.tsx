@@ -75,12 +75,18 @@ export const UserCard: React.FC<UserCardProps> = ({ user, onEdit }) => {
         {/* Nexudus User */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 text-slate-400 dark:text-white/20">
-            <Share2 size={16} strokeWidth={1.5} />
-            <span className="text-[10px] font-black uppercase tracking-wider">Nexudus</span>
+            <Share2 size={16} strokeWidth={1.5} className={user.nexudusUser ? "" : "text-red-500"} />
+            <span className={user.nexudusUser ? "text-[10px] font-black uppercase tracking-wider" : "text-[10px] font-black uppercase tracking-wider text-red-500"}>Nexudus</span>
           </div>
-          <span className="text-xs font-bold text-slate-600 dark:text-white/60 truncate max-w-[120px]">
-            {user.nexudusUser || "Sin vincular"}
-          </span>
+          {user.nexudusUser ? (
+            <span className="text-xs font-bold text-slate-600 dark:text-white/60 truncate max-w-[120px]">
+                {user.nexudusUser}
+            </span>
+          ) : (
+            <span className="text-[9px] font-black uppercase tracking-tighter text-red-500 bg-red-500/10 px-2 py-0.5 rounded-lg border border-red-500/20">
+                Pendiente
+            </span>
+          )}
         </div>
       </div>
 

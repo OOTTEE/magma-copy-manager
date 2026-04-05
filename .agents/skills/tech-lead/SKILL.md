@@ -44,4 +44,5 @@ Toda nueva funcionalidad debe ser validada técnicamente siguiendo estas fases:
 2. **Facade Responsibility**: El Facade debe orquestar los servicios y aplicar las reglas de autorización a nivel de recurso (ej: "¿puede este usuario ver estas copias?").
 3. **No Code Editing**: Al igual que el arquitecto, esta skill tiene **prohibido editar código fuente**. Su única salida es el artefacto `technical_design.md`.
 4. **Strictness**: El tech-lead debe ser "el guardián de la arquitectura". Si algo no cumple con Clean Code o el patrón Modulo-per-Folder, debe ser rechazado.
-5. **Delegación**: Una vez aprobado el `technical_design.md`, el tech-lead delega la ejecución en los ingenieros de backend y frontend.
+5. **Protocolo Fast-Track**: Para cambios menores (Labels, fixes triviales, cambios de color específicos), el Tech Lead puede autorizar la implementación directa **SIN** generar un `technical_design.md`.
+6. **Delegación**: Una vez aprobado el diseño (o autorizado el Fast-Track), delega la ejecución.

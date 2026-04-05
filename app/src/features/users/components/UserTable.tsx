@@ -61,9 +61,15 @@ export const UserTable: React.FC<UserTableProps> = ({ users, onEdit }) => {
                 </div>
               </td>
               <td className="px-8 py-5">
-                <div className="flex items-center gap-2 text-slate-500 dark:text-white/40">
-                  <Share2 size={16} strokeWidth={1.5} />
-                  <span className="text-sm font-medium">{user.nexudusUser || "Sin vincular"}</span>
+                <div className="flex items-center gap-2">
+                  <Share2 size={16} strokeWidth={1.5} className={user.nexudusUser ? "text-slate-400 dark:text-white/20" : "text-red-500"} />
+                  {user.nexudusUser ? (
+                    <span className="text-sm font-medium text-slate-500 dark:text-white/40">{user.nexudusUser}</span>
+                  ) : (
+                    <span className="text-[10px] font-black uppercase tracking-tight text-red-500 bg-red-500/10 px-2 py-1 rounded-lg border border-red-500/20">
+                      Vincular Nexudus
+                    </span>
+                  )}
                 </div>
               </td>
               <td className="px-8 py-5">

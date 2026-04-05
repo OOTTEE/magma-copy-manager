@@ -1,6 +1,6 @@
 ---
 name: frontend-developer
-description: Expert in React, TypeScript, and TailwindCSS development following the Magma architecture. Focused on modular features, premium UI aesthetics, and clean state management with Zustand.
+description: Expert in React, TypeScript, and TailwindCSS. Focused on full UI implementation, modular features, and responsive design. Works in synergy with UX Designer for aesthetic refinement.
 ---
 
 # Frontend Developer Skill: Magma UI Architecture
@@ -48,12 +48,14 @@ Toda implementación de UI debe seguir estrictamente esta jerarquía de capas:
 1. **Mobile First & Responsive**: Todo diseño debe ser `mobile-first` utilizando los breakpoints de Tailwind (`sm:`, `md:`, `lg:`, `xl:`).
 2. **Type Safety Absolute**: Prohibido el uso de `any`. Se deben definir interfaces claras para props y datos de negocio.
 3. **Premium UI (Aesthetics)**:
-   - Uso de **HSL** para colores variables (permite manipulación dinámica de opacidad y luminosidad).
-   - **Micro-animaciones**: Uso de transiciones suaves (`transition-all`, `duration-300`) y hover effects consistentes.
-   - **Glassmorphism**: En cuadros de mando y diálogos, usar `bg-opacity` y `backdrop-blur`.
+   - Implementation of initial component visuals following Magma's Design System.
+   - **Autonomía**: Tienes permiso total para editar JSX y TailwindCSS. No necesitas delegar la creación visual básica.
+   - **Sinergia**: Una vez terminada la funcionalidad, puedes invocar al `ux-designer` para realizar un "Aesthetic Pass" (refinamiento de micro-animaciones, sombras y glassmorphism avanzado).
+   - Uso de **HSL** para colores variables.
+   - **Glassmorphism**: Uso de `bg-opacity` y `backdrop-blur` en cuadros de mando.
 4. **Separation of Concerns**: Un componente JSX debe ser mayoritariamente declarativo. La lógica pesada de datos debe salir a un Hook o Service.
-5. **Dark Mode Native**: Soporte de primera clase mediante la clase `.dark`. Verificar contraste y legibilidad en ambos temas.
-6. **Defensive Programming (API Resilience)**: Prohibido confiar ciegamente en la API. Usar siempre `?.` (optional chaining) y `|| ""` o `??` (nullish coalescing) al acceder a propiedades de datos externos para evitar "white screens" por datos nulos o inesperados.
+5. **Dark Mode Native**: Soporte de primera clase mediante la clase `.dark`.
+6. **Defensive Programming (API Resilience)**: Prohibido confiar ciegamente en la API. Usar siempre `?.` y `??` para evitar pantallas blancas.
 
 ---
 

@@ -74035,6 +74035,7 @@
             "StorageUnit",
             "Machine",
             "DayPass",
+            "PhoneBooth",
             "Other"
           ],
           "type": "string"
@@ -101562,11 +101563,21 @@
           "format": "int32",
           "type": "integer"
         },
+        "ResourceName": {
+          "type": "object"
+        },
         "ProductId": {
           "format": "int32",
           "type": "integer"
         },
         "ProductName": {
+          "type": "object"
+        },
+        "ProductPrice": {
+          "format": "double",
+          "type": "number"
+        },
+        "ProductCurrencyCode": {
           "type": "object"
         },
         "InvoiceInMinutes": {

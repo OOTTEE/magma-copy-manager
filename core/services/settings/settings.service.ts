@@ -1,7 +1,12 @@
 import { db } from '../../db';
 import { settings } from '../../db/schema';
 import { eq } from 'drizzle-orm';
-import { randomUUID } from 'crypto';
+import { randomUUID, createCipheriv, createDecipheriv, randomBytes } from 'crypto';
+import { serverConfig } from '../../config/server.config';
+
+const ALGORITHM = 'aes-256-cbc';
+const ENCRYPTION_KEY = Buffer.from(serverConfig.encryptionKey.slice(0, 32)); // Must be 32 bytes
+const IV_LENGTH = 16; // For AES, this is always 16
 
 /**
  * Settings Service
@@ -22,7 +27,35 @@ export const settingsService = {
     price_a3_color: '0.30',
     price_a3_bw_no_paper: '0.05',
     price_a3_color_no_paper: '0.10',
+    nexudus_url: '',
+    nexudus_token: '',
   } as Record<string, string>,
+
+  /**
+   * Encrypts a string using AES-256-CBC.
+   */
+  encrypt: (text: string): string => {
+    const iv = randomBytes(IV_LENGTH);
+    const cipher = createCipheriv(ALGORITHM, ENCRYPTION_KEY, iv);
+    let encrypted = cipher.update(text);
+    encrypted = Buffer.concat([encrypted, cipher.final()]);
+    return iv.toString('hex') + ':' + encrypted.toString('hex');
+  },
+
+  /**
+   * Decrypts a string using AES-256-CBC.
+   */
+  decrypt: (text: string): string => {
+    const textParts = text.split(':');
+    const ivToken = textParts.shift();
+    if (!ivToken) return '';
+    const iv = Buffer.from(ivToken, 'hex');
+    const encryptedText = Buffer.from(textParts.join(':'), 'hex');
+    const decipher = createDecipheriv(ALGORITHM, ENCRYPTION_KEY, iv);
+    let decrypted = decipher.update(encryptedText);
+    decrypted = Buffer.concat([decrypted, decipher.final()]);
+    return decrypted.toString();
+  },
 
   /**
    * Retrieves a setting value by key.
@@ -47,16 +80,51 @@ export const settingsService = {
     // Merge DB settings with defaults to ensure all keys exist
     const merged = { ...settingsService.DEFAULTS };
     dbSettings.forEach(s => {
-      merged[s.key] = s.value;
+      // Mask sensitive fields
+      if (s.key === 'nexudus_token' && s.value) {
+        merged[s.key] = '********';
+      } else {
+        merged[s.key] = s.value;
+      }
     });
 
     return merged;
   },
 
   /**
+   * Retrieves a secret setting (decrypted if needed).
+   */
+  getSecretSetting: async (key: string): Promise<string> => {
+    const result = await db
+      .select()
+      .from(settings)
+      .where(eq(settings.key, key))
+      .get();
+    
+    if (!result?.value) return settingsService.DEFAULTS[key] || '';
+
+    if (key === 'nexudus_token' && result.value.includes(':')) {
+      try {
+        return settingsService.decrypt(result.value);
+      } catch (e) {
+        console.error(`Failed to decrypt setting ${key}:`, e);
+        return '';
+      }
+    }
+    return result.value;
+  },
+
+  /**
    * Updates or creates a setting.
    */
   updateSetting: async (key: string, value: string) => {
+    let finalValue = value;
+
+    // Encrypt sensitive fields
+    if (key === 'nexudus_token' && value && value !== '********') {
+      finalValue = settingsService.encrypt(value);
+    }
+
     const existing = await db
       .select()
       .from(settings)
@@ -66,13 +134,13 @@ export const settingsService = {
     if (existing) {
       await db
         .update(settings)
-        .set({ value })
+        .set({ value: finalValue })
         .where(eq(settings.key, key));
     } else {
       await db.insert(settings).values({
         id: randomUUID(),
         key,
-        value,
+        value: finalValue,
       });
     }
   }

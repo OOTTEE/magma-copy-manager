@@ -32,41 +32,6 @@ export const copiesFacade = {
         return await copiesService.getUserCopies(targetUserId, from, to);
     },
 
-    /**
-     * Adds a new copy record.
-     * Note: Role-based access (admin only) is handled by route middleware,
-     * but the facade ensures orchestration if multi-service calls were needed.
-     */
-    addCopies: async (
-        _requestingUser: { id: string; role: string },
-        targetUserId: string,
-        data: any
-    ) => {
-        return await copiesService.addCopies(targetUserId, data);
-    },
-
-    /**
-     * Updates an existing copy record.
-     */
-    updateCopies: async (
-        _requestingUser: { id: string; role: string },
-        copyId: string,
-        targetUserId: string,
-        data: any
-    ) => {
-        return await copiesService.updateCopies(copyId, targetUserId, data);
-    },
-
-    /**
-     * Deletes a copy record.
-     */
-    deleteCopies: async (
-        _requestingUser: { id: string; role: string },
-        copyId: string,
-        targetUserId: string
-    ) => {
-        return await copiesService.deleteCopies(copyId, targetUserId);
-    },
 
     /**
      * Orchestrates the printer report sync.

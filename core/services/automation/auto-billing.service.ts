@@ -1,7 +1,6 @@
 import * as cron from 'node-cron';
 import { copiesFacade } from '../../facades/copies/copies.facade';
 import { billingFacade } from '../../facades/billing/billing.facade';
-import { nexudusFacade } from '../../facades/billing/nexudus.facade';
 import { settingsService } from '../settings/settings.service';
 import { db } from '../../db';
 import { syncLogs, users } from '../../db/schema';

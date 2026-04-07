@@ -12,6 +12,7 @@ interface User {
 
 interface UserTableProps {
   users: User[];
+  coworkers?: { id?: number; fullName?: string; email?: string }[];
   onEdit: (user: User) => void;
 }
 
@@ -21,7 +22,7 @@ interface UserTableProps {
  * Tabular view for user management.
  * Shows essential technical fields and actions.
  */
-export const UserTable: React.FC<UserTableProps> = ({ users, onEdit }) => {
+export const UserTable: React.FC<UserTableProps> = ({ users, coworkers, onEdit }) => {
   return (
     <div className="overflow-hidden bg-white dark:bg-[#1a1818] rounded-[2rem] border border-slate-200 dark:border-white/5 shadow-xl transition-all">
       <table className="w-full text-left border-collapse">
@@ -61,15 +62,42 @@ export const UserTable: React.FC<UserTableProps> = ({ users, onEdit }) => {
                 </div>
               </td>
               <td className="px-8 py-5">
-                <div className="flex items-center gap-2">
-                  <Share2 size={16} strokeWidth={1.5} className={user.nexudusUser ? "text-slate-400 dark:text-white/20" : "text-red-500"} />
-                  {user.nexudusUser ? (
-                    <span className="text-sm font-medium text-slate-500 dark:text-white/40">{user.nexudusUser}</span>
-                  ) : (
-                    <span className="text-[10px] font-black uppercase tracking-tight text-red-500 bg-red-500/10 px-2 py-1 rounded-lg border border-red-500/20">
-                      Vincular Nexudus
-                    </span>
-                  )}
+                <div className="flex items-start gap-3">
+                  <div className={`mt-1 p-2 rounded-lg ${user.nexudusUser ? "bg-slate-100 dark:bg-white/5 text-slate-400 dark:text-white/20" : "bg-red-500/10 text-red-500"}`}>
+                    <Share2 size={16} strokeWidth={1.5} />
+                  </div>
+                  <div className="flex flex-col gap-0.5">
+                    {user.nexudusUser ? (
+                      (() => {
+                        const coworker = coworkers?.find(c => c.id?.toString() === user.nexudusUser);
+                        return (
+                          <>
+                            {coworker ? (
+                              <>
+                                <span className="text-sm font-bold text-slate-700 dark:text-white/80 leading-none">
+                                  {coworker.fullName}
+                                </span>
+                                <span className="text-[11px] font-medium text-slate-400 dark:text-white/20">
+                                  {coworker.email}
+                                </span>
+                              </>
+                            ) : (
+                              <span className="text-sm font-medium text-slate-400 dark:text-white/20 italic animate-pulse">
+                                Cargando detalles...
+                              </span>
+                            )}
+                            <code className="text-[9px] font-mono mt-1 opacity-40 group-hover:opacity-100 transition-opacity">
+                              ID: {user.nexudusUser}
+                            </code>
+                          </>
+                        );
+                      })()
+                    ) : (
+                      <span className="text-[10px] font-black uppercase tracking-tight text-red-500 bg-red-500/10 px-2 py-1 rounded-lg border border-red-500/20 w-fit">
+                        Vincular Nexudus
+                      </span>
+                    )}
+                  </div>
                 </div>
               </td>
               <td className="px-8 py-5">

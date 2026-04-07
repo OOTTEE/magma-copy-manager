@@ -12,6 +12,7 @@ interface User {
 
 interface UserCardProps {
   user: User;
+  coworkers?: { id?: number; fullName?: string; email?: string }[];
   onEdit: (user: User) => void;
 }
 
@@ -21,7 +22,7 @@ interface UserCardProps {
  * Grid card view for user management.
  * High visual hierarchy and mobile-friendly.
  */
-export const UserCard: React.FC<UserCardProps> = ({ user, onEdit }) => {
+export const UserCard: React.FC<UserCardProps> = ({ user, coworkers, onEdit }) => {
   const isAdmin = user.role === 'admin';
 
   return (
@@ -73,19 +74,42 @@ export const UserCard: React.FC<UserCardProps> = ({ user, onEdit }) => {
         </div>
 
         {/* Nexudus User */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2 text-slate-400 dark:text-white/20">
-            <Share2 size={16} strokeWidth={1.5} className={user.nexudusUser ? "" : "text-red-500"} />
-            <span className={user.nexudusUser ? "text-[10px] font-black uppercase tracking-wider" : "text-[10px] font-black uppercase tracking-wider text-red-500"}>Nexudus</span>
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-slate-400 dark:text-white/20">
+              <Share2 size={16} strokeWidth={1.5} className={user.nexudusUser ? "" : "text-red-500"} />
+              <span className={user.nexudusUser ? "text-[10px] font-black uppercase tracking-wider" : "text-[10px] font-black uppercase tracking-wider text-red-500"}>Nexudus</span>
+            </div>
+            {!user.nexudusUser && (
+              <span className="text-[9px] font-black uppercase tracking-tighter text-red-500 bg-red-500/10 px-2 py-0.5 rounded-lg border border-red-500/20">
+                  Pendiente
+              </span>
+            )}
           </div>
-          {user.nexudusUser ? (
-            <span className="text-xs font-bold text-slate-600 dark:text-white/60 truncate max-w-[120px]">
-                {user.nexudusUser}
-            </span>
-          ) : (
-            <span className="text-[9px] font-black uppercase tracking-tighter text-red-500 bg-red-500/10 px-2 py-0.5 rounded-lg border border-red-500/20">
-                Pendiente
-            </span>
+          
+          {user.nexudusUser && (
+            <div className="flex flex-col items-end gap-0.5">
+              {(() => {
+                const coworker = coworkers?.find(c => c.id?.toString() === user.nexudusUser);
+                return coworker ? (
+                  <>
+                    <span className="text-xs font-bold text-slate-600 dark:text-white/60">
+                      {coworker.fullName}
+                    </span>
+                    <span className="text-[10px] text-slate-400 dark:text-white/20">
+                      {coworker.email}
+                    </span>
+                  </>
+                ) : (
+                  <span className="text-[10px] font-medium text-slate-400 dark:text-white/20 italic animate-pulse">
+                    Cargando...
+                  </span>
+                );
+              })()}
+              <code className="text-[9px] font-mono opacity-40 group-hover:opacity-100 transition-opacity">
+                ID: {user.nexudusUser}
+              </code>
+            </div>
           )}
         </div>
       </div>

@@ -22,7 +22,7 @@ import {
  */
 export const UserAdminPage = () => {
     const { role } = useAuthStore();
-    const { users, isLoading, error, fetchUsers, updateUser } = useUserStore();
+    const { users, coworkers, isLoading, error, fetchUsers, fetchCoworkers, updateUser } = useUserStore();
     const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
     const [searchTerm, setSearchTerm] = useState("");
     const [editingUser, setEditingUser] = useState<any>(null);
@@ -34,7 +34,8 @@ export const UserAdminPage = () => {
 
     useEffect(() => {
         fetchUsers();
-    }, [fetchUsers]);
+        fetchCoworkers();
+    }, [fetchUsers, fetchCoworkers]);
 
     const handleUpdateUser = async (updatedData: any) => {
         if (!editingUser) return;
@@ -138,11 +139,20 @@ export const UserAdminPage = () => {
             ) : (
                 <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
                     {viewMode === 'table' ? (
-                        <UserTable users={filteredUsers} onEdit={setEditingUser} />
+                        <UserTable 
+                            users={filteredUsers} 
+                            coworkers={coworkers} 
+                            onEdit={setEditingUser} 
+                        />
                     ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                             {filteredUsers.map(user => (
-                                <UserCard key={user.id} user={user} onEdit={setEditingUser} />
+                                <UserCard 
+                                    key={user.id} 
+                                    user={user} 
+                                    coworkers={coworkers}
+                                    onEdit={setEditingUser} 
+                                />
                             ))}
                         </div>
                     )}

@@ -1,3 +1,4 @@
+import { randomUUID } from 'crypto';
 import { copiesRepository } from '../../repositories/copies.repository';
 
 export const copiesService = {
@@ -23,44 +24,6 @@ export const copiesService = {
             }
         }));
     },
-    addCopies: async (userId: string, data: any) => {
-        const newRecord = {
-            id: require('crypto').randomUUID(),
-            userId,
-            datetime: data.datetime,
-            a4Color: data.count?.a4Color || 0,
-            a4Bw: data.count?.a4Bw || 0,
-            a3Color: data.count?.a3Color || 0,
-            a3Bw: data.count?.a3Bw || 0,
-            a4ColorTotal: data.total?.a4Color || 0,
-            a4BwTotal: data.total?.a4Bw || 0,
-            a3ColorTotal: data.total?.a3Color || 0,
-            a3BwTotal: data.total?.a3Bw || 0
-        };
-        await copiesRepository.create(newRecord);
-        return data;
-    },
-    updateCopies: async (id: string, userId: string, data: any) => {
-        const updateRecord: any = {};
-        if (data.datetime) updateRecord.datetime = data.datetime;
-        if (data.count) {
-            if (data.counta4Color !== undefined) updateRecord.a4Color = data.counta4Color;
-            if (data.counta4Bw !== undefined) updateRecord.a4Bw = data.counta4Bw;
-            if (data.counta3Color !== undefined) updateRecord.a3Color = data.counta3Color;
-            if (data.counta3Bw !== undefined) updateRecord.a3Bw = data.counta3Bw;
-        }
-        if (data.total) {
-            if (data.totala4Color !== undefined) updateRecord.a4ColorTotal = data.totala4Color;
-            if (data.totala4Bw !== undefined) updateRecord.a4BwTotal = data.totala4Bw;
-            if (data.totala3Color !== undefined) updateRecord.a3ColorTotal = data.totala3Color;
-            if (data.totala3Bw !== undefined) updateRecord.a3BwTotal = data.totala3Bw;
-        }
-        await copiesRepository.update(id, userId, updateRecord);
-        return data;
-    },
-    deleteCopies: async (id: string, userId: string) => {
-        await copiesRepository.delete(id, userId);
-    },
     syncReportRecord: async (userId: string, reportData: { a4Color: number, a4Bw: number, a3Color: number, a3Bw: number }, datetime: string) => {
         const lastRecord = await copiesRepository.findLatestByUserId(userId);
         
@@ -72,7 +35,7 @@ export const copiesService = {
         };
 
         const newRecord = {
-            id: require('crypto').randomUUID(),
+            id: randomUUID(),
             userId,
             datetime,
             a4Color: calculateIncrement(reportData.a4Color, lastRecord?.a4ColorTotal || 0),

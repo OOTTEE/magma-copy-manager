@@ -1,14 +1,23 @@
 import { create } from 'zustand';
 import { api } from '../services/api';
 
+interface NexudusCoworker {
+  id?: number;
+  fullName?: string;
+  email?: string;
+}
+
 interface UserState {
   users: any[];
+  coworkers: NexudusCoworker[];
   isLoading: boolean;
   isRefreshing: boolean;
+  isLoadingCoworkers: boolean;
   error: string | null;
   
   // Actions
   fetchUsers: (force?: boolean) => Promise<void>;
+  fetchCoworkers: () => Promise<void>;
   updateUser: (id: string, data: any) => Promise<void>;
   deleteUser: (id: string) => Promise<void>;
   reset: () => void;
@@ -22,8 +31,10 @@ interface UserState {
  */
 export const useUserStore = create<UserState>((set, get) => ({
   users: [],
+  coworkers: [],
   isLoading: false,
   isRefreshing: false,
+  isLoadingCoworkers: false,
   error: null,
 
   fetchUsers: async (force = false) => {
@@ -48,6 +59,21 @@ export const useUserStore = create<UserState>((set, get) => ({
       set({ error: err.message || "Error al cargar la lista de usuarios." });
     } finally {
       set({ isLoading: false, isRefreshing: false });
+    }
+  },
+
+  fetchCoworkers: async () => {
+    if (get().isLoadingCoworkers) return;
+    
+    set({ isLoadingCoworkers: true });
+    try {
+      const { data, error: apiError } = await api.GET("/api/v1/nexudus/coworkers");
+      if (apiError) throw apiError;
+      set({ coworkers: data || [] });
+    } catch (err: any) {
+      console.error("[UserStore] Error fetching coworkers:", err);
+    } finally {
+      set({ isLoadingCoworkers: false });
     }
   },
 

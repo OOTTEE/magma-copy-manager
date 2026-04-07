@@ -238,15 +238,6 @@ export class NexudusService {
     }
   }
 
-  /**
-   * Creates a new invoice for a coworker (Draft).
-   */
-  async createInvoice(businessId: number, coworkerId: number, options: any = {}) {
-    return this.executeRequest(
-      (api, params) => api.coworkerInvoicesPaymentApiCreateInvoiceBusinessIdCoworkerId(businessId, coworkerId, options, params as any),
-      'Failed to create invoice in Nexudus'
-    );
-  }
 
   /**
    * Searches for coworkers in Nexudus by name or email.
@@ -254,7 +245,7 @@ export class NexudusService {
   async searchCoworkers(search: string) {
     const result = await this.executeRequest(
       (api, params) => api.coworkersApiGetPageSizeOrderByDirWithTariffGlobalSearch({ 
-        size: 50, 
+        size: 500, 
         globalSearch: search 
       }, params),
       'Failed to search coworkers in Nexudus'
@@ -262,15 +253,6 @@ export class NexudusService {
     return result.Records || [];
   }
 
-  /**
-   * Deletes an invoice from Nexudus.
-   */
-  async deleteInvoice(id: number) {
-    return this.executeRequest(
-      (api, params) => (api as any).coworkerInvoicesApiDeleteId(id, params),
-      `Failed to delete invoice ${id} in Nexudus`
-    );
-  }
 
   /**
    * Retrieves the list of businesses (locations) from Nexudus.

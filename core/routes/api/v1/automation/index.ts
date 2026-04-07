@@ -31,7 +31,7 @@ const automationRoutes: FastifyPluginAsync = async (fastify) => {
                             id: { type: 'string' },
                             datetime: { type: 'string' },
                             status: { type: 'string' },
-                            details: { type: 'array' }
+                            details: { type: 'object', additionalProperties: true }
                         }
                     }
                 }
@@ -76,6 +76,38 @@ const automationRoutes: FastifyPluginAsync = async (fastify) => {
         
         try {
             const result = await automationFacade.triggerAutoBilling(user);
+            return reply.send(result);
+        } catch (err: any) {
+            if (err.statusCode) return reply.code(err.statusCode).send({ message: err.message });
+            throw err;
+        }
+    });
+
+    /**
+     * POST /api/v1/automation/sync
+     * Manually triggers the printer synchronization process.
+     */
+    fastify.post('/sync', {
+        schema: {
+            description: 'Manually trigger the printer synchronization process.',
+            tags: ['Automation'],
+            response: {
+                200: {
+                    type: 'object',
+                    properties: {
+                        logId: { type: 'string' },
+                        status: { type: 'string' },
+                        summary: { type: 'string' }
+                    }
+                }
+            }
+        },
+        preValidation: [fastify.authenticate]
+    }, async (request, reply) => {
+        const user = request.user as { id: string; role: string };
+        
+        try {
+            const result = await automationFacade.triggerSync(user);
             return reply.send(result);
         } catch (err: any) {
             if (err.statusCode) return reply.code(err.statusCode).send({ message: err.message });

@@ -3,8 +3,6 @@ import dotenv from 'dotenv';
 // Load .env configuration
 dotenv.config();
 
-console.log("Environment:", process.env.NODE_ENV);
-
 export const serverConfig = {
     logLevel: process.env.LOG_LEVEL || 'info', // INFO, DEBUG, ERROR, WARN, TRACE
     databaseUrl: process.env.DATABASE_URL || (process.env.NODE_ENV === 'test' ? 'sqlite.test.db' : 'sqlite.db'),
@@ -13,4 +11,6 @@ export const serverConfig = {
     encryptionKey: process.env.ENCRYPTION_KEY || 'default-encryption-key-32-chars-long-!!',
     printerUrl: process.env.PRINTER_URL || 'http://192.168.0.200',
     printerAdminPass: process.env.PRINTER_ADMIN_PASS || '12345678',
+    browserHeadless: Boolean(process.env.BROWSER_HEADLESS) || true,
+    browserSlowMo: Number(process.env.BROWSER_SLOW_MO) || 1000
 };

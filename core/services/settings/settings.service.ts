@@ -3,10 +3,13 @@ import { settings } from '../../db/schema';
 import { eq } from 'drizzle-orm';
 import { randomUUID, createCipheriv, createDecipheriv, randomBytes } from 'crypto';
 import { serverConfig } from '../../config/server.config';
+import { logger } from '../../lib/logger';
 
 const ALGORITHM = 'aes-256-cbc';
 const ENCRYPTION_KEY = Buffer.from(serverConfig.encryptionKey.slice(0, 32)); // Must be 32 bytes
 const IV_LENGTH = 16; // For AES, this is always 16
+
+const SECRET_KEYS = ['nexudus_token', 'nexudus_password'];
 
 /**
  * Settings Service
@@ -21,14 +24,16 @@ export const settingsService = {
   DEFAULTS: {
     printer_url: 'https://magma-printer.local',
     billing_cycle_day: '27',
-    price_a4_bw: '0.05',
-    price_a4_color: '0.15',
-    price_a3_bw: '0.10',
-    price_a3_color: '0.30',
-    price_a3_bw_no_paper: '0.05',
-    price_a3_color_no_paper: '0.10',
-    nexudus_url: '',
+    nexudus_url: 'https://spaces.nexudus.com',
+    nexudus_email: '',
+    nexudus_password: '',
     nexudus_token: '',
+    nexudus_product_id_a4bw: '',
+    nexudus_product_id_a4color: '',
+    nexudus_product_id_a3bw: '',
+    nexudus_product_id_a3color: '',
+    nexudus_product_id_sra3bw: '',
+    nexudus_product_id_sra3color: '',
   } as Record<string, string>,
 
   /**
@@ -81,7 +86,7 @@ export const settingsService = {
     const merged = { ...settingsService.DEFAULTS };
     dbSettings.forEach(s => {
       // Mask sensitive fields
-      if (s.key === 'nexudus_token' && s.value) {
+      if (SECRET_KEYS.includes(s.key) && s.value) {
         merged[s.key] = '********';
       } else {
         merged[s.key] = s.value;
@@ -103,11 +108,12 @@ export const settingsService = {
     
     if (!result?.value) return settingsService.DEFAULTS[key] || '';
 
-    if (key === 'nexudus_token' && result.value.includes(':')) {
+    // If it's a secret key and seems encrypted (contains ':')
+    if (SECRET_KEYS.includes(key) && result.value.includes(':')) {
       try {
         return settingsService.decrypt(result.value);
       } catch (e) {
-        console.error(`Failed to decrypt setting ${key}:`, e);
+        logger.error({ key, error: e }, 'Settings: Failed to decrypt setting');
         return '';
       }
     }
@@ -121,7 +127,7 @@ export const settingsService = {
     let finalValue = value;
 
     // Encrypt sensitive fields
-    if (key === 'nexudus_token' && value && value !== '********') {
+    if (SECRET_KEYS.includes(key) && value && value !== '********') {
       finalValue = settingsService.encrypt(value);
     }
 

@@ -11,7 +11,7 @@ import { UserAdminPage } from './features/users/pages/UserAdminPage';
 import { MonthlyReportPage } from './features/reports/pages/MonthlyReportPage';
 import { SettingsPage } from './features/settings/pages/SettingsPage';
 import { DashboardPage } from './features/dashboard/pages/DashboardPage';
-import { InvoicesPage } from './features/billing/pages/InvoicesPage';
+import { SyncHistoryPage } from './features/billing/pages/SyncHistoryPage';
 
 /**
  * Main Application Component
@@ -82,8 +82,8 @@ function App() {
               <Route path="/users" element={<UserAdminPage />} />
               {/* Monthly Reports */}
               <Route path="/reports" element={<MonthlyReportPage />} />
-              {/* Persisted Invoices */}
-              <Route path="/invoices" element={<InvoicesPage />} />
+              {/* Synchronization History */}
+              <Route path="/sync-history" element={<SyncHistoryPage />} />
               {/* System Settings */}
               <Route path="/settings" element={<SettingsPage />} />
             </Route>

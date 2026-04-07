@@ -2,9 +2,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { autoBillingService } from './auto-billing.service';
 import { copiesFacade } from '../../facades/copies/copies.facade';
 import { billingFacade } from '../../facades/billing/billing.facade';
-import { nexudusFacade } from '../../facades/billing/nexudus.facade';
 import { db } from '../../db';
-import { users, autoBillingLogs } from '../../db/schema';
+import { users, syncLogs } from '../../db/schema';
 
 vi.mock('../../facades/copies/copies.facade', () => ({
     copiesFacade: {
@@ -14,13 +13,8 @@ vi.mock('../../facades/copies/copies.facade', () => ({
 
 vi.mock('../../facades/billing/billing.facade', () => ({
     billingFacade: {
-        persistInvoice: vi.fn(),
-    }
-}));
-
-vi.mock('../../facades/billing/nexudus.facade', () => ({
-    nexudusFacade: {
-        createInvoice: vi.fn(),
+        syncUserConsumption: vi.fn(),
+        syncWithNexudus: vi.fn(),
     }
 }));
 
@@ -31,13 +25,6 @@ vi.mock('../../db', () => ({
     db: {
         select: vi.fn(() => ({
             from: vi.fn(() => ({
-                orderBy: vi.fn(() => ({
-                    limit: vi.fn(() => ({
-                        offset: vi.fn(() => ({
-                            all: mockAll,
-                        }))
-                    }))
-                })),
                 all: mockAll,
             }))
         })),
@@ -61,7 +48,10 @@ describe('AutoBillingService', () => {
         mockAll.mockResolvedValue([]);
 
         // Mock setTimeout to speed up test
-        vi.spyOn(global, 'setTimeout').mockImplementation((fn: any) => fn());
+        vi.spyOn(global, 'setTimeout').mockImplementation((fn: any) => {
+            if (typeof fn === 'function') fn();
+            return {} as any;
+        });
 
         const result = await autoBillingService.runJob(adminUser);
 
@@ -82,21 +72,20 @@ describe('AutoBillingService', () => {
             { id: 'a1', username: 'admin', role: 'admin' }
         ] as any);
 
-        vi.mocked(billingFacade.persistInvoice).mockResolvedValue({ invoiceId: 'inv1' } as any);
-        vi.mocked(nexudusFacade.createInvoice).mockResolvedValue({ id: 'nex1' } as any);
+        vi.mocked(billingFacade.syncUserConsumption).mockResolvedValue({ userId: 'uX', salesCreated: 1 } as any);
+        vi.mocked(billingFacade.syncWithNexudus).mockResolvedValue({ results: [] } as any);
 
         const result = await autoBillingService.runJob(adminUser);
 
         expect(result.status).toBe('success');
         expect(result.results).toHaveLength(2); // Only customers
         
-        // User 1: Local + Nexudus
-        expect(billingFacade.persistInvoice).toHaveBeenCalledWith(adminUser, 'u1');
-        expect(nexudusFacade.createInvoice).toHaveBeenCalledWith(adminUser, 'u1', 1, { Draft: true });
-
-        // User 2: Only Local
-        expect(billingFacade.persistInvoice).toHaveBeenCalledWith(adminUser, 'u2');
-        expect(nexudusFacade.createInvoice).not.toHaveBeenCalledWith(adminUser, 'u2', expect.anything(), expect.anything());
+        // Users: Sincronización directa
+        expect(billingFacade.syncUserConsumption).toHaveBeenCalledWith(adminUser, 'u1');
+        expect(billingFacade.syncUserConsumption).toHaveBeenCalledWith(adminUser, 'u2');
+        
+        // Nexudus Batch Sync
+        expect(billingFacade.syncWithNexudus).toHaveBeenCalledWith(adminUser);
     });
 
     it('should handle partial failures (one user fails, others continue)', async () => {
@@ -111,9 +100,11 @@ describe('AutoBillingService', () => {
             { id: 'u2', username: 'user2', role: 'customer' }
         ] as any);
 
-        vi.mocked(billingFacade.persistInvoice)
-            .mockRejectedValueOnce(new Error('DB Error'))
-            .mockResolvedValueOnce({ invoiceId: 'inv2' } as any);
+        vi.mocked(billingFacade.syncUserConsumption)
+            .mockRejectedValueOnce(new Error('Sync Error'))
+            .mockResolvedValueOnce({ userId: 'u2', salesCreated: 1 } as any);
+        
+        vi.mocked(billingFacade.syncWithNexudus).mockResolvedValue({ results: [] } as any);
 
         const result = await autoBillingService.runJob(adminUser);
 

@@ -10,7 +10,6 @@ import {
     AlertCircle,
     Info,
     ShieldCheck,
-    Coins,
     Timer,
     ToggleLeft,
     ToggleRight
@@ -27,12 +26,6 @@ export const SettingsPage = () => {
     const [settings, setSettings] = useState<{ 
         printer_url: string; 
         billing_cycle_day: string;
-        price_a4_bw: string;
-        price_a4_color: string;
-        price_a3_bw: string;
-        price_a3_color: string;
-        price_a3_bw_no_paper: string;
-        price_a3_color_no_paper: string;
         auto_billing_enabled: boolean;
         auto_billing_day: string;
         auto_billing_time: string;
@@ -40,22 +33,32 @@ export const SettingsPage = () => {
         auto_sync_frequency: string;
         auto_sync_day: string;
         auto_sync_time: string;
+        nexudus_email: string;
+        nexudus_password: string;
+        nexudus_product_id_a4bw: string;
+        nexudus_product_id_a4color: string;
+        nexudus_product_id_a3bw: string;
+        nexudus_product_id_a3color: string;
+        nexudus_product_id_sra3bw: string;
+        nexudus_product_id_sra3color: string;
     }>({
         printer_url: '',
         billing_cycle_day: '27',
-        price_a4_bw: '0.05',
-        price_a4_color: '0.15',
-        price_a3_bw: '0.10',
-        price_a3_color: '0.30',
-        price_a3_bw_no_paper: '0.05',
-        price_a3_color_no_paper: '0.10',
         auto_billing_enabled: false,
         auto_billing_day: '1',
         auto_billing_time: '01:00',
         auto_sync_enabled: false,
         auto_sync_frequency: 'daily',
         auto_sync_day: '1',
-        auto_sync_time: '02:00'
+        auto_sync_time: '02:00',
+        nexudus_email: '',
+        nexudus_password: '',
+        nexudus_product_id_a4bw: '',
+        nexudus_product_id_a4color: '',
+        nexudus_product_id_a3bw: '',
+        nexudus_product_id_a3color: '',
+        nexudus_product_id_sra3bw: '',
+        nexudus_product_id_sra3color: ''
     });
     const [originalSettings, setOriginalSettings] = useState(settings);
     const [isLoading, setIsLoading] = useState(true);
@@ -72,19 +75,21 @@ export const SettingsPage = () => {
                 const newSettings = {
                     printer_url: fetched.printer_url || '',
                     billing_cycle_day: fetched.billing_cycle_day || '27',
-                    price_a4_bw: fetched.price_a4_bw || '0.05',
-                    price_a4_color: fetched.price_a4_color || '0.15',
-                    price_a3_bw: fetched.price_a3_bw || '0.10',
-                    price_a3_color: fetched.price_a3_color || '0.30',
-                    price_a3_bw_no_paper: fetched.price_a3_bw_no_paper || '0.05',
-                    price_a3_color_no_paper: fetched.price_a3_color_no_paper || '0.10',
                     auto_billing_enabled: fetched.auto_billing_enabled === true || fetched.auto_billing_enabled === "true" || fetched.auto_billing_enabled === 1 || fetched.auto_billing_enabled === "1",
                     auto_billing_day: fetched.auto_billing_day?.toString() || '1',
                     auto_billing_time: fetched.auto_billing_time || '01:00',
                     auto_sync_enabled: fetched.auto_sync_enabled === true || fetched.auto_sync_enabled === "true" || fetched.auto_sync_enabled === 1 || fetched.auto_sync_enabled === "1",
                     auto_sync_frequency: fetched.auto_sync_frequency || 'daily',
                     auto_sync_day: fetched.auto_sync_day?.toString() || '1',
-                    auto_sync_time: fetched.auto_sync_time || '02:00'
+                    auto_sync_time: fetched.auto_sync_time || '02:00',
+                    nexudus_email: fetched.nexudus_email || '',
+                    nexudus_password: fetched.nexudus_password || '',
+                    nexudus_product_id_a4bw: fetched.nexudus_product_id_a4bw || '',
+                    nexudus_product_id_a4color: fetched.nexudus_product_id_a4color || '',
+                    nexudus_product_id_a3bw: fetched.nexudus_product_id_a3bw || '',
+                    nexudus_product_id_a3color: fetched.nexudus_product_id_a3color || '',
+                    nexudus_product_id_sra3bw: fetched.nexudus_product_id_sra3bw || '',
+                    nexudus_product_id_sra3color: fetched.nexudus_product_id_sra3color || ''
                 };
                 setSettings(newSettings);
                 setOriginalSettings(newSettings);
@@ -107,19 +112,6 @@ export const SettingsPage = () => {
         const day = parseInt(settings.billing_cycle_day, 10);
         if (isNaN(day) || day < 1 || day > 28) {
             return "El día del ciclo de facturación debe estar entre 1 y 28.";
-        }
-        
-        const priceKeys = [
-            'price_a4_bw', 'price_a4_color', 
-            'price_a3_bw', 'price_a3_color', 
-            'price_a3_bw_no_paper', 'price_a3_color_no_paper'
-        ];
-        
-        for (const key of priceKeys) {
-            const val = parseFloat((settings as any)[key]);
-            if (isNaN(val) || val < 0) {
-                return "Todos los precios deben ser valores numéricos positivos.";
-            }
         }
         
         if (settings.auto_billing_time && !/^([01]\d|2[0-3]):([0-5]\d)$/.test(settings.auto_billing_time)) {
@@ -218,17 +210,53 @@ export const SettingsPage = () => {
                         {/* Divider */}
                         <div className="h-px w-full bg-slate-100 dark:bg-white/5" />
 
-                        {/* Standard Pricing Section */}
+                        {/* Nexudus Credentials Section */}
                         <div className="space-y-6">
                             <div className="flex items-center gap-3">
-                                <div className="p-2 rounded-xl bg-slate-100 dark:bg-white/5 text-slate-400">
-                                    <Coins size={18} />
+                                <div className="p-2 rounded-xl bg-indigo-500/10 text-indigo-500">
+                                    <ShieldCheck size={18} />
                                 </div>
-                                <h3 className="text-lg font-black text-slate-800 dark:text-white tracking-tight">Tarifas de Impresión Estándar</h3>
+                                <h3 className="text-lg font-black text-slate-800 dark:text-white tracking-tight">Credenciales de Nexudus</h3>
+                            </div>
+                            
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-white/20 ml-2">Email Administrador</label>
+                                    <input 
+                                        type="email"
+                                        value={settings.nexudus_email}
+                                        onChange={(e) => setSettings({...settings, nexudus_email: e.target.value})}
+                                        placeholder="admin@tu-coworking.com"
+                                        className="w-full h-16 px-6 rounded-2xl bg-slate-50 dark:bg-black/20 border border-slate-100 dark:border-white/5 text-slate-700 dark:text-white font-bold focus:ring-2 focus:ring-indigo-500/20 outline-none"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-white/20 ml-2">Contraseña</label>
+                                    <input 
+                                        type="password"
+                                        value={settings.nexudus_password}
+                                        onChange={(e) => setSettings({...settings, nexudus_password: e.target.value})}
+                                        placeholder="********"
+                                        className="w-full h-16 px-6 rounded-2xl bg-slate-50 dark:bg-black/20 border border-slate-100 dark:border-white/5 text-slate-700 dark:text-white font-bold focus:ring-2 focus:ring-indigo-500/20 outline-none"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Divider */}
+                        <div className="h-px w-full bg-slate-100 dark:bg-white/5" />
+
+                        {/* Nexudus Product Mapping Section */}
+                        <div className="space-y-6">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 rounded-xl bg-orange-500/10 text-orange-500">
+                                    <CheckCircle2 size={18} />
+                                </div>
+                                <h3 className="text-lg font-black text-slate-800 dark:text-white tracking-tight">Mapeo de Productos Nexudus</h3>
                             </div>
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-8">
-                                {/* A4 Group */}
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-x-8 gap-y-10">
+                                {/* A4 Group Mapping */}
                                 <div className="space-y-4">
                                     <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-white/20">
                                         Formato A4 (con papel)
@@ -237,27 +265,27 @@ export const SettingsPage = () => {
                                         <div className="relative">
                                             <input 
                                                 type="text"
-                                                value={settings.price_a4_bw}
-                                                onChange={(e) => setSettings({...settings, price_a4_bw: e.target.value})}
-                                                className="w-full h-14 px-6 rounded-2xl bg-slate-50 dark:bg-black/20 border border-slate-100 dark:border-white/5 text-slate-700 dark:text-white font-bold focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all outline-none"
+                                                value={settings.nexudus_product_id_a4bw}
+                                                onChange={(e) => setSettings({...settings, nexudus_product_id_a4bw: e.target.value})}
+                                                placeholder="ID Producto"
+                                                className="w-full h-14 px-6 rounded-2xl bg-emerald-500/5 dark:bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-bold focus:ring-2 focus:ring-emerald-500/20 outline-none"
                                             />
-                                            <span className="absolute left-6 -top-2 px-2 bg-white dark:bg-[#1a1818] text-[8px] font-black uppercase tracking-widest text-slate-400">Precio B/N</span>
-                                            <span className="absolute right-6 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-300 dark:text-white/10">€ / ud</span>
+                                            <span className="absolute left-6 -top-2 px-2 bg-white dark:bg-[#1a1818] text-[8px] font-black uppercase tracking-widest text-emerald-500">ID B/N</span>
                                         </div>
                                         <div className="relative">
                                             <input 
                                                 type="text"
-                                                value={settings.price_a4_color}
-                                                onChange={(e) => setSettings({...settings, price_a4_color: e.target.value})}
-                                                className="w-full h-14 px-6 rounded-2xl bg-slate-50 dark:bg-black/20 border border-slate-100 dark:border-white/5 text-slate-700 dark:text-white font-bold focus:ring-2 focus:ring-[#f15a24]/20 focus:border-[#f15a24] transition-all outline-none"
+                                                value={settings.nexudus_product_id_a4color}
+                                                onChange={(e) => setSettings({...settings, nexudus_product_id_a4color: e.target.value})}
+                                                placeholder="ID Producto"
+                                                className="w-full h-14 px-6 rounded-2xl bg-indigo-500/5 dark:bg-indigo-500/10 border border-indigo-500/20 text-indigo-600 dark:text-indigo-400 font-bold focus:ring-2 focus:ring-indigo-500/20 outline-none"
                                             />
-                                            <span className="absolute left-6 -top-2 px-2 bg-white dark:bg-[#1a1818] text-[8px] font-black uppercase tracking-widest text-[#f15a24]">Precio Color</span>
-                                            <span className="absolute right-6 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-300 dark:text-white/10">€ / ud</span>
+                                            <span className="absolute left-6 -top-2 px-2 bg-white dark:bg-[#1a1818] text-[8px] font-black uppercase tracking-widest text-indigo-500">ID Color</span>
                                         </div>
                                     </div>
                                 </div>
 
-                                {/* A3 Group */}
+                                {/* A3 Group Mapping */}
                                 <div className="space-y-4">
                                     <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-white/20">
                                         Formato A3 (con papel)
@@ -266,67 +294,57 @@ export const SettingsPage = () => {
                                         <div className="relative">
                                             <input 
                                                 type="text"
-                                                value={settings.price_a3_bw}
-                                                onChange={(e) => setSettings({...settings, price_a3_bw: e.target.value})}
-                                                className="w-full h-14 px-6 rounded-2xl bg-slate-50 dark:bg-black/20 border border-slate-100 dark:border-white/5 text-slate-700 dark:text-white font-bold focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all outline-none"
+                                                value={settings.nexudus_product_id_a3bw}
+                                                onChange={(e) => setSettings({...settings, nexudus_product_id_a3bw: e.target.value})}
+                                                placeholder="ID Producto"
+                                                className="w-full h-14 px-6 rounded-2xl bg-emerald-500/5 dark:bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-bold focus:ring-2 focus:ring-emerald-500/20 outline-none"
                                             />
-                                            <span className="absolute left-6 -top-2 px-2 bg-white dark:bg-[#1a1818] text-[8px] font-black uppercase tracking-widest text-slate-400">Precio B/N</span>
-                                            <span className="absolute right-6 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-300 dark:text-white/10">€ / ud</span>
+                                            <span className="absolute left-6 -top-2 px-2 bg-white dark:bg-[#1a1818] text-[8px] font-black uppercase tracking-widest text-emerald-500">ID B/N</span>
                                         </div>
                                         <div className="relative">
                                             <input 
                                                 type="text"
-                                                value={settings.price_a3_color}
-                                                onChange={(e) => setSettings({...settings, price_a3_color: e.target.value})}
-                                                className="w-full h-14 px-6 rounded-2xl bg-slate-50 dark:bg-black/20 border border-slate-100 dark:border-white/5 text-slate-700 dark:text-white font-bold focus:ring-2 focus:ring-[#f15a24]/20 focus:border-[#f15a24] transition-all outline-none"
+                                                value={settings.nexudus_product_id_a3color}
+                                                onChange={(e) => setSettings({...settings, nexudus_product_id_a3color: e.target.value})}
+                                                placeholder="ID Producto"
+                                                className="w-full h-14 px-6 rounded-2xl bg-indigo-500/5 dark:bg-indigo-500/10 border border-indigo-500/20 text-indigo-600 dark:text-indigo-400 font-bold focus:ring-2 focus:ring-indigo-500/20 outline-none"
                                             />
-                                            <span className="absolute left-6 -top-2 px-2 bg-white dark:bg-[#1a1818] text-[8px] font-black uppercase tracking-widest text-[#f15a24]">Precio Color</span>
-                                            <span className="absolute right-6 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-300 dark:text-white/10">€ / ud</span>
+                                            <span className="absolute left-6 -top-2 px-2 bg-white dark:bg-[#1a1818] text-[8px] font-black uppercase tracking-widest text-indigo-500">ID Color</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* A3/SRA3 (Sin Papel) Mapping */}
+                                <div className="space-y-4">
+                                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-white/20">
+                                        F. A3 / SRA3 (Sin papel)
+                                    </p>
+                                    <div className="space-y-4">
+                                        <div className="relative">
+                                            <input 
+                                                type="text"
+                                                value={settings.nexudus_product_id_sra3bw}
+                                                onChange={(e) => setSettings({...settings, nexudus_product_id_sra3bw: e.target.value})}
+                                                placeholder="ID Producto"
+                                                className="w-full h-14 px-6 rounded-2xl bg-emerald-500/5 dark:bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-bold focus:ring-2 focus:ring-emerald-500/20 outline-none"
+                                            />
+                                            <span className="absolute left-6 -top-2 px-2 bg-white dark:bg-[#1a1818] text-[8px] font-black uppercase tracking-widest text-emerald-500">ID B/N</span>
+                                        </div>
+                                        <div className="relative">
+                                            <input 
+                                                type="text"
+                                                value={settings.nexudus_product_id_sra3color}
+                                                onChange={(e) => setSettings({...settings, nexudus_product_id_sra3color: e.target.value})}
+                                                placeholder="ID Producto"
+                                                className="w-full h-14 px-6 rounded-2xl bg-indigo-500/5 dark:bg-indigo-500/10 border border-indigo-500/20 text-indigo-600 dark:text-indigo-400 font-bold focus:ring-2 focus:ring-indigo-500/20 outline-none"
+                                            />
+                                            <span className="absolute left-6 -top-2 px-2 bg-white dark:bg-[#1a1818] text-[8px] font-black uppercase tracking-widest text-indigo-500">ID Color</span>
                                         </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
 
-                        {/* Divider */}
-                        <div className="h-px w-full bg-slate-100 dark:bg-white/5" />
-
-                        {/* Special Prices Section */}
-                        <div className="space-y-6">
-                            <div className="flex items-center gap-3">
-                                <div className="p-2 rounded-xl bg-slate-100 dark:bg-white/5 text-slate-400">
-                                    <ShieldCheck size={18} />
-                                </div>
-                                <h3 className="text-lg font-black text-slate-800 dark:text-white tracking-tight">Tarifas Especiales A3 (Sin Papel)</h3>
-                            </div>
-
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div className="space-y-2">
-                                    <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-white/20 ml-2">Precio A3 B/N (sin papel)</label>
-                                    <div className="relative">
-                                        <input 
-                                            type="text"
-                                            value={settings.price_a3_bw_no_paper}
-                                            onChange={(e) => setSettings({...settings, price_a3_bw_no_paper: e.target.value})}
-                                            className="w-full h-16 px-6 rounded-2xl bg-slate-50 dark:bg-black/20 border border-slate-100 dark:border-white/5 text-slate-700 dark:text-white font-bold focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all outline-none"
-                                        />
-                                        <span className="absolute right-6 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-300 dark:text-white/10">€ / ud</span>
-                                    </div>
-                                </div>
-                                <div className="space-y-2">
-                                    <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-white/20 ml-2">Precio A3 Color (sin papel)</label>
-                                    <div className="relative">
-                                        <input 
-                                            type="text"
-                                            value={settings.price_a3_color_no_paper}
-                                            onChange={(e) => setSettings({...settings, price_a3_color_no_paper: e.target.value})}
-                                            className="w-full h-16 px-6 rounded-2xl bg-slate-50 dark:bg-black/20 border border-slate-100 dark:border-white/5 text-slate-700 dark:text-white font-bold focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all outline-none"
-                                        />
-                                        <span className="absolute right-6 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-300 dark:text-white/10">€ / ud</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
 
                         {/* Divider */}
                         <div className="h-px w-full bg-slate-100 dark:bg-white/5" />

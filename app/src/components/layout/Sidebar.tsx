@@ -10,14 +10,12 @@ import {
   ChevronLeft, 
   ChevronRight,
   LayoutDashboard,
-  Receipt
 } from "lucide-react";
 
 const NAV_ITEMS = [
   { path: "/dashboard", label: "Inicio", icon: LayoutDashboard },
   { path: "/users", label: "Usuarios", icon: Users, adminOnly: true },
   { path: "/reports", label: "Reporte Mensual", icon: BarChart, adminOnly: true },
-  { path: "/invoices", label: "Facturas", icon: Receipt, adminOnly: true },
   { path: "/settings", label: "Ajustes", icon: Settings, adminOnly: true },
 ];
 

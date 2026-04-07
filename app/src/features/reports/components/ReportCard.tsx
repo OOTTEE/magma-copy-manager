@@ -15,8 +15,8 @@ interface ReportData {
 interface ReportCardProps {
   item: ReportData;
   onSimulate?: (userId: string) => void;
-  onViewInvoice?: (invoiceId: string) => void;
-  invoiceStatus?: { id: string } | null;
+  onViewSync?: (syncId: string) => void;
+  syncStatus?: { synced: boolean, id?: string } | null;
 }
 
 /**
@@ -28,8 +28,8 @@ interface ReportCardProps {
 export const ReportCard: React.FC<ReportCardProps> = ({ 
   item, 
   onSimulate, 
-  onViewInvoice, 
-  invoiceStatus 
+  onViewSync, 
+  syncStatus 
 }) => {
   const colorTotal = item.a4Color + item.a3Color;
   const colorPercentage = item.total > 0 ? (colorTotal / item.total) * 100 : 0;
@@ -88,12 +88,13 @@ export const ReportCard: React.FC<ReportCardProps> = ({
             <span className="text-2xl font-black text-indigo-500 tracking-tighter">{item.total}</span>
         </div>
         
-        {invoiceStatus ? (
+        {syncStatus?.synced ? (
           <button 
-            onClick={() => onViewInvoice?.(invoiceStatus.id)}
-            className="px-6 py-3 rounded-2xl bg-emerald-500 text-white font-bold text-xs shadow-lg shadow-emerald-500/20 hover:scale-105 active:scale-95 transition-all"
+            onClick={() => syncStatus.id && onViewSync?.(syncStatus.id)}
+            className="px-6 py-3 rounded-2xl bg-emerald-500 text-white font-bold text-xs shadow-lg shadow-emerald-500/20 border border-emerald-400/20 flex items-center gap-2 hover:scale-105 active:scale-95 transition-all"
           >
-            Ver Factura
+            <div className="w-2 h-2 rounded-full bg-white animate-pulse" />
+            Sincronizado
           </button>
         ) : (
           <button 
@@ -104,9 +105,9 @@ export const ReportCard: React.FC<ReportCardProps> = ({
                 ? "bg-slate-200 text-slate-400 dark:bg-white/5 dark:text-white/20 cursor-not-allowed opacity-50 grayscale"
                 : "bg-indigo-500 text-white shadow-indigo-500/20 hover:scale-105 active:scale-95"
             }`}
-            title={item.total === 0 ? "No hay consumos registrados para simular" : "Simular Factura"}
+            title={item.total === 0 ? "No hay consumos registrados para sincronizar" : "Sincronizar con Nexudus"}
           >
-            Simular
+            Sincronizar
           </button>
         )}
       </div>

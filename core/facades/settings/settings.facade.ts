@@ -1,6 +1,8 @@
 import { settingsService } from '../../services/settings/settings.service';
 import { autoBillingService } from '../../services/automation/auto-billing.service';
 
+import { logger } from '../../lib/logger';
+
 /**
  * Facade for Settings domain.
  * Handles system-wide configuration orchestration and business rule validation.
@@ -59,7 +61,7 @@ export const settingsFacade = {
         // Business Rule: If any auto-billing setting changed, re-initialize the scheduler
         const automationKeys = ['auto_billing_enabled', 'auto_billing_day', 'auto_billing_time'];
         if (Object.keys(updates).some(k => automationKeys.includes(k))) {
-            console.log('[AutoBilling] Settings changed, re-initializing scheduler...');
+            logger.info('AutoBilling: Settings changed, re-initializing scheduler...');
             await autoBillingService.init();
         }
     }

@@ -9,7 +9,7 @@ export const YTDExpenseChart = ({ data }: ChartProps) => {
     // Transforming data to properly show currencies
     const formattedData = data.map(d => ({
         ...d,
-        displayTotal: `$${d.total.toFixed(2)}`
+        displayTotal: `${d.total} pág.`
     }));
 
     return (
@@ -19,8 +19,8 @@ export const YTDExpenseChart = ({ data }: ChartProps) => {
                     <BarChart3 size={18} />
                 </div>
                 <div>
-                    <h2 className="text-lg font-black text-slate-800 dark:text-white tracking-tight">Evolución de Gasto - {new Date().getFullYear()}</h2>
-                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-white/20 mt-1">Desglose Mensual</p>
+                    <h2 className="text-lg font-black text-slate-800 dark:text-white tracking-tight">Evolución de Impresión - {new Date().getFullYear()}</h2>
+                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-white/20 mt-1">Páginas por Mes</p>
                 </div>
             </div>
             
@@ -39,7 +39,6 @@ export const YTDExpenseChart = ({ data }: ChartProps) => {
                             axisLine={false} 
                             tickLine={false} 
                             tick={{ fill: '#94a3b8', fontSize: 12, fontWeight: 700 }}
-                            tickFormatter={(value) => `$${value}`}
                         />
                         <Tooltip 
                             cursor={{ fill: 'rgba(99, 102, 241, 0.05)' }}
@@ -52,7 +51,7 @@ export const YTDExpenseChart = ({ data }: ChartProps) => {
                                 color: '#fff'
                             }}
                             itemStyle={{ color: '#fff', fontWeight: '900', fontSize: '1.25rem' }}
-                            formatter={(value: any) => [`$${Number(value).toFixed(2)}`, 'Gasto']}
+                            formatter={(value: any) => [`${value}`, 'Páginas']}
                             labelStyle={{ color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: '0.1em', fontSize: '10px', fontWeight: '900', marginBottom: '8px' }}
                         />
                         <defs>

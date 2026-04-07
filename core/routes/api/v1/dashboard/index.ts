@@ -1,6 +1,6 @@
 import { FastifyPluginAsync } from 'fastify';
 import { errorSchema } from '../../../../routes/schemas';
-import { customerDashboardFacade } from '../../../../services/dashboard/customer-dashboard.facade';
+import { dashboardFacade } from '../../../../facades/dashboard/dashboard.facade';
 
 export const routes: FastifyPluginAsync = async (app) => {
     // Schema
@@ -47,7 +47,7 @@ export const routes: FastifyPluginAsync = async (app) => {
         try {
             const user = request.user as { id: string };
             const userId = user.id;
-            const summary = await customerDashboardFacade.getDashboardSummary(userId);
+            const summary = await dashboardFacade.getDashboardSummary(userId);
             return reply.send(summary);
         } catch (error) {
             request.log.error(error);

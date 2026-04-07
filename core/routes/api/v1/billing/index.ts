@@ -65,8 +65,8 @@ const billingRoute: FastifyPluginAsync = async (fastify) => {
   });
 
   /**
-   * GET /api/v1/billing/invoices
-   * List all persisted invoices with pagination and filtering (Admin only)
+   * GET /api/v1/billing/sync
+   * List all synchronization events with pagination and filtering (Admin only)
    */
   fastify.get<{
     Querystring: {
@@ -75,11 +75,11 @@ const billingRoute: FastifyPluginAsync = async (fastify) => {
       userIds?: string | string[];
       months?: string | string[];
     }
-  }>('/invoices', {
+  }>('/sync', {
     onRequest: [fastify.authenticate],
     schema: {
       tags: ['Billing'],
-      description: 'List all persisted invoices with pagination and filtering. Admin only.',
+      description: 'List all synchronization events with pagination and filtering. Admin only.',
       querystring: {
         type: 'object',
         properties: {
@@ -111,9 +111,11 @@ const billingRoute: FastifyPluginAsync = async (fastify) => {
                   id: { type: 'string' },
                   userId: { type: 'string' },
                   username: { type: 'string' },
-                  from: { type: 'string' },
-                  to: { type: 'string' },
-                  total: { type: 'number' }
+                  month: { type: 'string' },
+                  type: { type: 'string' },
+                  quantity: { type: 'integer' },
+                  nexudusSaleId: { type: 'string' },
+                  createdOn: { type: 'string' }
                 }
               }
             },
@@ -131,7 +133,7 @@ const billingRoute: FastifyPluginAsync = async (fastify) => {
         return Array.isArray(val) ? val : [val];
       };
 
-      const result = await billingFacade.listInvoices(user, {
+      const result = await billingFacade.listSyncHistory(user, {
         page: Number(page) || 1,
         limit: Number(limit) || 20,
         userIds: toArray(userIds),
@@ -142,11 +144,11 @@ const billingRoute: FastifyPluginAsync = async (fastify) => {
   });
 
   /**
-   * Status check: GET /billing/invoices/users/:id/status
+   * Status check: GET /billing/sync/users/:id/status
    */
-  fastify.get('/invoices/users/:id/status', {
+  fastify.get('/sync/users/:id/status', {
     schema: {
-      description: 'Checks if an invoice exists for the current period for a specific user.',
+      description: 'Checks if consumption has been synced for a user in the current month.',
       tags: ['Billing'],
       params: {
         type: 'object',
@@ -156,18 +158,18 @@ const billingRoute: FastifyPluginAsync = async (fastify) => {
     preValidation: [fastify.authenticate]
   }, async (request, reply) => {
     const { id } = request.params as { id: string };
-    const invoice = await billingFacade.getInvoiceStatus(id);
+    const result = await billingFacade.getSyncStatus(id);
     
-    if (!invoice) return reply.code(204).send();
-    return reply.send(invoice);
+    if (!result.synced) return reply.code(204).send();
+    return reply.send(result);
   });
 
   /**
-   * Persist Invoice: POST /billing/invoices
+   * Sync User: POST /billing/sync
    */
-  fastify.post('/invoices', {
+  fastify.post('/sync', {
     schema: {
-      description: 'Persists and generates a real invoice for a user.',
+      description: 'Synchronizes current month consumption for a user to Nexudus.',
       tags: ['Billing'],
       body: {
         type: 'object',
@@ -181,20 +183,20 @@ const billingRoute: FastifyPluginAsync = async (fastify) => {
     const { userId } = request.body as { userId: string };
 
     try {
-      const result = await billingFacade.persistInvoice(requestingUser, userId);
+      const result = await billingFacade.syncUserConsumption(requestingUser, userId);
       return reply.code(201).send(result);
     } catch (err: any) {
       if (err.statusCode) return reply.code(err.statusCode).send({ message: err.message });
-      return reply.code(500).send({ message: err.message || 'Internal server error during persistence.' });
+      return reply.code(500).send({ message: err.message || 'Internal server error during sync.' });
     }
   });
 
   /**
-   * Delete Invoice: DELETE /billing/invoices/:id
+   * Get Sync Detail: GET /billing/sync/:id
    */
-  fastify.delete('/invoices/:id', {
+  fastify.get('/sync/:id', {
     schema: {
-      description: 'Deletes an invoice and releases copies.',
+      description: 'Returns detail of a specific sync event.',
       tags: ['Billing'],
       params: {
         type: 'object',
@@ -208,38 +210,56 @@ const billingRoute: FastifyPluginAsync = async (fastify) => {
     const { id } = request.params as { id: string };
 
     try {
-      await billingFacade.deleteInvoice(requestingUser, id);
-      return reply.code(204).send();
+      const result = await billingFacade.getSyncDetails(requestingUser, id);
+      return reply.send(result);
     } catch (err: any) {
       if (err.statusCode) return reply.code(err.statusCode).send({ message: err.message });
-      return reply.code(500).send({ message: err.message || 'Internal server error during deletion.' });
+      return reply.code(500).send({ message: err.message || 'Internal server error fetching sync details.' });
     }
   });
 
   /**
-   * Get Invoice Detail: GET /billing/invoices/:id
+   * Nexudus Sync: POST /sync/nexudus
    */
-  fastify.get('/invoices/:id', {
+  fastify.post('/sync/nexudus', {
     schema: {
-      description: 'Returns detail of a specific invoice.',
+      description: 'Synchronizes monthly consumption with Nexudus. Admin only.',
       tags: ['Billing'],
-      params: {
-        type: 'object',
-        properties: { id: { type: 'string' } },
-        required: ['id']
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            month: { type: 'string' },
+            results: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  userId: { type: 'string' },
+                  username: { type: 'string' },
+                  salesCreated: { type: 'integer' },
+                  skipped: { type: 'integer' },
+                  errors: { type: 'integer' }
+                }
+              }
+            }
+          }
+        },
+        401: { type: 'object', properties: { message: { type: 'string' } } },
+        403: { type: 'object', properties: { message: { type: 'string' } } },
+        500: { type: 'object', properties: { message: { type: 'string' } } }
       }
     },
     preValidation: [fastify.authenticate]
   }, async (request, reply) => {
     const requestingUser = request.user as { id: string; role: string };
-    const { id } = request.params as { id: string };
 
     try {
-      const invoice = await billingFacade.getInvoice(requestingUser, id);
-      return reply.send(invoice);
+      const result = await billingFacade.syncWithNexudus(requestingUser);
+      return reply.send(result);
     } catch (err: any) {
       if (err.statusCode) return reply.code(err.statusCode).send({ message: err.message });
-      return reply.code(500).send({ message: err.message || 'Internal server error fetching invoice.' });
+      return reply.code(500).send({ message: err.message || 'Internal server error during Nexudus sync.' });
     }
   });
 };

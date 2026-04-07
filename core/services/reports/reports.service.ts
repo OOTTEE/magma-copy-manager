@@ -1,6 +1,6 @@
 import { db } from '../../db';
 import { users, copies } from '../../db/schema';
-import { eq, and, sql, gte, lte } from 'drizzle-orm';
+import { eq, and, sql, gte, lte, isNull } from 'drizzle-orm';
 import { settingsService } from '../settings/settings.service';
 
 /**
@@ -44,6 +44,7 @@ export const reportsService = {
         id: users.id,
         username: users.username,
         printUser: users.printUser,
+        nexudusUser: users.nexudusUser,
         a4Color: sql<number>`SUM(${copies.a4Color})`,
         a4Bw: sql<number>`SUM(${copies.a4Bw})`,
         a3Color: sql<number>`SUM(${copies.a3Color})`,
@@ -55,9 +56,9 @@ export const reportsService = {
         eq(users.id, copies.userId),
         gte(copies.datetime, fromStr), 
         lte(copies.datetime, toStr),
-        sql`${copies.invoiceId} IS NULL`
+        isNull(copies.nexudusSaleId)
       ))
-      .groupBy(users.id, users.a3NoPaperMode);
+      .groupBy(users.id, users.a3NoPaperMode, users.nexudusUser);
 
     return {
       period: { from: fromStr, to: toStr },
@@ -76,6 +77,7 @@ export const reportsService = {
         id: users.id,
         username: users.username,
         printUser: users.printUser,
+        nexudusUser: users.nexudusUser,
         a4Color: sql<number>`SUM(${copies.a4Color})`,
         a4Bw: sql<number>`SUM(${copies.a4Bw})`,
         a3Color: sql<number>`SUM(${copies.a3Color})`,
@@ -87,10 +89,10 @@ export const reportsService = {
         eq(users.id, copies.userId),
         gte(copies.datetime, fromStr), 
         lte(copies.datetime, toStr),
-        sql`${copies.invoiceId} IS NULL`
+        isNull(copies.nexudusSaleId)
       ))
       .where(eq(users.id, userId))
-      .groupBy(users.id, users.a3NoPaperMode)
+      .groupBy(users.id, users.a3NoPaperMode, users.nexudusUser)
       .get();
 
     if (!result) return null;

@@ -1,13 +1,15 @@
 import { create } from 'zustand';
 import { api } from '../services/api';
 
-interface Invoice {
+interface SyncRecord {
   id: string;
   userId: string;
   username: string;
-  from: string;
-  to: string;
-  total: number;
+  month: string;
+  type: string;
+  quantity: number;
+  nexudusSaleId: string;
+  createdOn: string;
 }
 
 interface Pagination {
@@ -22,8 +24,8 @@ interface Filters {
   months?: string[];
 }
 
-interface InvoiceState {
-  invoices: Invoice[];
+interface SyncState {
+  records: SyncRecord[];
   pagination: Pagination;
   filters: Filters;
   isLoading: boolean;
@@ -31,20 +33,19 @@ interface InvoiceState {
   error: string | null;
   
   // Actions
-  fetchInvoices: (force?: boolean) => Promise<void>;
+  fetchRecords: (force?: boolean) => Promise<void>;
   setPage: (page: number) => void;
   setFilters: (filters: Filters) => void;
-  deleteInvoice: (id: string) => Promise<void>;
   reset: () => void;
 }
 
 /**
- * InvoiceStore
+ * SyncStore
  * 
- * Manages persisted invoices list with pagination and filtering support.
+ * Manages synchronization history with Nexudus.
  */
-export const useInvoiceStore = create<InvoiceState>((set, get) => ({
-  invoices: [],
+export const useSyncStore = create<SyncState>((set, get) => ({
+  records: [],
   pagination: {
     total_records: 0,
     current_page: 1,
@@ -59,10 +60,10 @@ export const useInvoiceStore = create<InvoiceState>((set, get) => ({
   isRefreshing: false,
   error: null,
 
-  fetchInvoices: async (force = false) => {
+  fetchRecords: async (force = false) => {
     if (get().isLoading || get().isRefreshing) return;
 
-    const hasData = get().invoices.length > 0;
+    const hasData = get().records.length > 0;
     
     if (hasData && !force) {
       set({ isRefreshing: true, error: null });
@@ -73,7 +74,7 @@ export const useInvoiceStore = create<InvoiceState>((set, get) => ({
     try {
       const { filters, pagination } = get();
       
-      const { data, error: apiError } = await api.GET("/api/v1/billing/invoices", {
+      const { data, error: apiError } = await api.GET("/api/v1/billing/sync" as any, {
         params: {
           query: {
             page: pagination.current_page,
@@ -88,12 +89,12 @@ export const useInvoiceStore = create<InvoiceState>((set, get) => ({
       
       const response = data as any;
       set({ 
-        invoices: response.data || [],
+        records: response.data || [],
         pagination: response.pagination || get().pagination
       });
     } catch (err: any) {
-      console.error("[InvoiceStore] Error fetching invoices:", err);
-      set({ error: err.message || "Error al cargar el listado de facturas." });
+      console.error("[SyncStore] Error fetching sync records:", err);
+      set({ error: err.message || "Error al cargar el historial de sincronización." });
     } finally {
       set({ isLoading: false, isRefreshing: false });
     }
@@ -103,7 +104,7 @@ export const useInvoiceStore = create<InvoiceState>((set, get) => ({
     set(state => ({
       pagination: { ...state.pagination, current_page: page }
     }));
-    get().fetchInvoices(true);
+    get().fetchRecords(true);
   },
 
   setFilters: (filters: Filters) => {
@@ -111,26 +112,11 @@ export const useInvoiceStore = create<InvoiceState>((set, get) => ({
       filters,
       pagination: { ...state.pagination, current_page: 1 }
     }));
-    get().fetchInvoices(true);
-  },
-
-  deleteInvoice: async (id: string) => {
-    try {
-      const { error: apiError } = await api.DELETE("/api/v1/billing/invoices/{id}", {
-        params: { path: { id } }
-      });
-      if (apiError) throw apiError;
-      
-      // Refresh list after delete to maintain pagination consistency
-      get().fetchInvoices(true);
-    } catch (err: any) {
-      console.error("[InvoiceStore] Error deleting invoice:", err);
-      throw err;
-    }
+    get().fetchRecords(true);
   },
 
   reset: () => set({ 
-    invoices: [], 
+    records: [], 
     pagination: { total_records: 0, current_page: 1, total_pages: 1, limit: 20 },
     filters: { userIds: [], months: [] },
     isLoading: false, 

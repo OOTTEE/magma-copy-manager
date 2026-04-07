@@ -28,7 +28,9 @@ Una vez que el comportamiento anómalo se ha comprobado y analizado, debes clasi
 
 Nunca resuelvas tú el problema de manera aislada (a menos que sea trivialmente pequeño). Debes preparar un reporte explícito y dictar quién lo va a arreglar:
 
-- Si es un **BUG TÉCNICO**: Proporciona el Root Cause y delégalo oficialmente invocando al **`@[/tech-lead]`** para que él proporcione la solución algorítmica/técnica en los repositorios de Fastify o React.
+- Si es un **BUG TÉCNICO**: Proporciona el Root Cause y delégalo oficialmente:
+  - Invocando al **`@[/nexudus-expert]`** si el error ocurre en la capa de comunicación, mapeo o tipos de la API de Nexudus (ej: `generated-api.ts`, `nexudus.service.ts`).
+  - Invocando al **`@[/tech-lead]`** para el resto de problemas algorítmicos o técnicos generales en los repositorios de Fastify o React.
 - Si es un **BUG DE NEGOCIO o PRODUCTO**: Explica por qué falla la lógica y delégalo al **`@[/feature-architect]`** (si es estructural o funcional) o al **`@[/product-designer]`** / **`@[/ux-designer]`** (si es un fallo o flujo visual) para que ajusten el producto correctamente bajo los estándares de negocio.
 
 ## 🔑 Contexto Activo (Credenciales de Pruebas)

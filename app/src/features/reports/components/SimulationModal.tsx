@@ -14,8 +14,6 @@ import { ConfirmationModal } from '../../../components/ConfirmationModal';
 interface SimulationLine {
   concept: string;
   quantity: number;
-  unitPrice: number;
-  total: number;
 }
 
 interface SimulationData {
@@ -23,14 +21,13 @@ interface SimulationData {
   username: string;
   period: { from: string; to: string };
   lines: SimulationLine[];
-  total: number;
 }
 
 interface SimulationModalProps {
   isOpen: boolean;
   onClose: () => void;
   data: SimulationData | null;
-  onPersist?: (userId: string) => void;
+  onSync?: (userId: string) => Promise<void>;
 }
 
 /**
@@ -43,7 +40,7 @@ export const SimulationModal: React.FC<SimulationModalProps> = ({
   isOpen, 
   onClose, 
   data,
-  onPersist 
+  onSync 
 }) => {
   const [showConfirm, setShowConfirm] = React.useState(false);
   
@@ -53,10 +50,12 @@ export const SimulationModal: React.FC<SimulationModalProps> = ({
     setShowConfirm(true);
   };
 
-  const handleConfirmPersist = () => {
-    onPersist?.(data.userId);
-    setShowConfirm(false);
-    onClose();
+  const handleConfirmSync = async () => {
+    if (onSync && data) {
+      await onSync(data.userId);
+      setShowConfirm(false);
+      onClose();
+    }
   };
 
   const formatDate = (iso: string) => {
@@ -85,10 +84,10 @@ export const SimulationModal: React.FC<SimulationModalProps> = ({
               <Receipt size={24} strokeWidth={1.5} />
             </div>
             <div>
-              <h2 className="text-2xl font-black text-slate-800 dark:text-white tracking-tighter">Simulación de Factura</h2>
+              <h2 className="text-2xl font-black text-slate-800 dark:text-white tracking-tighter">Previsualización de Sincronización</h2>
               <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-emerald-500">
                 <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                Cálculo Efímero (No Persistente)
+                Cálculo de Consumo Local
               </div>
             </div>
           </div>
@@ -132,26 +131,22 @@ export const SimulationModal: React.FC<SimulationModalProps> = ({
               <table className="w-full text-left">
                 <thead>
                   <tr className="bg-slate-50/50 dark:bg-white/5 border-b border-slate-100 dark:border-white/5">
-                    <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400 text-xs">Concepto</th>
-                    <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400 text-center">Unidades</th>
-                    <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400 text-right">Precio Ud.</th>
-                    <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400 text-right">Subtotal</th>
+                    <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400 text-xs">Tipo de Copia</th>
+                    <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400 text-center">Cantidad</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50 dark:divide-white/5">
                   {data.lines.map((line, idx) => (
                     <tr key={idx} className="group hover:bg-slate-50 dark:hover:bg-white/5 transition-colors">
                       <td className="px-6 py-4 font-bold text-slate-700 dark:text-white/70 text-sm">{line.concept}</td>
-                      <td className="px-6 py-4 text-center font-mono text-xs text-slate-500 dark:text-slate-400">{line.quantity}</td>
-                      <td className="px-6 py-4 text-right font-mono text-xs text-slate-500 dark:text-slate-400">{line.unitPrice.toFixed(3)}€</td>
-                      <td className="px-6 py-4 text-right font-bold text-slate-800 dark:text-white/90 text-sm">{line.total.toFixed(2)}€</td>
+                      <td className="px-6 py-4 text-center font-mono text-sm text-indigo-500 font-black">{line.quantity}</td>
                     </tr>
                   ))}
                 </tbody>
                 <tfoot>
                   <tr className="bg-emerald-500/5 dark:bg-emerald-500/10">
-                    <td colSpan={3} className="px-6 py-6 text-right font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-400 text-xs">Total Simulación</td>
-                    <td className="px-6 py-6 text-right font-black text-emerald-600 dark:text-emerald-400 text-lg">{data.total.toFixed(2)}€</td>
+                    <td className="px-6 py-4 text-right font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-400 text-xs">Total Consumo Detectado</td>
+                    <td className="px-6 py-4 text-center font-black text-emerald-600 dark:text-emerald-400 text-lg">{data.lines.reduce((acc, curr) => acc + curr.quantity, 0)}</td>
                   </tr>
                 </tfoot>
               </table>
@@ -162,8 +157,7 @@ export const SimulationModal: React.FC<SimulationModalProps> = ({
           <div className="flex gap-4 p-5 rounded-2xl bg-amber-500/5 border border-amber-500/10 text-amber-600 dark:text-amber-400/80">
             <ShieldAlert size={20} className="shrink-0 mt-1" />
             <p className="text-xs font-medium leading-relaxed">
-              Esta simulación se basa en las lecturas de Magma hasta el momento actual. 
-              El total podría variar al cierre oficial del periodo si se realizan nuevas copias o se modifican las tarifas en ajustes.
+              Esta acción reportará el consumo total a Nexudus. Una vez sincronizado, los registros en Magma quedarán bloqueados para este periodo para garantizar la consistencia de facturación en Nexudus.
             </p>
           </div>
         </div>
@@ -180,9 +174,9 @@ export const SimulationModal: React.FC<SimulationModalProps> = ({
           
           <button 
             onClick={handleApply}
-            className="px-8 py-3 rounded-2xl bg-[#f15a24] text-white font-bold text-sm shadow-xl shadow-[#f15a24]/20 hover:scale-105 active:scale-95 transition-all"
+            className="px-8 py-3 rounded-2xl bg-emerald-500 text-white font-bold text-sm shadow-xl shadow-emerald-500/20 hover:scale-105 active:scale-95 transition-all"
           >
-            Emitir Factura
+            Sincronizar con Nexudus
           </button>
           
           <button 
@@ -198,10 +192,10 @@ export const SimulationModal: React.FC<SimulationModalProps> = ({
       <ConfirmationModal 
         isOpen={showConfirm}
         onClose={() => setShowConfirm(false)}
-        onConfirm={handleConfirmPersist}
-        title="¿Emitir Factura Real?"
-        message="Esta acción vinculará definitivamente las copias del periodo actual a una nueva factura. No podrás deshacerlo sin eliminar la factura manualmente."
-        confirmText="Sí, Emitir Factura"
+        onConfirm={handleConfirmSync}
+        title="¿Confirmar Sincronización?"
+        message="Se enviará el reporte de consumo a Nexudus. Esta operación es definitiva en Magma para mantener la trazabilidad con el sistema de facturación externo."
+        confirmText="Sí, Sincronizar"
         variant="primary"
       />
     </div>

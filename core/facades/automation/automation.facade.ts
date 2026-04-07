@@ -1,7 +1,7 @@
 import { autoBillingService } from '../../services/automation/auto-billing.service';
 import { autoSyncService } from '../../services/automation/auto-sync.service';
 import { db } from '../../db';
-import { autoBillingLogs } from '../../db/schema';
+import { syncLogs } from '../../db/schema';
 import { desc } from 'drizzle-orm';
 
 /**
@@ -51,15 +51,15 @@ export const automationFacade = {
 
         const logs = await db
             .select()
-            .from(autoBillingLogs)
-            .orderBy(desc(autoBillingLogs.datetime))
+            .from(syncLogs)
+            .orderBy(desc(syncLogs.datetime))
             .limit(limit)
             .offset(offset)
             .all();
 
         return logs.map(log => ({
             ...log,
-            details: JSON.parse(log.details)
+            details: log.details ? JSON.parse(log.details) : {}
         }));
     }
 };

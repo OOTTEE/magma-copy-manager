@@ -5,6 +5,8 @@ import { reportScrapperService } from '../../services/report/report.scrapper.ser
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 
+import { logger } from '../../lib/logger';
+
 /**
  * Facade for Copies domain.
  * Orchestrates business logic and handles resource-level authorization.
@@ -102,7 +104,7 @@ export const copiesFacade = {
                 
                 // NEW: Auto-create user if not found
                 if (!user) {
-                    console.log(`[Sync] User ${report.userName} not found. Auto-creating...`);
+                    logger.info({ printUser: report.userName }, 'Copies: User not found during sync. Auto-creating...');
                     user = await usersService.create({
                         username: report.userName,
                         password: 'changeme',

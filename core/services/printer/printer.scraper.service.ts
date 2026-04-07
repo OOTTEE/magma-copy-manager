@@ -2,16 +2,17 @@ import { firefox, Page } from 'playwright';
 import { serverConfig } from '../../config/server.config';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { logger } from '../../lib/logger';
 
 class PrinterScraperService {
 
     public async downloadMonthlyCopies(): Promise<string> {
         let browser;
         try {
-            console.log(`[Scraper] Launching Firefox browser...`);
+            logger.info('Scraper: Launching Firefox browser...');
             browser = await firefox.launch({
-                headless: false,
-                slowMo: 1000
+                headless: serverConfig.browserHeadless,
+                slowMo: serverConfig.browserSlowMo
             });
             const page = await browser.newPage();
 
@@ -42,11 +43,11 @@ class PrinterScraperService {
 
             return reportPath;
         } catch (error) {
-            console.error('[Scraper] Failed to download copies:', error);
+            logger.error(error, 'Scraper: Failed to download copies');
             throw error;
         } finally {
             if (browser) {
-                console.log(`[Scraper] Sequence finished. Keeping browser logic clean.`);
+                logger.info('Scraper: Sequence finished. Closing browser.');
                 await browser.close();
             }
         }
@@ -59,129 +60,136 @@ class PrinterScraperService {
             // Check top level
             let el = page.locator(selector).first();
             if (await el.count() > 0) {
-                console.log(`[Scraper] Found element matching '${selector}' in top level.`);
+                logger.info({ selector }, 'Scraper: Found element in top level');
                 return el;
             }
 
             // Check iframes
             for (const frame of page.frames()) {
-                el = frame.locator(selector).first();
-                if (await el.count() > 0) {
-                    console.log(`[Scraper] Found element matching '${selector}' in frame.`);
-                    return el;
+                try {
+                    if (frame.isDetached()) continue;
+                    el = frame.locator(selector).first();
+                    if (await el.count() > 0) {
+                        logger.info({ selector }, 'Scraper: Found element in frame');
+                        return el;
+                    }
+                } catch (e: any) {
+                    // Ignore frame detached errors during iteration
+                    if (e.message.includes('detached')) continue;
+                    throw e;
                 }
             }
-            console.log(`[Scraper] Element matching '${selector}' not found in any frame after ${Date.now() - startTime}ms.`);
+            logger.debug({ selector, elapsed: Date.now() - startTime }, 'Scraper: Element not found yet');
             await page.waitForTimeout(200);
         }
-        console.log(`[Scraper] Element matching '${selector}' not found in any frame after ${timeout}ms.`);
+        logger.error({ selector, timeout }, 'Scraper: Element timeout');
         throw new Error(`[Scraper] Element matching '${selector}' not found in any frame after ${timeout}ms.`);
     }
 
     private async step0_loadPrinterPage(page: Page) {
-        console.log('[Scraper] Step 0: Loading printer page');
+        logger.info('Scraper: Step 0 - Loading printer page');
         await page.goto(serverConfig.printerUrl);
     }
 
     private async step1_selectAdminRadio(page: Page) {
-        console.log('[Scraper] Step 1: Selecting Admin radio');
+        logger.info('Scraper: Step 1 - Selecting Admin radio');
         const adminRadio = await this.waitForElementInAnyFrame(page, 'input#Admin[type="radio"][value="Admin"]:visible');
         await adminRadio.click({ force: true });
     }
 
     private async step2_submitLoginForm(page: Page) {
-        console.log('[Scraper] Step 2: Clicking login button');
+        logger.info('Scraper: Step 2 - Clicking login button');
         const submitBtn = await this.waitForElementInAnyFrame(page, 'form#LP0LOG input[type="submit"]:visible');
         await submitBtn.click({ force: true });
     }
 
     private async step3_waitForReload(page: Page) {
-        console.log('[Scraper] Step 3: Waiting for reload (awaiting LP1LOG form)');
+        logger.info('Scraper: Step 3 - Waiting for reload (awaiting LP1LOG form)');
         await this.waitForElementInAnyFrame(page, 'form#LP1LOG:visible');
     }
 
     private async step4_insertPassword(page: Page, pass: string) {
-        console.log('[Scraper] Step 4: Inserting password');
+        logger.info('Scraper: Step 4 - Inserting password');
         const passInput = await this.waitForElementInAnyFrame(page, 'input#Admin_Pass:visible');
         await passInput.fill(pass);
     }
 
     private async step5_clickLogin(page: Page) {
-        console.log('[Scraper] Step 5: Clicking login button with password');
+        logger.info('Scraper: Step 5 - Clicking login button with password');
         const submitBtn = await this.waitForElementInAnyFrame(page, 'form#LP1LOG input#LP1_OK:visible');
         await submitBtn.click({ force: true });
     }
 
     private async step6_waitForReload(page: Page) {
-        console.log('[Scraper] Step 6: Waiting for post-login reload');
+        logger.info('Scraper: Step 6 - Waiting for post-login reload');
         await page.waitForLoadState('networkidle');
         await page.waitForTimeout(3000);
     }
 
     private async step7_clickCgiBtnOK(page: Page) {
-        console.log('[Scraper] Step 7: Clicking cgibtnOK');
+        logger.info('Scraper: Step 7 - Clicking cgibtnOK');
         const btn = await this.waitForElementInAnyFrame(page, 'input#cgibtnOK:visible');
         await btn.click({ force: true });
     }
 
     private async step8_waitForReload(page: Page) {
-        console.log('[Scraper] Step 8: Waiting for reload after cgibtnOK');
+        logger.info('Scraper: Step 8 - Waiting for reload after cgibtnOK');
         await page.waitForLoadState('networkidle');
         await page.waitForTimeout(3000);
     }
 
     private async step9_clickImportExport(page: Page) {
-        console.log('[Scraper] Step 9: Clicking importar/exportar');
+        logger.info('Scraper: Step 9 - Clicking importar/exportar');
         const tab = await this.waitForElementInAnyFrame(page, 'a#ImpExp:visible');
         await tab.click({ force: true });
     }
 
     private async step10_waitForDivMain(page: Page) {
-        console.log('[Scraper] Step 10: Waiting for div#AS_IMP to be visible');
+        logger.info('Scraper: Step 10 - Waiting for div#AS_IMP to be visible');
         await this.waitForElementInAnyFrame(page, 'div#AS_IMP[style="display: block;"]:visible');
     }
 
     private async step11_selectContadorRadio(page: Page) {
-        console.log('[Scraper] Step 11: Selecting contador radio');
+        logger.info('Scraper: Step 11 - Selecting contador radio');
         const radioOrLabel = await this.waitForElementInAnyFrame(page, 'input#R_SEL3:visible');
         await radioOrLabel.click({ force: true });
     }
 
     private async step12_clickExport(page: Page) {
-        console.log('[Scraper] Step 12: Submitting form');
+        logger.info('Scraper: Step 12 - Submitting form');
         const submitBtn = await this.waitForElementInAnyFrame(page, 'input#ExportButton:visible');
         await submitBtn.click({ force: true });
         await page.waitForTimeout(2000);
     }
 
     private async step13_waitForDivExport(page: Page) {
-        console.log('[Scraper] Step 13: Waiting for div#AS_CNLExport to be visible');
+        logger.info('Scraper: Step 13 - Waiting for div#AS_CNLExport to be visible');
         await this.waitForElementInAnyFrame(page, 'div#AS_CNLExport[style="display: block;"]:visible');
     }
 
     private async step14_selectContadorUsrsRadio(page: Page) {
-        console.log('[Scraper] Step 14: Selecting contador de usrs radio');
+        logger.info('Scraper: Step 14 - Selecting contador de usrs radio');
         const radioLabel = await this.waitForElementInAnyFrame(page, 'input#R_SEL_C2Export:visible');
         await radioLabel.click({ force: true });
     }
 
     private async step15_submitExport(page: Page) {
-        console.log('[Scraper] Step 15: Submit Export Form');
+        logger.info('Scraper: Step 15 - Submit Export Form');
         const form = await this.waitForElementInAnyFrame(page, 'form#AS_CNL_EXExport:visible', 5000);
         await form.evaluate((f: any) => f.submit());
         await page.waitForTimeout(2000);
     }
 
     private async step16_waitForDescargarButton(page: Page) {
-        console.log('[Scraper] Step 16: Waiting for Descargar button to load');
+        logger.info('Scraper: Step 16 - Waiting for Descargar button to load');
         await this.waitForElementInAnyFrame(page, 'input#btnEXE:visible', 15000);
     }
 
     private async step17_pressDescargarAndWait(page: Page): Promise<string> {
-        console.log('[Scraper] Step 17: Pressing Descargar and waiting to download');
+        logger.info('Scraper: Step 17 - Pressing Descargar and waiting to download');
         const descargarBtn = await this.waitForElementInAnyFrame(page, 'input#btnEXE:visible', 20000);
 
-        page.on('download', download => download.path().then(console.log));
+        page.on('download', download => download.path().then(p => logger.debug({ p }, 'Scraper: File downloaded to temporary path')));
         const downloadPromise = page.waitForEvent('download');
         await descargarBtn.click({ force: true });
 
@@ -190,31 +198,24 @@ class PrinterScraperService {
         if (!filePath) {
             throw new Error('[Scraper] Download failed, path is null');
         }
-        console.log(`[Scraper] Successfully downloaded CSV to: ${filePath}`);
+        logger.info({ filePath }, 'Scraper: Successfully downloaded CSV');
         return filePath;
     }
 
     private async step18_copyToTmp(downloadPath: string): Promise<string> {
-        console.log('[Scraper] Step 18: Copying download to /tmp/copies_report...');
+        logger.info('Scraper: Step 18 - Copying download to /tmp/copies_report...');
         const timestamp = new Date().getTime();
         const destPath = `/tmp/copies_report_${timestamp}.csv`;
 
         try {
             fs.copyFileSync(downloadPath, destPath);
-            console.log(`[Scraper] Successfully copied report to: ${destPath}`);
+            logger.info({ destPath }, 'Scraper: Successfully copied report');
             return destPath;
         } catch (err) {
-            console.error(`[Scraper] Failed to copy report:`, err);
+            logger.error(err, 'Scraper: Failed to copy report');
             return downloadPath;
         }
     }
-
-    // go atras downloadbtnOK
-
-    // close session ALogout_Button
-    // wait for Logout
-    // aceptar close seesion   value=Accept
-
 }
 
 export const printerScraperService = new PrinterScraperService();

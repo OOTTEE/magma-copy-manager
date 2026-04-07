@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { User, FileText, BarChart3, Zap, ChevronDown, ChevronUp, Eye, EyeOff } from 'lucide-react';
+import { User, FileText, BarChart3, Zap, ChevronDown, ChevronUp, Eye, EyeOff, RefreshCw } from 'lucide-react';
 
 interface ReportData {
   id: string;
@@ -17,8 +17,8 @@ interface ReportData {
 interface ReportTableProps {
   data: ReportData[];
   onSimulate?: (userId: string) => void;
-  onViewInvoice?: (invoiceId: string) => void;
-  invoiceStatuses?: Record<string, { id: string } | null>;
+  onViewSync?: (userId: string) => void;
+  syncStatuses?: Record<string, { synced: boolean, id?: string } | null>;
 }
 
 /**
@@ -30,8 +30,8 @@ interface ReportTableProps {
 export const ReportTable: React.FC<ReportTableProps> = ({ 
   data, 
   onSimulate, 
-  onViewInvoice, 
-  invoiceStatuses = {} 
+  onViewSync, 
+  syncStatuses = {} 
 }) => {
   const [showHidden, setShowHidden] = useState(false);
 
@@ -41,17 +41,17 @@ export const ReportTable: React.FC<ReportTableProps> = ({
       .filter(item => item.total > 0)
       .sort((a, b) => b.total - a.total);
 
-    // 2. Usuarios con factura pero 0 copias
-    const withInvoice = data.filter(item => item.total === 0 && invoiceStatuses[item.id]);
+    // 2. Usuarios con sync pero 0 copias
+    const withSync = data.filter(item => item.total === 0 && syncStatuses[item.id]?.synced);
 
-    // 3. Usuarios inactivos: 0 copias y sin factura
-    const inactive = data.filter(item => item.total === 0 && !invoiceStatuses[item.id]);
+    // 3. Usuarios inactivos: 0 copias y sin sync
+    const inactive = data.filter(item => item.total === 0 && !syncStatuses[item.id]?.synced);
 
     return {
-      visibleData: [...active, ...withInvoice],
+      visibleData: [...active, ...withSync],
       hiddenData: inactive
     };
-  }, [data, invoiceStatuses]);
+  }, [data, syncStatuses]);
 
   const renderRow = (item: ReportData) => (
     <tr key={item.id} className="group hover:bg-slate-50/50 dark:hover:bg-white/5 transition-colors">
@@ -79,13 +79,16 @@ export const ReportTable: React.FC<ReportTableProps> = ({
         </div>
       </td>
       <td className="px-8 py-5 text-center">
-        {invoiceStatuses[item.id] ? (
+        {syncStatuses[item.id]?.synced ? (
           <button 
-            onClick={() => onViewInvoice?.(invoiceStatuses[item.id]!.id)}
-            className="p-3 rounded-xl bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500 hover:text-white transition-all shadow-emerald-500/30 active:scale-90"
-            title="Ver Factura Emitida"
+            onClick={() => {
+                const status = syncStatuses[item.id];
+                if (status?.id) onViewSync?.(status.id);
+            }}
+            className="p-3 rounded-xl bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500 hover:text-white transition-all shadow-emerald-500/30 active:scale-90 border border-emerald-500/20"
+            title="Ver Detalle de Sincronización"
           >
-            <FileText size={18} strokeWidth={2.5} />
+            <Zap size={18} strokeWidth={2.5} />
           </button>
         ) : (
           <button 
@@ -96,9 +99,9 @@ export const ReportTable: React.FC<ReportTableProps> = ({
                 ? "bg-slate-100 text-slate-300 dark:bg-white/5 dark:text-white/10 cursor-not-allowed" 
                 : "bg-indigo-500/10 text-indigo-500 hover:bg-indigo-500 hover:text-white"
             }`}
-            title={item.total === 0 ? "No hay consumos registrados para simular" : "Simular Factura"}
+            title={item.total === 0 ? "No hay consumos registrados para sincronizar" : "Sincronizar con Nexudus"}
           >
-            <Zap size={18} strokeWidth={2.5} />
+            <RefreshCw size={18} strokeWidth={2.5} />
           </button>
         )}
       </td>

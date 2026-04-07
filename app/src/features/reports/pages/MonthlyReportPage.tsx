@@ -3,8 +3,7 @@ import { useReportStore } from '../../../store/reportStore';
 import { ReportTable } from '../components/ReportTable';
 import { ReportCard } from '../components/ReportCard';
 import { SimulationModal } from '../components/SimulationModal';
-import { InvoiceModal } from '../components/InvoiceModal';
-import { ConfirmationModal } from '../../../components/ConfirmationModal';
+import { SyncDetailModal } from '../components/SyncDetailModal';
 import { api } from '../../../services/api';
 import { 
     LayoutGrid, 
@@ -29,9 +28,8 @@ export const MonthlyReportPage = () => {
     // Simulation & Persistence state
     const [isSimulating, setIsSimulating] = useState(false);
     const [simulationData, setSimulationData] = useState<any>(null);
-    const [invoiceStatuses, setInvoiceStatuses] = useState<Record<string, { id: string } | null>>({});
-    const [viewingInvoice, setViewingInvoice] = useState<any>(null);
-    const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+    const [syncStatuses, setSyncStatuses] = useState<Record<string, { synced: boolean, id?: string } | null>>({});
+    const [viewingSync, setViewingSync] = useState<any>(null);
 
     useEffect(() => {
         fetchReport();
@@ -42,18 +40,21 @@ export const MonthlyReportPage = () => {
         if (!report?.data) return;
 
         const loadStatuses = async () => {
-            const statuses: Record<string, { id: string } | null> = {};
+            const statuses: Record<string, { synced: boolean } | null> = {};
             for (const user of report.data) {
                 try {
-                    const { data, response } = await api.GET("/api/v1/billing/invoices/users/{id}/status", {
+                    const { data, response } = await api.GET("/api/v1/billing/sync/users/{id}/status" as any, {
                         params: { path: { id: user.id } }
                     });
-                    statuses[user.id] = (response.status === 200 && data) ? { id: (data as any).id } : null;
+                    statuses[user.id] = (response.status === 200 && data) ? { 
+                        synced: (data as any).synced,
+                        id: (data as any).sales?.[0]?.id 
+                    } : null;
                 } catch (err) {
                     statuses[user.id] = null;
                 }
             }
-            setInvoiceStatuses(statuses);
+            setSyncStatuses(statuses);
         };
         loadStatuses();
     }, [report?.data]);
@@ -73,9 +74,9 @@ export const MonthlyReportPage = () => {
         }
     };
 
-    const handlePersist = async (userId: string) => {
+    const handleSync = async (userId: string) => {
         try {
-            const { error } = await api.POST("/api/v1/billing/invoices", {
+            const { error } = await api.POST("/api/v1/billing/sync" as any, {
                 body: { userId }
             });
             if (error) throw error;
@@ -83,39 +84,19 @@ export const MonthlyReportPage = () => {
             // Refresh statuses
             fetchReport(true);
         } catch (err) {
-            console.error("Error persisting invoice:", err);
+            console.error("Error syncing to Nexudus:", err);
         }
     };
 
-    const handleViewInvoice = async (invoiceId: string) => {
+    const handleSyncDetail = async (syncId: string) => {
         try {
-            const { data, error } = await api.GET("/api/v1/billing/invoices/{id}", {
-                params: { path: { id: invoiceId } }
+            const { data, error } = await api.GET("/api/v1/billing/sync/{id}" as any, {
+                params: { path: { id: syncId } }
             });
             if (error) throw error;
-            setViewingInvoice(data);
+            setViewingSync(data);
         } catch (err) {
-            console.error("Error fetching invoice details:", err);
-        }
-    };
-
-    const handleDeleteInvoice = async (invoiceId: string) => {
-        setConfirmDeleteId(invoiceId);
-    };
-
-    const confirmDelete = async () => {
-        if (!confirmDeleteId) return;
-        
-        try {
-            const { error } = await api.DELETE("/api/v1/billing/invoices/{id}", {
-                params: { path: { id: confirmDeleteId } }
-            });
-            if (error) throw error;
-            fetchReport(true);
-            setConfirmDeleteId(null);
-            setViewingInvoice(null);
-        } catch (err) {
-            console.error("Error deleting invoice:", err);
+            console.error("Error fetching sync details:", err);
         }
     };
 
@@ -235,8 +216,8 @@ export const MonthlyReportPage = () => {
                         <ReportTable 
                             data={report?.data || []} 
                             onSimulate={handleSimulate}
-                            invoiceStatuses={invoiceStatuses}
-                            onViewInvoice={handleViewInvoice}
+                            syncStatuses={syncStatuses}
+                            onViewSync={handleSyncDetail}
                         />
                     ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -245,8 +226,8 @@ export const MonthlyReportPage = () => {
                                     key={item.id} 
                                     item={item} 
                                     onSimulate={handleSimulate}
-                                    invoiceStatus={invoiceStatuses[item.id]}
-                                    onViewInvoice={handleViewInvoice}
+                                    syncStatus={syncStatuses[item.id]}
+                                    onViewSync={handleSyncDetail}
                                 />
                             ))}
                         </div>
@@ -254,31 +235,19 @@ export const MonthlyReportPage = () => {
                 </div>
             )}
 
-            {/* Simulation Modal */}
+            {/* Sync Preview Modal */}
             <SimulationModal 
                 isOpen={!!simulationData || isSimulating}
                 onClose={() => setSimulationData(null)}
                 data={simulationData}
-                onPersist={handlePersist}
+                onSync={handleSync}
             />
 
-            {/* Persisted Invoice Modal */}
-            <InvoiceModal 
-                isOpen={!!viewingInvoice}
-                onClose={() => setViewingInvoice(null)}
-                data={viewingInvoice}
-                onDelete={handleDeleteInvoice}
-            />
-
-            {/* Global Confirmation Modal */}
-            <ConfirmationModal 
-                isOpen={!!confirmDeleteId}
-                onClose={() => setConfirmDeleteId(null)}
-                onConfirm={confirmDelete}
-                title="¿Eliminar Factura?"
-                message="Esta acción es irreversible. Se liberará el consumo asociado para que pueda volver a ser facturado en el futuro."
-                confirmText="Sí, Eliminar"
-                variant="danger"
+            {/* Sync Detail Modal */}
+            <SyncDetailModal 
+                isOpen={!!viewingSync}
+                onClose={() => setViewingSync(null)}
+                data={viewingSync}
             />
         </div>
     );

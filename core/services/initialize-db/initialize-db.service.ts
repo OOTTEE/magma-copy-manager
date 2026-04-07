@@ -1,6 +1,7 @@
 import * as argon2 from 'argon2';
 import crypto from 'node:crypto';
 import { usersRepository } from '../../repositories/users.repository';
+import { logger } from '../../lib/logger';
 
 /**
  * Service to ensure the database is correctly initialized with essential data.
@@ -15,11 +16,11 @@ export const initializeDbService = {
             const admin = await usersRepository.findByUsername('admin');
             
             if (admin) {
-                console.log('[InitializeDB] Database already initialized. Admin user detected.');
+                logger.info('InitializeDB: Database already initialized. Admin user detected.');
                 return;
             }
 
-            console.log('[InitializeDB] First initialization: Creating default admin user...');
+            logger.info('InitializeDB: First initialization. Creating default admin user...');
             
             const hashedPassword = await argon2.hash('m4gm4');
             const adminUser = {
@@ -32,9 +33,9 @@ export const initializeDbService = {
             };
 
             await usersRepository.create(adminUser);
-            console.log('[InitializeDB] Default admin user created successfully (username: admin / pass: m4gm4).');
+            logger.info('InitializeDB: Default admin user created successfully.');
         } catch (error) {
-            console.error('[InitializeDB] Error during database initialization:', error);
+            logger.error(error, 'InitializeDB: Error during database initialization');
             throw error;
         }
     }

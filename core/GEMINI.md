@@ -11,6 +11,7 @@
 - Creación de un resumen mensual de las copias de los usuarios por categoría (A4_BW, A4_COLOR, A3_BW, A3_COLOR, SRA3_BW, SRA3_COLOR).
 - Creación de una vista previa de la factura mensual para cada usuario con el coste total de sus copias.
 - Envío de la factura mensual a Nexudus y persistencia de los datos.
+- Validación interactiva de credenciales de Nexudus (Test de Conexión) desde el panel de ajustes.
 
 ## Stack Tecnológico
 
@@ -50,7 +51,13 @@ La aplicación se construirá utilizando las siguientes tecnologías:
 - El sistema tendrá dos tipos de usuarios: "admin" y "customer".
 - Cada cliente tendrá las propiedades "printUser" y "nexudusUser". "printUser" es el usuario que se utilizará para autenticarse con el servidor de impresión. "nexudusUser" es el usuario que se utilizará para autenticarse con la API de Nexudus.
 - **Nexudus First**: El sistema no gestiona facturas locales propias. La persistencia de la facturación se delega a Nexudus ("Sales"), y Magma mantiene un mapeo (`nexudus_sale_id`) en cada registro de copia para asegurar que ninguna copia se facture dos veces.
+- **Gestión de Secretos**: Las credenciales sensibles (tokens, contraseñas) se almacenan encriptadas (AES-256-CBC) en la base de datos de ajustes. Al recuperarlas para la UI, se enmascaran con `********`. El sistema es capaz de detectar esta máscara para evitar sobrescribir valores reales durante pruebas o actualizaciones parciales.
+- **Autenticación Nexudus (OAuth2)**: La comunicación con la API v3 de Nexudus se realiza obligatoriamente mediante el flujo **OAuth2 Password Grant** (endpoint `/api/token`). Este método requiere el envío de credenciales en formato `application/x-www-form-urlencoded` y proporciona un `access_token` robusto que permite el acceso a recursos del sistema (`/api/sys/*`) sin errores de autorización. Se prefiere este modelo sobre el token de sesión simple de usuario.
 - **Creación de Usuarios**: Los usuarios NO se crean manualmente desde Magma. Los nuevos usuarios se crean en la impresora física y aparecerán automáticamente en el sistema tras el proceso de sincronización.
+- **Credenciales de Prueba (Entorno de Desarrollo)**: Para facilitar el testing y la automatización, existen los siguientes usuarios pre-configurados:
+  - **admin**: `m4gm4` (Rol: admin)
+  - **Ote**: `changeme` (Rol: customer)
+  - **Planb**: `changeme` (Rol: customer, Usuario configurado con copia sin papel)
 
 ---
 

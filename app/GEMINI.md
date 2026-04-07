@@ -55,6 +55,12 @@ app/
 - **Estética**: Fondo con gradiente dinámico y panel con efecto de cristal.
 - **Campos**: User, Password y botón de Login.
 - **Lógica**: Gestión de errores en tiempo real y persistencia del token en el `authStore`.
+- **Credenciales de Prueba**: Para facilitar el testing de la interfaz:
+  - **admin**: `m4gm4` (Rol: admin)
+  - **Ote**: `changeme` (Rol: customer)
+  - **Planb**: `changeme` (Rol: customer, Usuario configurado con copia sin papel)
+
+---
 
 ### 2. Dashboard (Sistema de Gestión)
 

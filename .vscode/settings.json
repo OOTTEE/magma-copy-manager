@@ -5,7 +5,7 @@
             "previewLimit": 50,
             "driver": "SQLite",
             "database": "${workspaceFolder:Magma}/core/sqlite.db",
-            "name": "magma.core"
+            "name": "magma"
         }
     ]
 }

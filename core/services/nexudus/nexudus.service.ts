@@ -13,6 +13,119 @@ export class NexudusService {
   private token: string | null = null;
 
   /**
+   * Centralizes API calls with 401 retry logic.
+   */
+  private async executeRequest<T>(
+    requestFn: (api: Api<string>['api'], params: any) => Promise<{ data: T }>,
+    errorMessage: string
+  ): Promise<T> {
+    await this.init();
+
+    const getRequestParams = () => ({
+      headers: {
+        Authorization: `Bearer ${this.token}`,
+      },
+    });
+
+    const params = getRequestParams();
+    logger.debug({ operation: errorMessage }, 'Nexudus: Executing request...');
+
+    try {
+      const response = await requestFn(this.api!.api, params);
+      logger.debug({ operation: errorMessage }, 'Nexudus: Request successful');
+      return response.data;
+    } catch (error: any) {
+      // Handle unauthorized (401) with auto-retry login
+      if (error.response?.status === 401) {
+        logger.warn('Nexudus: Token expired or invalid, attempting to refresh...');
+        await this.login();
+        
+        const retryParams = getRequestParams();
+        logger.debug({ operation: errorMessage }, 'Nexudus: Retrying request after login...');
+        const retryResponse = await requestFn(this.api!.api, retryParams);
+        return retryResponse.data;
+      }
+      
+      const details = error.response?.data || error.message;
+      
+      // Extensive logging for debugging
+      logger.debug({ 
+        operation: errorMessage,
+        status: error.response?.status,
+        response: error.response?.data,
+        message: error.message
+      }, 'Nexudus: Request failed details');
+
+      logger.error({ error: details }, `Nexudus: ${errorMessage}`);
+      
+      // Provide more helpful error message
+      const specificError = typeof details === 'object' ? (details.Message || details.message) : details;
+      throw new Error(specificError ? `${errorMessage} (${specificError})` : errorMessage);
+    }
+  }
+
+  /**
+   * Helper to create the API client with consistent configuration.
+   */
+  private createApiClient(url: string): Api<string> {
+    const baseUrl = url.endsWith('/') ? url.slice(0, -1) : url;
+    return new Api({
+      baseUrl,
+      securityWorker: (accessToken) => {
+        return accessToken ? {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          }
+        } : {};
+      },
+      customFetch: async (input, init) => {
+        const url = input.toString();
+        const method = init?.method || 'GET';
+        
+        logger.debug({ 
+          url, 
+          method, 
+          // We mask the Authorization header for safety in logs
+          headers: { ...(init?.headers as any), Authorization: (init?.headers as any)?.['Authorization'] ? 'Bearer ***' : undefined } ,
+        }, 'Nexudus API Request');
+
+        if (init?.body) {
+          logger.trace({ body: init.body }, 'Nexudus API Request Body');
+        }
+
+        try {
+          const response = await fetch(input, init);
+          
+          // Clone the response to read the body without consuming it
+          const clonedResponse = response.clone();
+          let responseBody: any;
+          try {
+            const text = await clonedResponse.text();
+            try {
+              responseBody = JSON.parse(text);
+            } catch {
+              responseBody = text;
+            }
+          } catch (e: any) {
+            responseBody = `[Error reading response body: ${e.message}]`;
+          }
+
+          logger.debug({ 
+            url, 
+            status: response.status, 
+            body: responseBody 
+          }, 'Nexudus API Response');
+
+          return response;
+        } catch (error: any) {
+          logger.debug({ url, error: error.message }, 'Nexudus API Request Failed');
+          throw error;
+        }
+      }
+    });
+  }
+
+  /**
    * Initializes the API client with credentials from Settings.
    * If no token is found or valid, attempts to login.
    */
@@ -26,16 +139,7 @@ export class NexudusService {
       throw new Error('Nexudus API URL not configured in settings.');
     }
 
-    this.api = new Api({
-      baseUrl: baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl,
-      securityWorker: (accessToken) => {
-        return accessToken ? {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-          }
-        } : {};
-      }
-    });
+    this.api = this.createApiClient(baseUrl);
 
     if (!this.token) {
       await this.login();
@@ -46,41 +150,64 @@ export class NexudusService {
 
   /**
    * Performs login to Nexudus to obtain a temporary token.
+   * If credentials are provided, it uses them instead of the stored ones.
    */
-  async login() {
+  async login(email?: string, password?: string) {
     const baseUrl = await settingsService.getSetting('nexudus_url');
-    const email = await settingsService.getSetting('nexudus_email');
-    const password = await settingsService.getSecretSetting('nexudus_password');
+    const finalEmail = email || await settingsService.getSetting('nexudus_email');
+    const finalPassword = password || await settingsService.getSecretSetting('nexudus_password');
 
-    if (!email || !password) {
-      throw new Error('Nexudus email or password not configured in settings.');
+    if (!finalEmail || !finalPassword) {
+      throw new Error('Nexudus email or password not configured.');
     }
 
+    // Always ensure API client is initialized correctly
+    const url = baseUrl || 'https://spaces.nexudus.com/api';
     if (!this.api) {
-      this.api = new Api({
-        baseUrl: baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl,
-      });
+      this.api = this.createApiClient(url);
     }
 
     try {
-      const response = await this.api.api.usersApiToken({
-        Email: email,
-        Password: password,
+      const response = await this.api.api.tokenCreate({
+        grant_type: "password",
+        username: finalEmail,
+        password: finalPassword,
       });
 
-      if (response.data.WasSuccessful && response.data.Value) {
-        this.token = response.data.Value as unknown as string;
-        this.api.setSecurityData(this.token);
+      // Map the response data. Since tokenCreate is mark as void in generated-api,
+      // it might return the raw response if format is not specified.
+      let data = response.data as any;
+      
+      // If data is the response object itself (due to missing format) or null, we try to parse the body
+      if (!data || (data.status && typeof data.json === 'function')) {
+         try {
+           const cloned = response.clone();
+           data = await cloned.json();
+         } catch (e) {
+           logger.error({ error: e }, 'Nexudus: Failed to parse OAuth2 response body');
+         }
+      }
+
+      if (data && data.access_token) {
+        const newToken = data.access_token;
         
-        // Persist the token for future requests (temporary storage in settings)
-        await settingsService.updateSetting('nexudus_token', this.token);
-        return this.token;
+        // If we are using stored credentials, we update the token
+        if (!email && !password) {
+          this.token = newToken;
+          this.api.setSecurityData(this.token);
+          await settingsService.updateSetting('nexudus_token', this.token as string);
+        }
+        
+        return newToken;
       } else {
-        throw new Error(response.data.Message || 'Login failed without message');
+        const errorMsg = data?.error_description || data?.error || 'Unknown error during OAuth2 login';
+        logger.error({ error: data }, `Nexudus: Login failed - ${errorMsg}`);
+        throw new Error(`Nexudus login failed: ${errorMsg}`);
       }
     } catch (error: any) {
-      logger.error({ error: error.response?.data || error.message }, 'Nexudus: Login failed');
-      throw new Error('Failed to login to Nexudus API');
+      const errorDetail = error.response?.data?.error_description || error.response?.data?.error || error.message;
+      logger.error({ error: errorDetail }, 'Nexudus: Login failed');
+      throw new Error(typeof errorDetail === 'string' ? errorDetail : 'Failed to login to Nexudus API');
     }
   }
 
@@ -88,20 +215,10 @@ export class NexudusService {
    * Verifies the connection and token validity.
    */
   async authenticate() {
-    await this.init();
-    try {
-      const response = await this.api!.api.authApiGetMe();
-      return response.data;
-    } catch (error: any) {
-      // If unauthorized, try to relogin once
-      if (error.response?.status === 401) {
-        await this.login();
-        const retryResponse = await this.api!.api.authApiGetMe();
-        return retryResponse.data;
-      }
-      logger.error({ error: error.response?.data || error.message }, 'Nexudus: Authentication failed');
-      throw new Error('Failed to authenticate with Nexudus API');
-    }
+    return this.executeRequest(
+      (api, params) => api.authApiGetMe(params),
+      'Failed to authenticate with Nexudus API'
+    );
   }
 
   /**
@@ -109,23 +226,15 @@ export class NexudusService {
    * This is the preferred way to "bill" consumption.
    */
   async createCoworkerProduct(data: NexudusCoworkingCoreQueryDtosBillingCoworkerProductDto) {
-    await this.init();
-    try {
-      const response = await this.api!.api.coworkerProductsApiPost(data);
-      if (response.data.WasSuccessful) {
-        return response.data;
-      } else {
-        throw new Error(response.data.Message || 'Failed to create coworker product');
-      }
-    } catch (error: any) {
-      // Handle session expiration
-      if (error.response?.status === 401) {
-        await this.login();
-        const retryResponse = await this.api!.api.coworkerProductsApiPost(data);
-        return retryResponse.data;
-      }
-      logger.error({ error: error.response?.data || error.message }, 'Nexudus: Create coworker product failed');
-      throw new Error('Failed to create coworker product in Nexudus');
+    const result = await this.executeRequest(
+      (api, params) => api.coworkerProductsApiPost(data, params),
+      'Failed to create coworker product in Nexudus'
+    );
+
+    if (result.WasSuccessful) {
+      return result;
+    } else {
+      throw new Error(result.Message || 'Failed to create coworker product');
     }
   }
 
@@ -133,36 +242,67 @@ export class NexudusService {
    * Creates a new invoice for a coworker (Draft).
    */
   async createInvoice(businessId: number, coworkerId: number, options: any = {}) {
-    await this.init();
-    try {
-      const response = await this.api!.api.coworkerInvoicesPaymentApiCreateInvoiceBusinessIdCoworkerId(
-        businessId,
-        coworkerId,
-        options
-      );
-      return response.data;
-    } catch (error: any) {
-      if (error.response?.status === 401) {
-        await this.login();
-        // retry...
-      }
-      logger.error({ error: error.response?.data || error.message }, 'Nexudus: Create invoice failed');
-      throw new Error('Failed to create invoice in Nexudus');
-    }
+    return this.executeRequest(
+      (api, params) => api.coworkerInvoicesPaymentApiCreateInvoiceBusinessIdCoworkerId(businessId, coworkerId, options, params as any),
+      'Failed to create invoice in Nexudus'
+    );
+  }
+
+  /**
+   * Searches for coworkers in Nexudus by name or email.
+   */
+  async searchCoworkers(search: string) {
+    const result = await this.executeRequest(
+      (api, params) => api.coworkersApiGetPageSizeOrderByDirWithTariffGlobalSearch({ 
+        size: 50, 
+        globalSearch: search 
+      }, params),
+      'Failed to search coworkers in Nexudus'
+    );
+    return result.Records || [];
   }
 
   /**
    * Deletes an invoice from Nexudus.
    */
   async deleteInvoice(id: number) {
-    await this.init();
-    try {
-      const response = await (this.api!.api as any).coworkerInvoicesApiDeleteId(id);
-      return response.data;
-    } catch (error: any) {
-      logger.error({ error: error.response?.data || error.message, id }, 'Nexudus: Delete invoice failed');
-      throw new Error(`Failed to delete invoice ${id} in Nexudus`);
-    }
+    return this.executeRequest(
+      (api, params) => (api as any).coworkerInvoicesApiDeleteId(id, params),
+      `Failed to delete invoice ${id} in Nexudus`
+    );
+  }
+
+  /**
+   * Retrieves the list of businesses (locations) from Nexudus.
+   */
+  async getBusinesses() {
+    const result = await this.executeRequest(
+      (api, params) => api.businessesApiGetPageSizeOrderByDir({ size: 100 }, params),
+      'Failed to retrieve businesses from Nexudus'
+    );
+    return result.Records || [];
+  }
+
+  /**
+   * Retrieves the list of currencies from Nexudus.
+   */
+  async getCurrencies() {
+    const result = await this.executeRequest(
+      (api, params) => api.currenciesApiGetPageSizeOrderByDir({ size: 100 }, params),
+      'Failed to retrieve currencies from Nexudus'
+    );
+    return result.Records || [];
+  }
+
+  /**
+   * Retrieves the list of products from Nexudus.
+   */
+  async getProducts() {
+    const result = await this.executeRequest(
+      (api, params) => api.productsApiGetPageSizeOrderByDir({ size: 500 }, params),
+      'Failed to retrieve products from Nexudus'
+    );
+    return result.Records || [];
   }
 }
 

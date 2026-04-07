@@ -56,6 +56,8 @@ Núcleo funcional donde se implementan los casos de uso y reglas de negocio.
 - **Orquestación:** Responsable de coordinar múltiples repositorios o integraciones externas para cumplir un proceso.
 - **DTO (Data Transfer Objects):** Transformar entidades de persistencia en estructuras de datos optimizadas para la API.
 - **Atomicidad:** Garantizar la integridad de las operaciones mediante la gestión de transacciones.
+- **Gestión de Sesiones Externas (Integraciones):** Los servicios que consumen APIs externas con tokens de corta duración (ej. Nexudus) deben implementar un patrón de **envoltorio de ejecución** (`executeRequest`). Este patrón debe interceptar errores 401 (Unauthorized), disparar automáticamente el flujo de re-login y reintentar la operación original una sola vez de forma transparente para las capas superiores.
+- **Intercepción de Infraestructura:** Para depuración profunda de integraciones, se utiliza la inyección de un manejador `customFetch` en el cliente de API. Esto permite el logging detallado de peticiones y respuestas (incluyendo cuerpos en nivel `TRACE`) sin modificar el código autogenerado del cliente.
 
 ## 4. Capa de Repository
 

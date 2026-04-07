@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { X, User, Printer, Share2, Lock, Save, Loader2, Eye, EyeOff } from 'lucide-react';
+import { X, User, Printer, Share2, Lock, Save, Loader2, Eye, EyeOff, Search, Check, AlertCircle, UserCheck } from 'lucide-react';
+import { api } from '../../../services/api';
 
 interface User {
   id: string;
@@ -40,6 +41,41 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ user, onClose, onS
   const [showPassword, setShowPassword] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Nexudus Search State
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [showSearchResults, setShowSearchResults] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
+
+  const handleSearchNexudus = async () => {
+    if (!searchTerm.trim()) return;
+    
+    setIsSearching(true);
+    setSearchError(null);
+    try {
+      const { data, error: apiError } = await api.GET("/api/v1/nexudus/coworkers", {
+        params: {
+          query: { search: searchTerm }
+        }
+      });
+
+      if (apiError) throw apiError;
+      setSearchResults(data || []);
+      setShowSearchResults(true);
+    } catch (err) {
+      setSearchError("Error al buscar en Nexudus");
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const handleSelectCoworker = (coworker: any) => {
+    setFormData({ ...formData, nexudusUser: coworker.id.toString() });
+    setSearchTerm(`${coworker.fullName} (${coworker.email})`);
+    setShowSearchResults(false);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -119,6 +155,7 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ user, onClose, onS
                   type="text"
                   value={formData.username}
                   onChange={(e) => setFormData({...formData, username: e.target.value})}
+                  autoComplete="one-time-code"
                   className="w-full pl-12 pr-6 py-4 bg-slate-100 dark:bg-white/5 border border-transparent focus:border-[#f15a24]/30 rounded-2xl text-sm font-bold text-slate-700 dark:text-white outline-none transition-all"
                   required
                 />
@@ -140,18 +177,87 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ user, onClose, onS
               </div>
             </div>
 
-            {/* Nexudus User */}
+            {/* Nexudus User & Search */}
             <div className="md:col-span-2 space-y-2">
-              <label className="text-[10px] font-black uppercase tracking-widest text-[#f15a24] ml-2">ID Nexudus</label>
-              <div className="relative group">
-                <Share2 className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 dark:text-white/10 group-focus-within:text-[#f15a24] transition-colors" size={18} strokeWidth={1.5} />
-                <input
-                  type="text"
-                  value={formData.nexudusUser}
-                  onChange={(e) => setFormData({...formData, nexudusUser: e.target.value})}
-                  className="w-full pl-12 pr-6 py-4 bg-slate-100 dark:bg-white/5 border border-transparent focus:border-[#f15a24]/30 rounded-2xl text-sm font-bold text-slate-700 dark:text-white outline-none transition-all"
-                />
+              <div className="flex items-center justify-between px-2 mb-2">
+                <label className="text-[10px] font-black uppercase tracking-widest text-[#f15a24]">Nexudus Integration</label>
+                {formData.nexudusUser && (
+                   <span className="flex items-center gap-1.5 text-[8px] font-black uppercase tracking-widest text-green-500 bg-green-500/10 px-2 py-0.5 rounded-full">
+                     <UserCheck size={10} /> Vinculado
+                   </span>
+                )}
               </div>
+              
+              <div className="flex gap-3">
+                <div className="relative flex-1 group">
+                  <Share2 className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 dark:text-white/10 group-focus-within:text-[#f15a24] transition-colors" size={18} strokeWidth={1.5} />
+                  <input
+                    type="text"
+                    placeholder="Busca por nombre o escribe ID..."
+                    value={searchTerm || formData.nexudusUser}
+                    onChange={(e) => {
+                      setSearchTerm(e.target.value);
+                      setFormData({...formData, nexudusUser: e.target.value});
+                    }}
+                    onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleSearchNexudus())}
+                    autoComplete="one-time-code"
+                    className="w-full pl-12 pr-6 py-4 bg-slate-100 dark:bg-white/5 border border-transparent focus:border-[#f15a24]/30 rounded-2xl text-sm font-bold text-slate-700 dark:text-white outline-none transition-all placeholder:text-slate-300 dark:placeholder:text-white/10"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={handleSearchNexudus}
+                  disabled={isSearching || !searchTerm}
+                  className="px-6 bg-slate-800 dark:bg-white/10 hover:bg-[#f15a24] text-white rounded-2xl transition-all shadow-lg flex items-center justify-center disabled:opacity-50"
+                >
+                  {isSearching ? <Loader2 size={18} className="animate-spin" /> : <Search size={18} />}
+                </button>
+              </div>
+
+              {/* Search Results Dropdown */}
+              {showSearchResults && (
+                <div className="mt-4 p-4 bg-white dark:bg-[#1f1d1d] border border-slate-100 dark:border-white/5 rounded-3xl shadow-xl space-y-2 animate-in slide-in-from-top-2 fade-in duration-200">
+                  <div className="flex items-center justify-between px-2 mb-3">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Resultados en Nexudus</p>
+                    <button 
+                      type="button"
+                      onClick={() => setShowSearchResults(false)}
+                      className="text-slate-400 hover:text-white"
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                  
+                  {searchResults.length === 0 ? (
+                    <div className="py-8 text-center bg-slate-50 dark:bg-white/5 rounded-2xl">
+                      <p className="text-xs font-bold text-slate-400">No se encontraron resultados</p>
+                    </div>
+                  ) : (
+                    <div className="max-h-48 overflow-y-auto space-y-1 pr-2 custom-scrollbar">
+                      {searchResults.map((coworker) => (
+                        <button
+                          key={coworker.id}
+                          type="button"
+                          onClick={() => handleSelectCoworker(coworker)}
+                          className="w-full p-4 flex items-center justify-between bg-slate-50 dark:bg-white/5 hover:bg-[#f15a24]/10 border border-transparent hover:border-[#f15a24]/20 rounded-2xl transition-all group"
+                        >
+                          <div className="text-left">
+                            <p className="text-sm font-black text-slate-700 dark:text-white group-hover:text-[#f15a24]">{coworker.fullName}</p>
+                            <p className="text-[10px] font-medium text-slate-400 dark:text-white/30">{coworker.email}</p>
+                          </div>
+                          <Check size={14} className="text-green-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {searchError && (
+                <div className="mt-2 flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-red-500 px-3">
+                  <AlertCircle size={12} /> {searchError}
+                </div>
+              )}
             </div>
 
             {/* A3 No Paper Toggle - Premium Style */}
@@ -186,6 +292,7 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ user, onClose, onS
                   value={formData.password}
                   onChange={(e) => setFormData({...formData, password: e.target.value})}
                   placeholder="Sin cambios"
+                  autoComplete="new-password"
                   className="w-full pl-12 pr-12 py-4 bg-slate-100 dark:bg-white/5 border border-transparent focus:border-[#f15a24]/30 rounded-2xl text-sm font-bold text-slate-700 dark:text-white outline-none transition-all placeholder:text-slate-300 dark:placeholder:text-white/10"
                 />
                 <button
@@ -208,6 +315,7 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ user, onClose, onS
                   value={formData.confirmPassword}
                   onChange={(e) => setFormData({...formData, confirmPassword: e.target.value})}
                   placeholder="Repite la contraseña"
+                  autoComplete="new-password"
                   className="w-full pl-12 pr-6 py-4 bg-slate-100 dark:bg-white/5 border border-transparent focus:border-[#f15a24]/30 rounded-2xl text-sm font-bold text-slate-700 dark:text-white outline-none transition-all placeholder:text-slate-300 dark:placeholder:text-white/10"
                 />
               </div>

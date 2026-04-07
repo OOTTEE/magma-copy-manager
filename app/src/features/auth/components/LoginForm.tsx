@@ -73,6 +73,7 @@ export const LoginForm = () => {
                             value={username}
                             onChange={(e) => setUsername(e.target.value)}
                             placeholder="Introduce tu usuario"
+                            autoComplete="username"
                             className="w-full pl-12 pr-4 py-4 bg-white/5 border border-white/10 rounded-2xl text-white placeholder:text-white/20 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 transition-all"
                         />
                     </div>
@@ -91,6 +92,7 @@ export const LoginForm = () => {
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
                             placeholder="********"
+                            autoComplete="current-password"
                             className="w-full pl-12 pr-4 py-4 bg-white/5 border border-white/10 rounded-2xl text-white placeholder:text-white/20 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 transition-all"
                         />
                     </div>

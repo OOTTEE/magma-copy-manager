@@ -17,7 +17,8 @@ const schema: RouteShorthandOptions = {
                 properties: {
                     accessToken: { type: 'string' },
                     refreshToken: { type: 'string' },
-                    role: { type: 'string' }
+                    role: { type: 'string' },
+                    username: { type: 'string' }
                 }
             },
             401: {

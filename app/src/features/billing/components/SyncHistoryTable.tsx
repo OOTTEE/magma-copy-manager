@@ -1,40 +1,24 @@
-import React from 'react';
+import type { SyncRecord } from '../../../store/syncStore';
 import { 
   User, 
   Calendar, 
-  Hash, 
   ExternalLink, 
   Layers,
-  Zap,
   Trash2
 } from 'lucide-react';
 
-interface SyncRecord {
-  id: string;
-  userId: string;
-  username: string;
-  month: string;
-  type: string;
-  quantity: number;
-  nexudusSaleId: string;
-  createdOn: string;
-}
-
 interface SyncHistoryTableProps {
   data: SyncRecord[];
-  onView?: (id: string) => void;
-  onDelete?: (id: string) => void;
+  onDelete?: (ids: string[]) => void;
 }
 
 /**
  * SyncHistoryTable Component
  * 
- * Detailed list of synchronization events with Nexudus.
- * Focuses on auditability and direct links to the external system.
+ * Detailed list of synchronization events with Nexudus, grouped by session.
  */
 export const SyncHistoryTable: React.FC<SyncHistoryTableProps> = ({ 
   data, 
-  onView,
   onDelete
 }) => {
   
@@ -55,15 +39,14 @@ export const SyncHistoryTable: React.FC<SyncHistoryTableProps> = ({
           <tr className="border-b border-slate-100 dark:border-white/5 bg-slate-50/50 dark:bg-white/[0.02]">
             <th className="px-8 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-white/20">Coworker</th>
             <th className="px-8 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-white/20">Mes Reportado</th>
-            <th className="px-8 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-white/20">Concepto Sincronizado</th>
-            <th className="px-8 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-white/20 text-center">Cantidad</th>
-            <th className="px-8 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-white/20">Nexudus ID</th>
-            <th className="px-8 py-6 text-center text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-white/20">Acciones</th>
+            <th className="px-8 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-white/20">Conceptos Sincronizados</th>
+            <th className="px-8 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-white/20 text-center">Total Páginas</th>
+            <th className="px-8 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-white/20 text-center">Acciones</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-50 dark:divide-white/5">
-          {data.map((record) => (
-            <tr key={record.id} className="group hover:bg-slate-50/50 dark:hover:bg-white/5 transition-colors">
+          {data.map((record, idx) => (
+            <tr key={`${record.userId}-${record.saleDate}-${idx}`} className="group hover:bg-slate-50/50 dark:hover:bg-white/5 transition-colors">
               <td className="px-8 py-5">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-slate-50 dark:bg-white/5 flex items-center justify-center text-slate-400 group-hover:text-indigo-500 transition-colors">
@@ -79,42 +62,51 @@ export const SyncHistoryTable: React.FC<SyncHistoryTableProps> = ({
                 </div>
               </td>
               <td className="px-8 py-5">
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/5 text-indigo-500 text-[10px] font-black uppercase tracking-widest border border-indigo-500/10">
-                  <Layers size={12} />
-                  {copyTypeLabels[record.type] || record.type}
+                <div className="flex flex-wrap gap-2">
+                  {record.items.map((item) => (
+                    <div key={item.id} className="inline-flex items-center gap-2 px-2 py-1 rounded-lg bg-indigo-500/5 text-indigo-500 text-[9px] font-bold uppercase tracking-wider border border-indigo-500/10">
+                      <Layers size={10} />
+                      {copyTypeLabels[item.type] || item.type} ({item.quantity})
+                    </div>
+                  ))}
                 </div>
               </td>
               <td className="px-8 py-5 text-center font-black text-slate-800 dark:text-white">
-                {record.quantity}
+                {record.totalQuantity}
               </td>
               <td className="px-8 py-5">
-                <div className="flex items-center gap-2 font-mono text-[10px] font-bold text-slate-400 dark:text-white/20 group-hover:text-slate-600 dark:group-hover:text-white/60 transition-colors">
-                  <Hash size={12} />
-                  {record.nexudusSaleId}
-                </div>
-              </td>
-              <td className="px-8 py-5">
-                <div className="flex items-center justify-center gap-2">
+                <div className="flex items-center justify-center gap-3">
+                  {record.items.length === 1 && (
+                    <a 
+                      href={`https://dashboard.nexudus.com/operations/coworkers/${record.nexudusCoworkerId}/sales/coworkerProducts/${record.items[0].nexudusSaleId}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="p-3 rounded-xl bg-slate-100 dark:bg-white/5 text-slate-400 hover:text-slate-600 dark:hover:text-white transition-all active:scale-90"
+                      title="Abrir en Nexudus"
+                    >
+                      <ExternalLink size={18} />
+                    </a>
+                  )}
+                  {record.items.length > 1 && (
+                    <div className="flex -space-x-2">
+                       {record.items.slice(0, 3).map((item, i) => (
+                         <a 
+                            key={item.id}
+                            href={`https://dashboard.nexudus.com/operations/coworkers/${record.nexudusCoworkerId}/sales/coworkerProducts/${item.nexudusSaleId}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-white/5 border border-white dark:border-[#1a1818] flex items-center justify-center text-[8px] font-bold text-slate-400 hover:text-indigo-500 hover:z-10 transition-all"
+                            title={`Ver ${copyTypeLabels[item.type]} en Nexudus`}
+                          >
+                            {i + 1}
+                          </a>
+                       ))}
+                    </div>
+                  )}
                   <button 
-                    onClick={() => onView?.(record.id)}
-                    className="p-3 rounded-xl bg-indigo-500/10 text-indigo-500 hover:bg-indigo-500 hover:text-white transition-all shadow-indigo-500/30 active:scale-90"
-                    title="Ver Detalle"
-                  >
-                    <Zap size={18} />
-                  </button>
-                  <a 
-                    href={`https://magma-admin.nexudus.com/admin/billing/coworkerproducts/${record.nexudusSaleId}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="p-3 rounded-xl bg-slate-100 dark:bg-white/5 text-slate-400 hover:text-slate-600 dark:hover:text-white transition-all active:scale-90"
-                    title="Abrir en Nexudus"
-                  >
-                    <ExternalLink size={18} />
-                  </a>
-                  <button 
-                    onClick={() => onDelete?.(record.id)}
+                    onClick={() => onDelete?.(record.items.map(i => i.id))}
                     className="p-3 rounded-xl bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all shadow-red-500/30 active:scale-90"
-                    title="Realizar Rollback (Eliminar)"
+                    title="Realizar Rollback del Cobro Completo"
                   >
                     <Trash2 size={18} />
                   </button>

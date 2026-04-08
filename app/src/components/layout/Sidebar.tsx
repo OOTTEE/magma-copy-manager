@@ -94,8 +94,10 @@ export const Sidebar = () => {
           </div>
           {!isSidebarCollapsed && (
             <div className="flex flex-col flex-1 truncate">
-              <span className="text-sm font-bold truncate">{user || "Administrador"}</span>
-              <span className="text-[10px] uppercase tracking-widest text-white/30 font-semibold truncate">Magma Admin</span>
+              <span className="text-sm font-bold truncate">{user || "Usuario"}</span>
+              <span className="text-[10px] uppercase tracking-widest text-white/30 font-semibold truncate">
+                {role === 'admin' ? 'Magma Admin' : 'Magma Cliente'}
+              </span>
             </div>
           )}
           {!isSidebarCollapsed && (

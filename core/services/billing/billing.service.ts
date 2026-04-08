@@ -2,7 +2,7 @@ import { reportsService } from '../reports/reports.service';
 import { settingsService } from '../settings/settings.service';
 import { nexudusService } from '../nexudus/nexudus.service';
 import { db } from '../../db';
-import { copies, nexudusSales, syncLogs } from '../../db/schema';
+import { copies, nexudusSales, syncLogs, users } from '../../db/schema';
 import { eq, and, sql, isNull } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 
@@ -88,7 +88,7 @@ export const billingService = {
   },
 
   /**
-   * Retrieves paginated synchronization history from Nexudus sales.
+   * Retrieves paginated synchronization history from Nexudus sales, grouped by user and sale session.
    */
   getPaginatedSales: async (params: { 
     page: number; 
@@ -99,44 +99,58 @@ export const billingService = {
     const { page, limit, userIds, months } = params;
     const offset = (page - 1) * limit;
 
-    let query = db
-      .select({
-        id: nexudusSales.id,
-        userId: nexudusSales.userId,
-        username: sql<string>`users.username`,
-        month: nexudusSales.month,
-        type: nexudusSales.type,
-        quantity: nexudusSales.quantity,
-        nexudusSaleId: nexudusSales.nexudusSaleId,
-        createdOn: nexudusSales.createdOn,
-      })
-      .from(nexudusSales)
-      .innerJoin(sql`users`, sql`users.id = ${nexudusSales.userId}`);
-
-    const conditions = [];
+    // Filter construction
+    let whereClause = sql`1=1`;
     if (userIds && userIds.length > 0) {
-      conditions.push(sql`${nexudusSales.userId} IN ${userIds}`);
+      whereClause = sql`${whereClause} AND ns.user_id IN ${userIds}`;
     }
     if (months && months.length > 0) {
-      conditions.push(sql`${nexudusSales.month} IN ${months}`);
+      whereClause = sql`${whereClause} AND ns.month IN ${months}`;
     }
 
-    if (conditions.length > 0) {
-      query = query.where(and(...conditions)) as any;
-    }
+    // Main grouped query
+    const data = await db.all(sql`
+      SELECT 
+        ns.user_id as userId,
+        u.username as username,
+        u.nexudus_user as nexudusCoworkerId,
+        ns.month as month,
+        ns.sale_date as saleDate,
+        SUM(ns.quantity) as totalQuantity,
+        json_group_array(json_object(
+          'id', ns.id,
+          'type', ns.type,
+          'quantity', ns.quantity,
+          'nexudusSaleId', ns.nexudus_sale_id
+        )) as items,
+        MAX(ns.created_on) as createdOn
+      FROM nexudus_sales ns
+      JOIN users u ON ns.user_id = u.id
+      WHERE ${whereClause}
+      GROUP BY ns.user_id, ns.sale_date
+      ORDER BY ns.sale_date DESC
+      LIMIT ${limit} OFFSET ${offset}
+    `);
 
-    const data = await (query.limit(limit).offset(offset) as any);
+    // Parse items JSON and format response
+    const formattedData = data.map((row: any) => ({
+      ...row,
+      items: JSON.parse(row.items)
+    }));
     
-    // Count total for pagination
-    let countQuery = db.select({ count: sql<number>`count(*)` }).from(nexudusSales);
-    if (conditions.length > 0) {
-      countQuery = countQuery.where(and(...conditions)) as any;
-    }
-    const totalResult = await countQuery.get();
-    const total = totalResult?.count || 0;
+    // Count total GROUPS for pagination
+    const totalResult = await db.get(sql`
+      SELECT count(*) as count FROM (
+        SELECT 1 FROM nexudus_sales ns
+        JOIN users u ON ns.user_id = u.id
+        WHERE ${whereClause}
+        GROUP BY ns.user_id, ns.sale_date
+      )
+    `);
+    const total = (totalResult as any)?.count || 0;
 
     return {
-      data,
+      data: formattedData,
       pagination: {
         total,
         page,
@@ -159,12 +173,13 @@ export const billingService = {
         type: nexudusSales.type,
         quantity: nexudusSales.quantity,
         nexudusSaleId: nexudusSales.nexudusSaleId,
+        nexudusCoworkerId: users.nexudusUser,
         nexudusProductId: nexudusSales.nexudusProductId,
         saleDate: nexudusSales.saleDate,
         createdOn: nexudusSales.createdOn,
       })
       .from(nexudusSales)
-      .innerJoin(sql`users`, sql`users.id = ${nexudusSales.userId}`)
+      .innerJoin(users, eq(users.id, nexudusSales.userId))
       .where(eq(nexudusSales.id, id))
       .get();
   },
@@ -175,6 +190,7 @@ export const billingService = {
   syncUserConsumption: async (userId: string) => {
     const report = await reportsService.getMonthlyAccumulationForUser(userId);
     if (!report) throw new Error('No report data found for user');
+    if (!report.data.nexudusUser) throw new Error(`User ${report.data.username} has no Nexudus ID mapped.`);
     
     const settings = await settingsService.getAllSettings();
     const monthStr = report.period.from.slice(0, 7);
@@ -189,86 +205,116 @@ export const billingService = {
     };
 
     const copyTypes = ['a4Bw', 'a4Color', 'a3Bw', 'a3Color', 'sra3Bw', 'sra3Color'];
-    let salesCreated = 0;
+    const pendingSales = [];
 
+    // 1. Identificar consumos pendientes
     for (const type of copyTypes) {
       const quantity = report.data[type];
       const nexudusProductId = typeToProductIdMap[type];
 
       if (quantity > 0 && nexudusProductId) {
-        // Check local sync
         const existingSync = await db.select().from(nexudusSales).where(and(
           eq(nexudusSales.userId, userId),
           eq(nexudusSales.month, monthStr),
           eq(nexudusSales.type, type)
         )).get();
 
-        if (existingSync) continue;
-
-        // Create in Nexudus
-        const saleDate = new Date().toISOString();
-        const nexudusResponse = await nexudusService.createCoworkerProduct({
-          BusinessId: parseInt(settings.nexudus_business_id || '0'),
-          CoworkerId: parseInt(report.data.nexudusUser || '0'),
-          ProductId: parseInt(nexudusProductId),
-          Quantity: quantity,
-          SaleDate: saleDate,
-          Notes: `Sync Magma - ${monthStr} - ${type}`,
-          InvoiceThisCoworker: false
-        });
-
-        if (nexudusResponse.WasSuccessful && nexudusResponse.Value) {
-          const remoteSaleIdValue = (nexudusResponse.Value as any).Id;
-          const remoteSaleId = remoteSaleIdValue?.toString() || 'unknown';
-          const localSaleId = randomUUID();
-
-          try {
-            db.transaction((tx) => {
-              tx.insert(nexudusSales).values({
-                id: localSaleId,
-                userId: userId,
-                month: monthStr,
-                type: type,
-                quantity: quantity,
-                nexudusSaleId: remoteSaleId,
-                nexudusProductId: nexudusProductId,
-                saleDate: saleDate,
-                createdOn: new Date().toISOString()
-              }).run();
-
-              // Link individual copies
-              tx.update(copies)
-                .set({ nexudusSaleId: localSaleId })
-                .where(and(
-                  eq(copies.userId, userId),
-                  sql`${copies.datetime} >= ${report.period.from}`,
-                  sql`${copies.datetime} <= ${report.period.to}`,
-                  sql`${copies[type as keyof typeof copies]} > 0`,
-                  isNull(copies.nexudusSaleId)
-                )).run();
-            });
-            salesCreated++;
-          } catch (dbError) {
-            // COMPENSACIÓN: Si falla la transacción local, debemos eliminar la venta en Nexudus
-            // para evitar que el usuario sea cobrado y Magma no lo registre (evitando duplicidad en reintentos).
-            console.error(`[CRITICAL] Persistence failed for Nexudus Sale ${remoteSaleId}. Triggering automated rollback.`);
-            
-            if (remoteSaleId !== 'unknown' && remoteSaleIdValue) {
-              try {
-                await nexudusService.deleteCoworkerProduct(parseInt(remoteSaleId));
-                console.log(`[ROLLBACK] Successfully removed orphan sale ${remoteSaleId} from Nexudus.`);
-              } catch (rollbackError: any) {
-                console.error(`[FATAL] Automated rollback failed for sale ${remoteSaleId} in Nexudus: ${rollbackError.message}`);
-              }
-            }
-            
-            throw dbError; // Re-lanzamos para que syncMonthlyConsumption lo registre
-          }
+        if (!existingSync) {
+          pendingSales.push({ type, quantity, nexudusProductId });
         }
       }
     }
 
-    return { userId, salesCreated };
+    if (pendingSales.length === 0) return { userId, salesCreated: 0 };
+
+    const createdNexudusIds: number[] = [];
+    const salesToPersist: any[] = [];
+    const saleDate = new Date().toISOString();
+
+    try {
+      // 2. Ejecutar cobros en Nexudus (Fase de Cobro)
+      for (const sale of pendingSales) {
+        const nexudusResponse = await nexudusService.createCoworkerProduct({
+          BusinessId: parseInt(settings.nexudus_business_id || '0'),
+          CoworkerId: parseInt(report.data.nexudusUser || '0'),
+          ProductId: parseInt(sale.nexudusProductId),
+          Quantity: sale.quantity,
+          SaleDate: saleDate,
+          Notes: `Sync Magma - ${monthStr} - ${sale.type}`,
+          InvoiceThisCoworker: false
+        });
+
+        if (!nexudusResponse.WasSuccessful || !nexudusResponse.Value) {
+          throw new Error(`Nexudus error for ${sale.type}: ${nexudusResponse.Message || 'Unknown error'}`);
+        }
+
+        const remoteId = (nexudusResponse.Value as any).Id;
+        createdNexudusIds.push(remoteId);
+        salesToPersist.push({
+          ...sale,
+          remoteId: remoteId.toString()
+        });
+      }
+
+          // 3. Persistir localmente en una única transacción (Fase de Compromiso)
+          try {
+            db.transaction((tx) => {
+              for (const sale of salesToPersist) {
+                const localSaleId = randomUUID();
+                
+                tx.insert(nexudusSales).values({
+                  id: localSaleId,
+                  userId: userId,
+                  month: monthStr,
+                  type: sale.type,
+                  quantity: sale.quantity,
+                  nexudusSaleId: sale.remoteId,
+                  nexudusProductId: sale.nexudusProductId,
+                  saleDate: saleDate,
+                  createdOn: new Date().toISOString()
+                }).run();
+
+                // Mapeo de columnas: sra3Color -> a3Color, sra3Bw -> a3Bw
+                const getPhysicalColumn = (type: string) => {
+                  if (type === 'sra3Color') return copies.a3Color;
+                  if (type === 'sra3Bw') return copies.a3Bw;
+                  return copies[type as keyof typeof copies];
+                };
+
+                const column = getPhysicalColumn(sale.type);
+
+                tx.update(copies)
+                  .set({ nexudusSaleId: localSaleId })
+                  .where(and(
+                    eq(copies.userId, userId),
+                    sql`${copies.datetime} >= ${report.period.from}`,
+                    sql`${copies.datetime} <= ${report.period.to}`,
+                    sql`${column} > 0`,
+                    isNull(copies.nexudusSaleId)
+                  )).run();
+              }
+            });
+          } catch (dbError: any) {
+        console.error(`[CRITICAL] DB Transaction failed for user ${userId}. Rolling back Nexudus sales.`);
+        throw dbError; // Capturado por el bloque catch exterior para compensar en Nexudus
+      }
+
+    } catch (error: any) {
+      // 4. Rollback Compensatorio en Nexudus (Todo o Nada)
+      if (createdNexudusIds.length > 0) {
+        console.warn(`[ROLLBACK] Removing ${createdNexudusIds.length} orphan sales from Nexudus for user ${userId}`);
+        for (const remoteId of createdNexudusIds) {
+          try {
+            await nexudusService.deleteCoworkerProduct(remoteId);
+          } catch (rollbackErr: any) {
+            console.error(`[FATAL] Failed to rollback Nexudus sale ${remoteId}: ${rollbackErr.message}`);
+          }
+        }
+      }
+      throw error;
+    }
+
+    return { userId, salesCreated: salesToPersist.length };
   },
 
   /**
@@ -371,5 +417,17 @@ export const billingService = {
     });
 
     return { localId, remoteId, status: 'rolled_back' };
+  },
+
+  /**
+   * Performs a collective rollback of multiple sales (a 'cobro' group).
+   */
+  rollbackSyncGroup: async (localIds: string[], force: boolean = false) => {
+    const results = [];
+    for (const id of localIds) {
+      const res = await billingService.rollbackSyncEvent(id, force);
+      results.push(res);
+    }
+    return results;
   }
 };

@@ -19,7 +19,9 @@ Este flujo de trabajo permite al usuario iterar sobre ideas abstractas, definir 
 - Se fomentará el debate mediante preguntas abiertas ("¿Cómo afectaría esto a...?").
 
 ### 3. Prototipado Conceptual Visual
-- Si el concepto es complejo (ej: un nuevo Dashboard), el agente generará **imágenes conceptuales** para alinear la visión visual.
+- **Skill**: [`ux-designer`](file:///Users/ote/IdeaProjects/Magma/.agents/skills/ux-designer/SKILL.md)
+- **Acción**: El agente generará **imágenes conceptuales** (mockups) utilizando `generate_image`.
+- **Mandato**: Es obligatorio aplicar los estándares de Magma (Dark mode, Glassmorphism, Rounded UI) definidos en la skill de UX para garantizar el "Wow Effect".
 
 ### 4. Definición del Happy Path
 - Se documentará el flujo ideal del usuario (Step-by-step) para validar la usabilidad.

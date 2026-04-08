@@ -39,7 +39,8 @@ export const LoginForm = () => {
             }
 
             if (data && 'accessToken' in data && 'refreshToken' in data && 'role' in data) {
-                login(data.accessToken as string, data.refreshToken as string, username, data.role as string);
+                const finalUsername = (data as any).username || username;
+                login(data.accessToken as string, data.refreshToken as string, finalUsername, data.role as string);
                 navigate("/dashboard");
             }
         } catch (err) {

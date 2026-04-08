@@ -28,11 +28,11 @@ export class NexudusService {
     });
 
     const params = getRequestParams();
-    logger.debug({ operation: errorMessage }, 'Nexudus: Executing request...');
+    logger.trace({ operation: errorMessage }, 'Nexudus: Executing request...');
 
     try {
       const response = await requestFn(this.api!.api, params);
-      logger.debug({ operation: errorMessage }, 'Nexudus: Request successful');
+      logger.trace({ operation: errorMessage }, 'Nexudus: Request successful');
       return response.data;
     } catch (error: any) {
       // Handle unauthorized (401) with auto-retry login
@@ -41,7 +41,7 @@ export class NexudusService {
         await this.login();
         
         const retryParams = getRequestParams();
-        logger.debug({ operation: errorMessage }, 'Nexudus: Retrying request after login...');
+        logger.trace({ operation: errorMessage }, 'Nexudus: Retrying request after login...');
         const retryResponse = await requestFn(this.api!.api, retryParams);
         return retryResponse.data;
       }
@@ -49,7 +49,7 @@ export class NexudusService {
       const details = error.error || error.message;
       
       // Extensive logging for debugging
-      logger.debug({ 
+      logger.trace({ 
         operation: errorMessage,
         status: error.status,
         response: error.error,
@@ -82,7 +82,7 @@ export class NexudusService {
         const url = input.toString();
         const method = init?.method || 'GET';
         
-        logger.debug({ 
+        logger.trace({ 
           url, 
           method, 
           // We mask the Authorization header for safety in logs
@@ -110,7 +110,7 @@ export class NexudusService {
             responseBody = `[Error reading response body: ${e.message}]`;
           }
 
-          logger.debug({ 
+          logger.trace({ 
             url, 
             status: response.status, 
             body: responseBody 

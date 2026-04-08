@@ -38,7 +38,7 @@ export const copiesFacade = {
      * Download -> Audit -> Parse -> Persist per user.
      */
     syncPrinterCopies: async (requestingUser: { id: string; role: string }) => {
-        if (requestingUser.role !== 'admin') {
+        if (!requestingUser || requestingUser.role !== 'admin') {
             const error = new Error('Only administrators can trigger printer sync.');
             (error as any).statusCode = 403;
             throw error;

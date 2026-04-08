@@ -19,6 +19,7 @@ Antes de proponer cualquier diseño, esta skill **DEBE** leer el archivo [`docs/
 
 ### 3. Prototipado Visual Conceptual
 - Utilizar la herramienta `generate_image` para tangibilizar ideas de UI/UX complejas.
+- **Mandato Estético**: Para garantizar la coherencia visual con el Design System de Magma, este experto debe **consultar obligatoriamente** los estándares de la skill [`ux-designer`](file:///Users/ote/IdeaProjects/Magma/.agents/skills/ux-designer/SKILL.md) antes de generar cualquier prototipo visual.
 - Crear diagramas conceptuales o mockups de "wow effect" para alinear expectativas visuales.
 
 ---

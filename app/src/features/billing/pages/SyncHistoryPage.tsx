@@ -4,8 +4,6 @@ import { SyncHistoryTable } from '../components/SyncHistoryTable';
 import { SyncHistoryGrid } from '../components/SyncHistoryGrid';
 import { SyncFilters } from '../components/SyncFilters';
 import { Pagination } from '../../../components/Pagination';
-import { SyncDetailModal } from '../../reports/components/SyncDetailModal';
-import { api } from '../../../services/api';
 import { 
     LayoutGrid, 
     Table as TableIcon, 
@@ -38,8 +36,7 @@ export const SyncHistoryPage = () => {
     } = useSyncStore();
     
     const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
-    const [viewingSync, setViewingSync] = useState<any>(null);
-    const [confirmingDelete, setConfirmingDelete] = useState<string | null>(null);
+    const [confirmingDelete, setConfirmingDelete] = useState<string[] | null>(null);
     const [isForceDelete, setIsForceDelete] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
     const [deleteSuccess, setDeleteSuccess] = useState(false);
@@ -49,29 +46,19 @@ export const SyncHistoryPage = () => {
         fetchStats();
     }, [fetchRecords, fetchStats]);
 
-    const handleViewSync = async (id: string) => {
-        try {
-            const { data, error } = await api.GET("/api/v1/billing/sync/{id}" as any, {
-                params: { path: { id } }
-            });
-            if (error) throw error;
-            setViewingSync(data);
-        } catch (err) {
-            console.error("Error fetching sync details:", err);
-        }
-    };
 
-    const handleDeleteSync = (id: string) => {
-        setConfirmingDelete(id);
-        setIsForceDelete(false); // Reset for each new deletion
+    const handleDeleteSync = (ids: string[]) => {
+        setConfirmingDelete(ids as any); // Storing array of IDs
+        setIsForceDelete(false);
     };
 
     const confirmRollback = async () => {
         if (!confirmingDelete) return;
         setIsDeleting(true);
         try {
-            const { deleteRecord } = useSyncStore.getState();
-            await deleteRecord(confirmingDelete, isForceDelete);
+            const { deleteGroup } = useSyncStore.getState();
+            const ids = Array.isArray(confirmingDelete) ? confirmingDelete : [confirmingDelete];
+            await deleteGroup(ids, isForceDelete);
             setDeleteSuccess(true);
             setTimeout(() => {
                 setConfirmingDelete(null);
@@ -195,13 +182,11 @@ export const SyncHistoryPage = () => {
                     {viewMode === 'table' ? (
                         <SyncHistoryTable 
                             data={records} 
-                            onView={handleViewSync}
                             onDelete={handleDeleteSync}
                         />
                     ) : (
                         <SyncHistoryGrid 
                             data={records} 
-                            onView={handleViewSync} 
                             onDelete={handleDeleteSync}
                         />
                     )}
@@ -215,13 +200,6 @@ export const SyncHistoryPage = () => {
                     />
                 </div>
             )}
-
-            {/* Detail Modal */}
-            <SyncDetailModal 
-                isOpen={!!viewingSync}
-                onClose={() => setViewingSync(null)}
-                data={viewingSync}
-            />
 
             {/* Rollback Confirmation Modal */}
             {confirmingDelete && (

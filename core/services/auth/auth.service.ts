@@ -15,7 +15,7 @@ export const authService = {
         const isValid = await argon2.verify(user.password, pass);
         if (!isValid) return null;
 
-        return await authService.generateTokenPair(fastify, user.id, user.role);
+        return await authService.generateTokenPair(fastify, user.id, user.username, user.role);
     },
 
     /**
@@ -46,7 +46,7 @@ export const authService = {
         if (!user) throw new Error('User no longer exists');
 
         // Generate new pair
-        return await authService.generateTokenPair(fastify, user.id, user.role);
+        return await authService.generateTokenPair(fastify, user.id, user.username, user.role);
     },
 
     /**
@@ -59,9 +59,9 @@ export const authService = {
     /**
      * Helper to generate and persist tokens.
      */
-    generateTokenPair: async (fastify: FastifyInstance, userId: string, role: string) => {
+    generateTokenPair: async (fastify: FastifyInstance, userId: string, username: string, role: string) => {
         // 1. Access Token (Short-lived: 20m)
-        const payload = { id: userId, role };
+        const payload = { id: userId, username, role };
         const accessToken = fastify.jwt.sign(payload, { expiresIn: '20m' });
 
         // 2. Refresh Token (Long-lived: 7d)
@@ -77,6 +77,6 @@ export const authService = {
             createdOn: new Date().toISOString()
         });
 
-        return { accessToken, refreshToken: refreshTokenValue, role };
+        return { accessToken, refreshToken: refreshTokenValue, role, username };
     }
 };

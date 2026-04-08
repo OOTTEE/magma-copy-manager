@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { YTDExpenseChart } from './widgets/YTDExpenseChart';
 import { StatCards } from './widgets/StatCards';
 import { RecentInvoicesWidget } from './widgets/RecentInvoicesWidget';
-import { AppConfig } from '../../../config/app.config';
+import { api } from '../../../services/api';
 import { Activity, Loader2 } from 'lucide-react';
 
 export const CustomerDashboardView = () => {
@@ -12,23 +12,11 @@ export const CustomerDashboardView = () => {
     useEffect(() => {
         const fetchDashboard = async () => {
             try {
-                const authState = sessionStorage.getItem('magma-auth-storage');
-                let token = null;
-                if (authState) {
-                    try { token = JSON.parse(authState).state.token; } catch (e) {}
-                }
-                
-                const res = await fetch(`${AppConfig.serviceUrl}/api/v1/dashboard/customer`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                if (res.ok) {
-                    const json = await res.json();
-                    setData(json);
-                } else {
-                    console.error("Dashboard endpoint returned", res.status);
-                }
+                const { data: dashboardData, error } = await api.GET("/api/v1/dashboard/customer", {});
+                if (error) throw error;
+                setData(dashboardData);
             } catch (e) {
-                console.error(e);
+                console.error("Error loading customer dashboard:", e);
             } finally {
                 setLoading(false);
             }

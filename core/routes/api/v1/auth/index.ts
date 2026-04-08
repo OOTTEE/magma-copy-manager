@@ -55,7 +55,8 @@ const authRoute: FastifyPluginAsync = async (fastify) => {
           properties: {
             accessToken: { type: 'string' },
             refreshToken: { type: 'string' },
-            role: { type: 'string' }
+            role: { type: 'string' },
+            username: { type: 'string' }
           }
         },
         401: { type: 'object', properties: { message: { type: 'string' } } }

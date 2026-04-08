@@ -111,5 +111,18 @@ export const billingFacade = {
     }
 
     return await billingService.rollbackSyncEvent(localId, force);
+  },
+
+  /**
+   * Performs a rollback of a synchronization group (multiple sales).
+   */
+  rollbackSyncGroup: async (localIds: string[], requestingUser: { id: string; role: string }, force: boolean = false) => {
+    if (requestingUser.role !== 'admin') {
+      const error = new Error('Access denied. Only administrators can perform rollbacks.');
+      (error as any).statusCode = 403;
+      throw error;
+    }
+
+    return await billingService.rollbackSyncGroup(localIds, force);
   }
 };

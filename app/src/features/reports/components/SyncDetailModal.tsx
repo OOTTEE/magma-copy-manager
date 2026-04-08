@@ -153,7 +153,7 @@ export const SyncDetailModal: React.FC<SyncDetailModalProps> = ({
                     </p>
                     
                     <a 
-                        href={`https://magma-admin.nexudus.com/admin/billing/coworkerproducts/${data.nexudusSaleId}`}
+                        href={`https://dashboard.nexudus.com/operations/coworkers/${data.nexudusCoworkerId}/sales/coworkerProducts/${data.nexudusSaleId}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="px-8 py-4 bg-indigo-500 text-white rounded-2xl font-black text-xs shadow-xl shadow-indigo-500/20 hover:scale-105 active:scale-95 transition-all flex items-center gap-2"

@@ -108,13 +108,24 @@ const billingRoute: FastifyPluginAsync = async (fastify) => {
               items: {
                 type: 'object',
                 properties: {
-                  id: { type: 'string' },
                   userId: { type: 'string' },
                   username: { type: 'string' },
                   month: { type: 'string' },
-                  type: { type: 'string' },
-                  quantity: { type: 'integer' },
-                  nexudusSaleId: { type: 'string' },
+                  saleDate: { type: 'string' },
+                  totalQuantity: { type: 'integer' },
+                  items: {
+                    type: 'array',
+                    items: {
+                      type: 'object',
+                      properties: {
+                        id: { type: 'string' },
+                        type: { type: 'string' },
+                        quantity: { type: 'integer' },
+                        nexudusSaleId: { type: 'string' }
+                      }
+                    }
+                  },
+                  nexudusCoworkerId: { type: ['string', 'null'] },
                   createdOn: { type: 'string' }
                 }
               }
@@ -352,6 +363,59 @@ const billingRoute: FastifyPluginAsync = async (fastify) => {
     } catch (err: any) {
       if (err.statusCode) return reply.code(err.statusCode).send({ message: err.message });
       return reply.code(500).send({ message: err.message || 'Internal server error during rollback.' });
+    }
+  });
+
+  /**
+   * DELETE /api/v1/billing/sync/group?ids=id1,id2&force=true
+   * Performs an automated rollback of a group of sync events. Admin only.
+   */
+  fastify.delete<{
+    Querystring: { ids: string | string[]; force?: boolean };
+  }>('/sync/group', {
+    schema: {
+      tags: ['Billing'],
+      description: 'Rollback a group of synchronization events.',
+      querystring: {
+        type: 'object',
+        properties: {
+          ids: {
+            anyOf: [
+              { type: 'string' },
+              { type: 'array', items: { type: 'string' } }
+            ]
+          },
+          force: { type: 'boolean', default: false }
+        },
+        required: ['ids']
+      },
+      response: {
+        200: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              localId: { type: 'string' },
+              remoteId: { type: 'integer' },
+              status: { type: 'string' }
+            }
+          }
+        }
+      }
+    },
+    preValidation: [fastify.authenticate]
+  }, async (request, reply) => {
+    const { ids, force } = request.query;
+    const requestingUser = request.user as { id: string; role: string };
+    
+    const idList = Array.isArray(ids) ? ids : ids.split(',');
+
+    try {
+      const result = await billingFacade.rollbackSyncGroup(idList, requestingUser, !!force);
+      return reply.send(result);
+    } catch (err: any) {
+      if (err.statusCode) return reply.code(err.statusCode).send({ message: err.message });
+      return reply.code(500).send({ message: err.message || 'Internal server error during group rollback.' });
     }
   });
 };

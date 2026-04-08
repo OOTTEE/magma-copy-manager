@@ -1,28 +1,15 @@
-import React from 'react';
+import type { SyncRecord } from '../../../store/syncStore';
 import { 
   User, 
-  Hash, 
   ExternalLink, 
   Layers,
   CheckCircle2,
   Trash2
 } from 'lucide-react';
 
-interface SyncRecord {
-  id: string;
-  userId: string;
-  username: string;
-  month: string;
-  type: string;
-  quantity: number;
-  nexudusSaleId: string;
-  createdOn: string;
-}
-
 interface SyncHistoryGridProps {
   data: SyncRecord[];
-  onView?: (id: string) => void;
-  onDelete?: (id: string) => void;
+  onDelete?: (ids: string[]) => void;
 }
 
 /**
@@ -33,7 +20,6 @@ interface SyncHistoryGridProps {
  */
 export const SyncHistoryGrid: React.FC<SyncHistoryGridProps> = ({ 
   data, 
-  onView,
   onDelete
 }) => {
   
@@ -56,10 +42,10 @@ export const SyncHistoryGrid: React.FC<SyncHistoryGridProps> = ({
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-      {data.map((record) => (
+      {data.map((record, idx) => (
         <div 
-          key={record.id} 
-          className="group relative bg-white dark:bg-[#1a1818] rounded-[2.5rem] p-8 border border-slate-200 dark:border-white/5 shadow-lg hover:shadow-2xl transition-all duration-500 overflow-hidden"
+          key={`${record.userId}-${record.saleDate}-${idx}`} 
+          className="group relative bg-white dark:bg-[#1a1818] rounded-[2.5rem] p-8 border border-slate-200 dark:border-white/5 shadow-lg hover:shadow-2xl transition-all duration-500 overflow-hidden flex flex-col"
         >
           {/* Background Decorative Element */}
           <div className="absolute -right-4 -top-4 w-24 h-24 bg-indigo-500/5 rounded-full blur-2xl group-hover:bg-indigo-500/10 transition-colors" />
@@ -84,29 +70,44 @@ export const SyncHistoryGrid: React.FC<SyncHistoryGridProps> = ({
           </div>
 
           {/* Details */}
-          <div className="space-y-6">
+          <div className="space-y-4 flex-1">
             <div className="p-5 bg-slate-50 dark:bg-black/20 rounded-3xl border border-slate-100 dark:border-white/5 shadow-inner">
-                <div className="flex items-center gap-2 text-[9px] font-black uppercase tracking-widest text-slate-400 mb-2">
+                <div className="flex items-center gap-2 text-[9px] font-black uppercase tracking-widest text-slate-400 mb-3">
                     <Layers size={10} className="text-indigo-500" />
-                    Concepto Reportado
+                    Conceptos Sincronizados
                 </div>
-                <div className="flex justify-between items-end">
-                    <p className="font-bold text-slate-700 dark:text-white/80">{copyTypeLabels[record.type] || record.type}</p>
-                    <p className="text-3xl font-black text-indigo-500 leading-none">{record.quantity}</p>
+                <div className="space-y-2">
+                    {record.items.map(item => (
+                       <div key={item.id} className="flex justify-between items-center text-xs">
+                          <span className="font-bold text-slate-600 dark:text-white/60">{copyTypeLabels[item.type] || item.type}</span>
+                          <span className="font-black text-indigo-500">{item.quantity}</span>
+                       </div>
+                    ))}
+                    <div className="pt-2 border-t border-slate-200 dark:border-white/10 flex justify-between items-center">
+                       <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Total</span>
+                       <span className="text-xl font-black text-slate-800 dark:text-white">{record.totalQuantity}</span>
+                    </div>
                 </div>
             </div>
 
-            <div className="flex items-center gap-4">
-                <div className="flex-1 space-y-1">
-                    <span className="text-[9px] font-black uppercase tracking-widest text-slate-400/60">Nexudus ID</span>
-                    <div className="flex items-center gap-2 font-mono text-xs font-bold text-slate-400 group-hover:text-slate-600 transition-colors">
-                        <Hash size={12} />
-                        {record.nexudusSaleId}
-                    </div>
+            <div className="flex items-center justify-between px-2">
+                <div className="space-y-1">
+                    <span className="text-[9px] font-black uppercase tracking-widest text-slate-400/60 leading-none">Fecha Sync</span>
+                    <p className="text-[10px] font-bold text-slate-400">{formatDate(record.createdOn)}</p>
                 </div>
-                <div className="flex-1 space-y-1 text-right">
-                    <span className="text-[9px] font-black uppercase tracking-widest text-slate-400/60">Fecha Sync</span>
-                    <p className="text-xs font-bold text-slate-400">{formatDate(record.createdOn)}</p>
+                <div className="flex -space-x-2">
+                    {record.items.map((item, i) => (
+                      <a 
+                        key={item.id}
+                        href={`https://dashboard.nexudus.com/operations/coworkers/${record.nexudusCoworkerId}/sales/coworkerProducts/${item.nexudusSaleId}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="w-6 h-6 rounded-lg bg-white dark:bg-white/5 border border-slate-100 dark:border-white/10 flex items-center justify-center text-[7px] font-black text-slate-400 hover:text-indigo-500 hover:z-10 transition-all shadow-sm"
+                        title={`Ver ${copyTypeLabels[item.type]} en Nexudus`}
+                      >
+                        {i + 1}
+                      </a>
+                    ))}
                 </div>
             </div>
           </div>
@@ -114,27 +115,21 @@ export const SyncHistoryGrid: React.FC<SyncHistoryGridProps> = ({
           {/* Actions */}
           <div className="mt-8 pt-8 border-t border-slate-100 dark:border-white/5 flex gap-3">
             <button 
-              onClick={() => onView?.(record.id)}
-              className="flex-1 px-6 py-3 rounded-2xl bg-indigo-500 text-white font-black text-xs shadow-xl shadow-indigo-500/20 hover:scale-[1.02] active:scale-95 transition-all text-center"
+              onClick={() => onDelete?.(record.items.map(i => i.id))}
+              className="flex-1 px-6 py-4 rounded-2xl bg-red-500/10 text-red-500 font-black text-[10px] uppercase tracking-[0.2em] shadow-xl shadow-red-500/5 hover:bg-red-500 hover:text-white transition-all active:scale-95 flex items-center justify-center gap-2"
             >
-              Auditar
+              <Trash2 size={16} />
+              Revertir Cobro
             </button>
             <a 
-              href={`https://magma-admin.nexudus.com/admin/billing/coworkerproducts/${record.nexudusSaleId}`}
+              href={`https://dashboard.nexudus.com/operations/coworkers/${record.nexudusCoworkerId}/sales/`}
               target="_blank"
               rel="noopener noreferrer"
-              className="p-3 rounded-2xl bg-slate-100 dark:bg-white/5 text-slate-400 hover:text-[#f15a24] hover:bg-[#f15a24]/10 transition-all active:scale-90"
-              title="Abrir en Nexudus"
+              className="p-4 rounded-2xl bg-slate-50 dark:bg-white/5 text-slate-400 hover:text-indigo-500 transition-all active:scale-90"
+              title="Ver todo en Nexudus"
             >
               <ExternalLink size={20} />
             </a>
-            <button 
-              onClick={() => onDelete?.(record.id)}
-              className="p-3 rounded-2xl bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all active:scale-90"
-              title="Realizar Rollback (Eliminar)"
-            >
-              <Trash2 size={20} />
-            </button>
           </div>
         </div>
       ))}

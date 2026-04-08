@@ -62,3 +62,13 @@ export const refreshTokens = sqliteTable('refresh_tokens', {
   revoked: integer('revoked').notNull().default(0), // 0=false, 1=true
   createdOn: text('created_on').notNull(),
 });
+
+export const systemNotifications = sqliteTable('system_notifications', {
+  id: text('id').primaryKey(),
+  userId: text('user_id').references(() => users.id), // Nullable si es para todos los admins
+  type: text('type').notNull(), // 'info', 'success', 'warning', 'error'
+  title: text('title').notNull(),
+  message: text('message').notNull(),
+  read: integer('read').notNull().default(0),
+  createdAt: text('created_at').notNull(),
+});

@@ -1,14 +1,21 @@
 import { create } from 'zustand';
 import { api } from '../services/api';
 
-interface SyncRecord {
+export interface SyncItem {
   id: string;
-  userId: string;
-  username: string;
-  month: string;
   type: string;
   quantity: number;
   nexudusSaleId: string;
+}
+
+export interface SyncRecord {
+  userId: string;
+  username: string;
+  month: string;
+  saleDate: string;
+  totalQuantity: number;
+  items: SyncItem[];
+  nexudusCoworkerId: string | null;
   createdOn: string;
 }
 
@@ -42,7 +49,7 @@ interface SyncState {
   // Actions
   fetchRecords: (force?: boolean) => Promise<void>;
   fetchStats: () => Promise<void>;
-  deleteRecord: (id: string, force?: boolean) => Promise<void>;
+  deleteGroup: (ids: string[], force?: boolean) => Promise<void>;
   setPage: (page: number) => void;
   setFilters: (filters: Filters) => void;
   reset: () => void;
@@ -81,7 +88,7 @@ export const useSyncStore = create<SyncState>((set, get) => ({
   },
 
   fetchRecords: async (force = false) => {
-    if (get().isLoading || get().isRefreshing) return;
+    if (!force && (get().isLoading || get().isRefreshing)) return;
 
     const hasData = get().records.length > 0;
     
@@ -120,13 +127,15 @@ export const useSyncStore = create<SyncState>((set, get) => ({
     }
   },
 
-  deleteRecord: async (id: string, force: boolean = false) => {
+  deleteGroup: async (ids: string[], force: boolean = false) => {
     set({ isLoading: true, error: null });
     try {
-      const { error: apiError } = await api.DELETE("/api/v1/billing/sync/{id}" as any, {
+      const { error: apiError } = await api.DELETE("/api/v1/billing/sync/group" as any, {
         params: { 
-          path: { id },
-          query: { force } as any
+          query: { 
+            ids,
+            force 
+          } as any
         }
       });
 
@@ -136,8 +145,8 @@ export const useSyncStore = create<SyncState>((set, get) => ({
       await get().fetchRecords(true);
       await get().fetchStats();
     } catch (err: any) {
-      console.error("[SyncStore] Error deleting sync record:", err);
-      set({ error: err.message || "Error al intentar borrar la venta." });
+      console.error("[SyncStore] Error deleting sync group:", err);
+      set({ error: err.message || "Error al intentar borrar el grupo de ventas." });
       throw err;
     } finally {
       set({ isLoading: false });

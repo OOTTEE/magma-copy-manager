@@ -53,8 +53,8 @@ export const getTestEnv = async () => {
 
             const adminResult = await authService.login(appInstance, 'admin', 'adminPassword');
             const customerResult = await authService.login(appInstance, 'customer', 'customerPassword');
-            adminToken = adminResult?.token || null;
-            customerToken = customerResult?.token || null;
+            adminToken = adminResult?.accessToken || null;
+            customerToken = customerResult?.accessToken || null;
         })();
     }
 

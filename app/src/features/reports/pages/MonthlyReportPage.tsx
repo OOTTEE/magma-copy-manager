@@ -73,23 +73,26 @@ export const MonthlyReportPage = () => {
         }
     };
 
-    const handleConfirmCharge = async () => {
+    const handleConfirmCharge = async (note: string) => {
         if (!selectedUserId) return;
         setIsCharging(true);
         setChargeError(null);
 
         try {
             const { error } = await api.POST('/api/v1/billing/sync' as any, {
-                body: { userId: selectedUserId }
+                body: { 
+                    userId: selectedUserId,
+                    note
+                }
             });
             if (error) {
-                const msg = (error as any).message || (error as any).error || 'Error desconocido durante el cobro.';
+                const msg = (error as any).message || (error as any).error || 'Error desconocido durante la vinculación.';
                 throw new Error(msg);
             }
             handleCloseModal();
             fetchReport(true);
         } catch (err: any) {
-            setChargeError(err.message || 'Error técnico al cobrar en Nexudus.');
+            setChargeError(err.message || 'Error técnico al vincular en Nexudus.');
         } finally {
             setIsCharging(false);
         }

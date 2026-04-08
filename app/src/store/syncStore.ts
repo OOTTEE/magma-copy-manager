@@ -146,7 +146,7 @@ export const useSyncStore = create<SyncState>((set, get) => ({
       await get().fetchStats();
     } catch (err: any) {
       console.error("[SyncStore] Error deleting sync group:", err);
-      set({ error: err.message || "Error al intentar borrar el grupo de ventas." });
+      set({ error: err.message || "Error al intentar borrar el grupo de vínculos." });
       throw err;
     } finally {
       set({ isLoading: false });

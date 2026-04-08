@@ -32,12 +32,12 @@ export const ReportCard: React.FC<ReportCardProps> = ({ item, onCharge, enriched
   const isChargeDisabled = item.total === 0 || !enrichedUser || !enrichedUser.nexudusUser;
 
   const chargeTooltip = item.total === 0
-    ? 'No hay consumos registrados para cobrar'
+    ? 'No hay consumos registrados para vincular'
     : !enrichedUser
       ? 'Cargando información de usuario...'
       : !enrichedUser.nexudusUser
         ? 'Usuario sin cuenta de Nexudus vinculada'
-        : 'Cobrar copias en Nexudus';
+        : 'Vincular copias en Nexudus';
 
   return (
     <div className="group bg-white dark:bg-[#1a1818] rounded-[2.5rem] p-8 border border-slate-200 dark:border-white/5 shadow-lg hover:shadow-2xl transition-all duration-500">
@@ -112,7 +112,7 @@ export const ReportCard: React.FC<ReportCardProps> = ({ item, onCharge, enriched
           }`}
         >
           <Zap size={14} strokeWidth={2.5} />
-          Cobrar
+          Vincular
         </button>
       </div>
     </div>

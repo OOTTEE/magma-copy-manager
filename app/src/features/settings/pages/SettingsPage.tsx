@@ -412,7 +412,7 @@ export const SettingsPage = () => {
                                 </div>
                                 <p className="text-[10px] text-slate-400 dark:text-white/20 flex items-center gap-1 ml-2">
                                     <Info size={12} />
-                                    Estos IDs son requeridos por Nexudus para registrar las ventas en la ubicación y moneda correctas.
+                                    Estos IDs son requeridos por Nexudus para registrar los vínculos en la ubicación y moneda correctas.
                                 </p>
                             </div>
                         </div>

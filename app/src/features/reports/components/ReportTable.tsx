@@ -39,13 +39,13 @@ export const ReportTable: React.FC<ReportTableProps> = ({ data, onCharge, enrich
   }, [data]);
 
   const getChargeTooltip = (item: ReportData): string => {
-    if (item.total === 0) return 'No hay consumos registrados para cobrar';
+    if (item.total === 0) return 'No hay consumos registrados para vincular';
     
     const enrichedUser = enrichedUsers[item.id];
     if (!enrichedUser) return 'Cargando información de usuario...';
     if (!enrichedUser.nexudusUser) return 'Usuario sin cuenta de Nexudus vinculada';
     
-    return 'Cobrar copias en Nexudus';
+    return 'Vincular copias en Nexudus';
   };
 
   const isChargeDisabled = (item: ReportData) => {
@@ -128,7 +128,7 @@ export const ReportTable: React.FC<ReportTableProps> = ({ data, onCharge, enrich
               Total Copias
             </th>
             <th className="px-8 py-6 text-center text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-white/20">
-              Cobrar
+              Vincular
             </th>
           </tr>
         </thead>

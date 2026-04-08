@@ -10,8 +10,8 @@ export class AppConfig {
     static get serviceUrl(): string {
         const url = import.meta.env.VITE_SERVICE_URL;
         if (!url) {
-            console.warn('[AppConfig] VITE_SERVICE_URL is not defined in the environment. Falling back to localhost:3000');
-            return 'http://localhost:3000';
+            console.warn('[AppConfig] VITE_SERVICE_URL is not defined in the environment. Falling back to relative paths.');
+            return '';
         }
         return url;
     }

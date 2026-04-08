@@ -16,7 +16,7 @@ interface SimulationResult {
 interface ChargeModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onConfirm: () => Promise<void>;
+  onConfirm: (note: string) => Promise<void>;
   data: SimulationResult | null;
   isLoadingData: boolean;
   isCharging: boolean;
@@ -32,6 +32,26 @@ export const ChargeModal: React.FC<ChargeModalProps> = ({
   isCharging,
   error,
 }) => {
+  const [note, setNote] = React.useState('');
+
+  const formatDateDDMMYYYY = (iso: string) => {
+    const d = new Date(iso);
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    return `${day}-${month}-${d.getFullYear()}`;
+  };
+
+  const getDefaultNote = (period: { from: string; to: string } | undefined) => {
+    if (!period) return '';
+    return `periodo ${formatDateDDMMYYYY(period.from)} ${formatDateDDMMYYYY(period.to)}`;
+  };
+
+  // Reset note when data changes
+  useEffect(() => {
+    if (data) {
+      setNote(getDefaultNote(data.period));
+    }
+  }, [data]);
   // Close on Escape key
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -68,7 +88,7 @@ export const ChargeModal: React.FC<ChargeModalProps> = ({
               </div>
               <div>
                 <h2 className="text-xl font-black text-slate-800 dark:text-white tracking-tight">
-                  Confirmar Cobro
+                  Vincular Copias
                 </h2>
                 {data && (
                   <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-white/20 mt-0.5">
@@ -139,6 +159,28 @@ export const ChargeModal: React.FC<ChargeModalProps> = ({
                     {totalQuantity}
                   </span>
                 </div>
+
+                {/* Custom Note field */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between px-2">
+                    <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-white/20">
+                      Nota en Nexudus
+                    </label>
+                    <button 
+                      onClick={() => setNote(getDefaultNote(data.period))}
+                      className="text-[10px] font-bold text-indigo-500 hover:text-indigo-600 transition-colors uppercase tracking-widest"
+                    >
+                      Restablecer
+                    </button>
+                  </div>
+                  <textarea
+                    value={note}
+                    onChange={(e) => setNote(e.target.value)}
+                    disabled={isCharging}
+                    placeholder="Escribe una nota para Nexudus..."
+                    className="w-full h-24 px-5 py-4 bg-slate-50 dark:bg-black/20 border border-slate-100 dark:border-white/5 rounded-2xl text-sm font-semibold text-slate-700 dark:text-white/80 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all resize-none"
+                  />
+                </div>
               </>
             )}
 
@@ -155,7 +197,7 @@ export const ChargeModal: React.FC<ChargeModalProps> = ({
               <div className="flex items-start gap-3 px-5 py-4 bg-amber-500/10 rounded-2xl border border-amber-500/20">
                 <AlertTriangle size={16} className="text-amber-500 shrink-0 mt-0.5" />
                 <p className="text-xs font-semibold text-amber-600 dark:text-amber-400">
-                  Esta operación registrará las ventas en Nexudus. Es irreversible desde Magma.
+                  Esta operación vinculará los consumos en Nexudus. Es irreversible desde Magma.
                 </p>
               </div>
             )}
@@ -171,7 +213,7 @@ export const ChargeModal: React.FC<ChargeModalProps> = ({
               Cancelar
             </button>
             <button
-              onClick={onConfirm}
+              onClick={() => onConfirm(note)}
               disabled={isLoadingData || isCharging || !data || !!error}
               className={`flex items-center gap-2 px-7 py-3 rounded-2xl text-sm font-black transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed ${
                 !isCharging && data && !error
@@ -182,12 +224,12 @@ export const ChargeModal: React.FC<ChargeModalProps> = ({
               {isCharging ? (
                 <>
                   <Loader2 size={16} className="animate-spin" />
-                  Cobrando...
+                  Vinculando...
                 </>
               ) : (
                 <>
                   <Zap size={16} />
-                  Cobrar en Nexudus
+                  Vincular en Nexudus
                 </>
               )}
             </button>

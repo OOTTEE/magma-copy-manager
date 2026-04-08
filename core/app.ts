@@ -36,7 +36,7 @@ export function buildApp(opts: FastifyServerOptions = {}): FastifyInstance {
         dir: join(__dirname, 'routes'),
         routeParams: true,
         options: { prefix: '/' },
-        ignoreFilter: (path) => path.endsWith('.test.ts') || path.endsWith('testEnv.ts')
+        ignoreFilter: (path) => /\.(test|spec)\.(ts|js)$/.test(path) || path.endsWith('testEnv.ts')
     });
 
     return app;

@@ -1,0 +1,37 @@
+services:
+  magma-core:
+    build:
+      context: .
+      dockerfile: core/Dockerfile
+    container_name: magma-core
+    restart: always
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - DATABASE_URL=file:sqlite.db
+      - JWT_SECRET=${JWT_SECRET:-magma-secret-prod-12345}
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY:-default-encryption-key-32-chars-long}
+    volumes:
+      - ./core/sqlite.db:/home/node/app/sqlite.db
+      - ./storage:/home/node/app/storage
+    networks:
+      - magma-network
+
+  magma-app:
+    build:
+      context: .
+      dockerfile: app/Dockerfile
+    container_name: magma-app
+    restart: always
+    environment:
+      - VITE_SERVICE_URL=/
+    ports:
+      - "80:80"
+    depends_on:
+      - magma-core
+    networks:
+      - magma-network
+
+networks:
+  magma-network:
+    driver: bridge

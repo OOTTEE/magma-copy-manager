@@ -107,7 +107,7 @@ export const SyncDetailModal: React.FC<SyncDetailModalProps> = ({
                                 </div>
                                 <div>
                                     <p className="text-[10px] font-black uppercase tracking-[0.2em]">Estado en Nexudus</p>
-                                    <p className="text-xs font-bold text-slate-600 dark:text-white/60">Venta de Producto Registrada</p>
+                                    <p className="text-xs font-bold text-slate-600 dark:text-white/60">Consumo Vinculado Exitosamente</p>
                                 </div>
                             </div>
                             <div className="px-4 py-2 rounded-xl bg-emerald-500/20 text-emerald-500 text-xs font-black uppercase tracking-widest">

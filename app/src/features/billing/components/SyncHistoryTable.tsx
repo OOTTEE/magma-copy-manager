@@ -106,7 +106,7 @@ export const SyncHistoryTable: React.FC<SyncHistoryTableProps> = ({
                   <button 
                     onClick={() => onDelete?.(record.items.map(i => i.id))}
                     className="p-3 rounded-xl bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all shadow-red-500/30 active:scale-90"
-                    title="Realizar Rollback del Cobro Completo"
+                    title="Realizar Rollback de la Vinculación Completa"
                   >
                     <Trash2 size={18} />
                   </button>

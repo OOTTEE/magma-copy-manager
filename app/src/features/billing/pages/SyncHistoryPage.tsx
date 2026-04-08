@@ -129,7 +129,7 @@ export const SyncHistoryPage = () => {
                     <div className="absolute right-0 top-0 p-8 text-emerald-500/5 group-hover:scale-110 transition-transform duration-500">
                         <CheckCircle2 size={120} strokeWidth={1} />
                     </div>
-                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-white/20 mb-2">Total Páginas Vendidas (Mes Actual)</p>
+                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-white/20 mb-2">Total Copias Vinculadas (Mes Actual)</p>
                     <div className="flex items-baseline gap-2">
                         <p className="text-5xl font-black text-slate-800 dark:text-white tracking-tighter">
                             {stats?.totalSalesThisMonth ?? 0}
@@ -231,7 +231,7 @@ export const SyncHistoryPage = () => {
 
                                 <div className="p-6 bg-red-50 dark:bg-red-500/5 rounded-3xl border border-red-100 dark:border-red-500/10 mb-6">
                                     <p className="text-sm text-red-800 dark:text-red-400 font-bold leading-relaxed">
-                                        Estás a punto de eliminar esta venta de Nexudus automáticamente y liberar las copias en Magma para que puedan ser refacturadas.
+                                        Estás a punto de desvincular estas copias en Nexudus automáticamente y liberarlas en Magma para que puedan ser refacturadas.
                                     </p>
                                 </div>
 

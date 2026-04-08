@@ -117,13 +117,13 @@ export const AdminDashboardView = () => {
                                 {isBilling ? <RefreshCcw size={28} className="animate-spin" /> : <CreditCard size={28} />}
                             </div>
                             <div>
-                                <h2 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">Process Billing</h2>
-                                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-white/40">Sincronización Nexudus</p>
+                                <h2 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">Sync Nexudus</h2>
+                                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-white/40">Vinculación de Consumos</p>
                             </div>
                         </div>
                         
                         <p className="text-slate-600 dark:text-white/60 mb-8 leading-relaxed font-medium">
-                            Procesa el cobro de copias para todos los usuarios con registros pendientes en el ciclo actual de facturación.
+                            Procesa el vinculado de copias para todos los usuarios con registros pendientes en el ciclo actual de facturación.
                         </p>
 
                         <button 
@@ -132,7 +132,7 @@ export const AdminDashboardView = () => {
                             className="w-full py-4 bg-[#f15a24] hover:bg-[#d84a1a] disabled:opacity-50 text-white font-bold rounded-2xl shadow-2xl shadow-[#f15a24]/40 hover:shadow-[#f15a24]/60 transition-all active:scale-95 flex items-center justify-center gap-2"
                         >
                             {isBilling ? <RefreshCcw size={18} className="animate-spin" /> : <CreditCard size={18} />}
-                            {isBilling ? "Procesando..." : "Cobrar Pendientes Ahora"}
+                            {isBilling ? "Vinculando..." : "Vincular Pendientes Ahora"}
                         </button>
                     </div>
                 </div>

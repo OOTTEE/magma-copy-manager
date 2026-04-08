@@ -13,6 +13,16 @@ import { randomUUID } from 'crypto';
  */
 export const billingService = {
   /**
+   * Helper to format ISO date to DD-MM-YYYY
+   */
+  formatDate: (iso: string) => {
+    const d = new Date(iso);
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    return `${day}-${month}-${d.getFullYear()}`;
+  },
+
+  /**
    * Simulates an invoice for a specific user based on current consumption.
    * Business Rule: No persistence, pure calculation.
    */
@@ -187,7 +197,7 @@ export const billingService = {
   /**
    * Synchronizes consumption to Nexudus for a single user.
    */
-  syncUserConsumption: async (userId: string) => {
+  syncUserConsumption: async (userId: string, customNote?: string) => {
     const report = await reportsService.getMonthlyAccumulationForUser(userId);
     if (!report) throw new Error('No report data found for user');
     if (!report.data.nexudusUser) throw new Error(`User ${report.data.username} has no Nexudus ID mapped.`);
@@ -240,7 +250,7 @@ export const billingService = {
           ProductId: parseInt(sale.nexudusProductId),
           Quantity: sale.quantity,
           SaleDate: saleDate,
-          Notes: `Sync Magma - ${monthStr} - ${sale.type}`,
+          Notes: customNote || `periodo ${billingService.formatDate(report.period.from)} ${billingService.formatDate(report.period.to)}`,
           InvoiceThisCoworker: false
         });
 

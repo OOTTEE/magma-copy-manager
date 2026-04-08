@@ -84,10 +84,10 @@ export const SimulationModal: React.FC<SimulationModalProps> = ({
               <Receipt size={24} strokeWidth={1.5} />
             </div>
             <div>
-              <h2 className="text-2xl font-black text-slate-800 dark:text-white tracking-tighter">Detalle de Cobro Manual</h2>
+              <h2 className="text-2xl font-black text-slate-800 dark:text-white tracking-tighter">Detalle de Vinculación Manual</h2>
               <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-[#f15a24]">
                 <div className="w-1.5 h-1.5 rounded-full bg-[#f15a24] animate-pulse" />
-                Venta Directa a Nexudus
+                Vínculo Directo a Nexudus
               </div>
             </div>
           </div>
@@ -176,7 +176,7 @@ export const SimulationModal: React.FC<SimulationModalProps> = ({
             onClick={handleApply}
             className="px-8 py-3 rounded-2xl bg-[#f15a24] text-white font-bold text-sm shadow-xl shadow-[#f15a24]/20 hover:scale-105 active:scale-95 transition-all"
           >
-            Confirmar y Cobrar
+            Confirmar y Vincular
           </button>
           
           <button 
@@ -193,9 +193,9 @@ export const SimulationModal: React.FC<SimulationModalProps> = ({
         isOpen={showConfirm}
         onClose={() => setShowConfirm(false)}
         onConfirm={handleConfirmSync}
-        title="¿Confirmar Cobro?"
-        message="Se publicará una venta en Nexudus por cada categoría de copia. Esta operación registrará el cobro permanentemente."
-        confirmText="Sí, Cobrar"
+        title="¿Confirmar Vinculación?"
+        message="Se publicará un vínculo en Nexudus por cada categoría de copia. Esta operación registrará la vinculación permanentemente."
+        confirmText="Sí, Vincular"
         variant="primary"
       />
     </div>

@@ -1,8 +1,19 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { dashboardFacade } from './dashboard.facade';
-import { billingService } from '../../services/billing/billing.service';
+import { db } from '../../db';
 
-vi.mock('../../services/billing/billing.service');
+vi.mock('../../db', () => ({
+    db: {
+        select: vi.fn().mockReturnThis(),
+        from: vi.fn().mockReturnThis(),
+        where: vi.fn().mockReturnThis(),
+        groupBy: vi.fn().mockReturnThis(),
+        orderBy: vi.fn().mockReturnThis(),
+        limit: vi.fn().mockReturnThis(),
+        get: vi.fn(),
+        all: vi.fn()
+    }
+}));
 
 describe('DashboardFacade', () => {
     const userId = 'user-123';
@@ -11,49 +22,53 @@ describe('DashboardFacade', () => {
         vi.clearAllMocks();
     });
 
-    it('should aggregate dashboard data correctly from Nexudus Sales', async () => {
+    it('should aggregate customer dashboard data correctly', async () => {
         vi.useFakeTimers();
         vi.setSystemTime(new Date('2024-03-15'));
 
-        // Mock recent sales / history
-        vi.mocked(billingService.getPaginatedSales).mockResolvedValue({
-            data: [
-                { month: '2024-01', quantity: 100, type: 'a4Bw' },
-                { month: '2024-02', quantity: 200, type: 'a4Color' },
-                { month: '2024-03', quantity: 50, type: 'a4Bw' }
-            ],
-            pagination: { total: 3, page: 1, limit: 100, totalPages: 1 }
+        // Mock current month usage
+        vi.mocked(db.get).mockResolvedValueOnce({ count: 30 }); // for currentMonthUsage
+        vi.mocked(db.get).mockResolvedValueOnce({ total: 350 }); // for ytdTotal
+        
+        // Mock YTD monthly usage
+        vi.mocked(db.select).mockReturnValue({
+            from: vi.fn().mockReturnThis(),
+            where: vi.fn().mockReturnThis(),
+            groupBy: vi.fn().mockReturnThis(),
+            orderBy: vi.fn().mockResolvedValue([
+                { month: '2024-01', total: 100 },
+                { month: '2024-02', total: 200 },
+                { month: '2024-03', total: 50 }
+            ])
         } as any);
 
-        // Mock current month simulation
-        vi.mocked(billingService.simulateInvoice).mockResolvedValue({
-            lines: [{ quantity: 30 }]
-        } as any);
+        // Mock recent sessions
+        vi.mocked(db.all).mockResolvedValue([]);
 
-        const result = await dashboardFacade.getDashboardSummary(userId);
+        const result = await dashboardFacade.getCustomerDashboardData(userId);
 
         // Verification
-        expect(result.currentMonthUsage.pages).toBe(30);
-        expect(result.ytdTotalPages).toBe(350); // 100 + 200 + 50
-        expect(result.recentSyncs).toHaveLength(3);
+        expect(result.currentMonthUsage.count).toBe(30);
+        expect(result.ytdTotal).toBe(350);
+        expect(result.ytdMonthlyExpenses).toHaveLength(3);
         
-        // Months: Ene, Feb, Mar (YTD)
-        expect(result.ytdMonthlyUsage).toHaveLength(3);
-        expect(result.ytdMonthlyUsage[0].pages).toBe(100);
-        expect(result.ytdMonthlyUsage[1].pages).toBe(200);
-        expect(result.ytdMonthlyUsage[2].pages).toBe(50);
-
         vi.useRealTimers();
     });
 
-    it('should handle missing consumption for current month', async () => {
-        vi.mocked(billingService.getPaginatedSales).mockResolvedValue({ data: [], pagination: {} } as any);
-        vi.mocked(billingService.simulateInvoice).mockRejectedValue(new Error('No consumption'));
+    it('should handle missing consumption for customer', async () => {
+        vi.mocked(db.get).mockResolvedValue(null);
+        vi.mocked(db.select).mockReturnValue({
+            from: vi.fn().mockReturnThis(),
+            where: vi.fn().mockReturnThis(),
+            groupBy: vi.fn().mockReturnThis(),
+            orderBy: vi.fn().mockResolvedValue([])
+        } as any);
+        vi.mocked(db.all).mockResolvedValue([]);
 
-        const result = await dashboardFacade.getDashboardSummary(userId);
+        const result = await dashboardFacade.getCustomerDashboardData(userId);
 
-        expect(result.currentMonthUsage.pages).toBe(0);
-        expect(result.ytdTotalPages).toBe(0);
-        expect(result.recentSyncs).toEqual([]);
+        expect(result.currentMonthUsage.count).toBe(0);
+        expect(result.ytdTotal).toBe(0);
+        expect(result.recentInvoices).toEqual([]);
     });
 });

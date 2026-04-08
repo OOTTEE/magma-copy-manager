@@ -184,17 +184,20 @@ const billingRoute: FastifyPluginAsync = async (fastify) => {
       tags: ['Billing'],
       body: {
         type: 'object',
-        properties: { userId: { type: 'string' } },
+        properties: { 
+          userId: { type: 'string' },
+          note: { type: 'string' }
+        },
         required: ['userId']
       }
     },
     preValidation: [fastify.authenticate]
   }, async (request, reply) => {
     const requestingUser = request.user as { id: string; role: string };
-    const { userId } = request.body as { userId: string };
+    const { userId, note } = request.body as { userId: string; note?: string };
 
     try {
-      const result = await billingFacade.syncUserConsumption(requestingUser, userId);
+      const result = await billingFacade.syncUserConsumption(requestingUser, userId, note);
       return reply.code(201).send(result);
     } catch (err: any) {
       if (err.statusCode) return reply.code(err.statusCode).send({ message: err.message });

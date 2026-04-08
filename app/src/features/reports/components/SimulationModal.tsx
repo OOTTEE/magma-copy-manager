@@ -84,10 +84,10 @@ export const SimulationModal: React.FC<SimulationModalProps> = ({
               <Receipt size={24} strokeWidth={1.5} />
             </div>
             <div>
-              <h2 className="text-2xl font-black text-slate-800 dark:text-white tracking-tighter">Previsualización de Sincronización</h2>
-              <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-emerald-500">
-                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                Cálculo de Consumo Local
+              <h2 className="text-2xl font-black text-slate-800 dark:text-white tracking-tighter">Detalle de Cobro Manual</h2>
+              <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-[#f15a24]">
+                <div className="w-1.5 h-1.5 rounded-full bg-[#f15a24] animate-pulse" />
+                Venta Directa a Nexudus
               </div>
             </div>
           </div>
@@ -174,9 +174,9 @@ export const SimulationModal: React.FC<SimulationModalProps> = ({
           
           <button 
             onClick={handleApply}
-            className="px-8 py-3 rounded-2xl bg-emerald-500 text-white font-bold text-sm shadow-xl shadow-emerald-500/20 hover:scale-105 active:scale-95 transition-all"
+            className="px-8 py-3 rounded-2xl bg-[#f15a24] text-white font-bold text-sm shadow-xl shadow-[#f15a24]/20 hover:scale-105 active:scale-95 transition-all"
           >
-            Sincronizar con Nexudus
+            Confirmar y Cobrar
           </button>
           
           <button 
@@ -193,9 +193,9 @@ export const SimulationModal: React.FC<SimulationModalProps> = ({
         isOpen={showConfirm}
         onClose={() => setShowConfirm(false)}
         onConfirm={handleConfirmSync}
-        title="¿Confirmar Sincronización?"
-        message="Se enviará el reporte de consumo a Nexudus. Esta operación es definitiva en Magma para mantener la trazabilidad con el sistema de facturación externo."
-        confirmText="Sí, Sincronizar"
+        title="¿Confirmar Cobro?"
+        message="Se publicará una venta en Nexudus por cada categoría de copia. Esta operación registrará el cobro permanentemente."
+        confirmText="Sí, Cobrar"
         variant="primary"
       />
     </div>

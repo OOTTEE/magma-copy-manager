@@ -2,13 +2,13 @@ import { useState, useEffect } from 'react';
 import { useReportStore } from '../../../store/reportStore';
 import { ReportTable } from '../components/ReportTable';
 import { ReportCard } from '../components/ReportCard';
-import { SimulationModal } from '../components/SimulationModal';
-import { SyncDetailModal } from '../components/SyncDetailModal';
+import { ChargeModal } from '../components/ChargeModal';
+import { useUserEnrichment } from '../hooks/useUserEnrichment';
 import { api } from '../../../services/api';
-import { 
-    LayoutGrid, 
-    Table as TableIcon, 
-    RefreshCw, 
+import {
+    LayoutGrid,
+    Table as TableIcon,
+    RefreshCw,
     Calendar,
     BarChart3,
     Loader2,
@@ -16,88 +16,92 @@ import {
     ArrowUpRight
 } from 'lucide-react';
 
+interface SimulationResult {
+    userId: string;
+    username: string;
+    period: { from: string; to: string };
+    lines: Array<{ concept: string; quantity: number }>;
+}
+
 /**
  * MonthlyReportPage Component
- * 
+ *
  * Main view for monitoring monthly copy consumption across all users.
  */
 export const MonthlyReportPage = () => {
     const { monthlyReport: report, isLoading, isRefreshing, error, fetchMonthlyReport: fetchReport } = useReportStore();
+    const { enrichedUsers, enrichUsers } = useUserEnrichment();
     const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
-    
-    // Simulation & Persistence state
-    const [isSimulating, setIsSimulating] = useState(false);
-    const [simulationData, setSimulationData] = useState<any>(null);
-    const [syncStatuses, setSyncStatuses] = useState<Record<string, { synced: boolean, id?: string } | null>>({});
-    const [viewingSync, setViewingSync] = useState<any>(null);
+
+    // Charge modal state
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+    const [simulationData, setSimulationData] = useState<SimulationResult | null>(null);
+    const [isLoadingSimulation, setIsLoadingSimulation] = useState(false);
+    const [isCharging, setIsCharging] = useState(false);
+    const [chargeError, setChargeError] = useState<string | null>(null);
 
     useEffect(() => {
         fetchReport();
     }, [fetchReport]);
 
-    // Update statuses when report data arrives
+    // Trigger enrichment when report data changes
     useEffect(() => {
-        if (!report?.data) return;
+        if (report?.data && report.data.length > 0) {
+            const ids = report.data.map((u: any) => u.id);
+            enrichUsers(ids);
+        }
+    }, [report?.data, enrichUsers]);
 
-        const loadStatuses = async () => {
-            const statuses: Record<string, { synced: boolean } | null> = {};
-            for (const user of report.data) {
-                try {
-                    const { data, response } = await api.GET("/api/v1/billing/sync/users/{id}/status" as any, {
-                        params: { path: { id: user.id } }
-                    });
-                    statuses[user.id] = (response.status === 200 && data) ? { 
-                        synced: (data as any).synced,
-                        id: (data as any).sales?.[0]?.id 
-                    } : null;
-                } catch (err) {
-                    statuses[user.id] = null;
-                }
-            }
-            setSyncStatuses(statuses);
-        };
-        loadStatuses();
-    }, [report?.data]);
+    const handleOpenCharge = async (userId: string) => {
+        setSelectedUserId(userId);
+        setSimulationData(null);
+        setChargeError(null);
+        setIsModalOpen(true);
+        setIsLoadingSimulation(true);
 
-    const handleSimulate = async (id: string) => {
-        setIsSimulating(true);
         try {
-            const { data, error } = await api.GET("/api/v1/billing/simulations/users/{id}", {
-                params: { path: { id } }
+            const { data, error } = await api.GET('/api/v1/billing/simulations/users/{id}', {
+                params: { path: { id: userId } }
             });
-            if (error) throw error;
-            setSimulationData(data);
+            if (error) throw new Error((error as any).message || 'Error al calcular el consumo.');
+            setSimulationData(data as SimulationResult);
         } catch (err: any) {
-            console.error("Simulation error:", err);
+            setChargeError(err.message || 'No se pudo obtener el resumen de facturación.');
         } finally {
-            setIsSimulating(false);
+            setIsLoadingSimulation(false);
         }
     };
 
-    const handleSync = async (userId: string) => {
+    const handleConfirmCharge = async () => {
+        if (!selectedUserId) return;
+        setIsCharging(true);
+        setChargeError(null);
+
         try {
-            const { error } = await api.POST("/api/v1/billing/sync" as any, {
-                body: { userId }
+            const { error } = await api.POST('/api/v1/billing/sync' as any, {
+                body: { userId: selectedUserId }
             });
-            if (error) throw error;
-            
-            // Refresh statuses
+            if (error) {
+                const msg = (error as any).message || (error as any).error || 'Error desconocido durante el cobro.';
+                throw new Error(msg);
+            }
+            handleCloseModal();
             fetchReport(true);
-        } catch (err) {
-            console.error("Error syncing to Nexudus:", err);
+        } catch (err: any) {
+            setChargeError(err.message || 'Error técnico al cobrar en Nexudus.');
+        } finally {
+            setIsCharging(false);
         }
     };
 
-    const handleSyncDetail = async (syncId: string) => {
-        try {
-            const { data, error } = await api.GET("/api/v1/billing/sync/{id}" as any, {
-                params: { path: { id: syncId } }
-            });
-            if (error) throw error;
-            setViewingSync(data);
-        } catch (err) {
-            console.error("Error fetching sync details:", err);
-        }
+    const handleCloseModal = () => {
+        if (isCharging) return;
+        setIsModalOpen(false);
+        setSelectedUserId(null);
+        setSimulationData(null);
+        setChargeError(null);
+        setIsLoadingSimulation(false);
     };
 
     const totalA4 = report?.data.reduce((acc, curr) => acc + curr.a4Bw + curr.a4Color, 0) || 0;
@@ -105,7 +109,7 @@ export const MonthlyReportPage = () => {
     const grandTotal = report?.data.reduce((acc, curr) => acc + curr.total, 0) || 0;
 
     const formatDate = (dateStr: string | undefined) => {
-        if (!dateStr) return "---";
+        if (!dateStr) return '---';
         return new Date(dateStr).toLocaleDateString('es-ES', { day: '2-digit', month: 'long' });
     };
 
@@ -126,7 +130,7 @@ export const MonthlyReportPage = () => {
                                 <Calendar size={14} className="text-indigo-500" />
                                 Periodo: {formatDate(report?.period.from)} — {formatDate(report?.period.to)}
                             </div>
-                            
+
                             {isRefreshing && (
                                 <div className="flex items-center gap-2 px-3 py-1 bg-indigo-500/10 text-indigo-500 rounded-full animate-in fade-in zoom-in duration-300">
                                     <Loader2 size={12} className="animate-spin" />
@@ -139,25 +143,25 @@ export const MonthlyReportPage = () => {
 
                 {/* Controls */}
                 <div className="flex items-center gap-2 p-1.5 bg-white dark:bg-white/5 rounded-3xl border border-slate-200 dark:border-white/5 shadow-sm">
-                    <button 
+                    <button
                         onClick={() => setViewMode('table')}
-                        className={`p-3 rounded-2xl transition-all ${viewMode === 'table' ? "bg-indigo-500 text-white shadow-lg shadow-indigo-500/30" : "text-slate-400 dark:text-white/20 hover:text-indigo-500"}`}
+                        className={`p-3 rounded-2xl transition-all ${viewMode === 'table' ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/30' : 'text-slate-400 dark:text-white/20 hover:text-indigo-500'}`}
                     >
                         <TableIcon size={20} />
                     </button>
-                    <button 
+                    <button
                         onClick={() => setViewMode('cards')}
-                        className={`p-3 rounded-2xl transition-all ${viewMode === 'cards' ? "bg-indigo-500 text-white shadow-lg shadow-indigo-500/30" : "text-slate-400 dark:text-white/20 hover:text-indigo-500"}`}
+                        className={`p-3 rounded-2xl transition-all ${viewMode === 'cards' ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/30' : 'text-slate-400 dark:text-white/20 hover:text-indigo-500'}`}
                     >
                         <LayoutGrid size={20} />
                     </button>
                     <div className="w-px h-8 bg-slate-200 dark:bg-white/5 mx-1" />
-                    <button 
+                    <button
                         onClick={() => fetchReport(true)}
                         disabled={isLoading}
                         className="p-3 text-slate-400 dark:text-white/20 hover:text-indigo-500 hover:bg-slate-50 dark:hover:bg-white/5 rounded-2xl transition-all"
                     >
-                        <RefreshCw size={20} className={isLoading ? "animate-spin" : ""} />
+                        <RefreshCw size={20} className={isLoading ? 'animate-spin' : ''} />
                     </button>
                 </div>
             </div>
@@ -199,35 +203,38 @@ export const MonthlyReportPage = () => {
             {isLoading && !report ? (
                 <div className="flex flex-col items-center justify-center py-40 gap-4">
                     <Loader2 size={48} className="text-indigo-500 animate-spin" />
-                    <p className="text-slate-400 dark:text-white/20 font-black uppercase tracking-widest text-xs">Agregando Registros Mensuales...</p>
+                    <p className="text-slate-400 dark:text-white/20 font-black uppercase tracking-widest text-xs">
+                        Agregando Registros Mensuales...
+                    </p>
                 </div>
             ) : error ? (
                 <div className="flex flex-col items-center justify-center py-32 p-10 bg-red-500/5 rounded-[3rem] border border-red-500/10 text-center">
                     <AlertCircle size={48} className="text-red-500/40 mb-4" />
                     <h3 className="text-xl font-bold text-red-500 mb-2">Error en el Reporte</h3>
                     <p className="text-slate-400 dark:text-white/20 font-medium max-w-sm mb-8">{error}</p>
-                    <button onClick={() => fetchReport(true)} className="px-8 py-3 bg-red-500/10 text-red-500 rounded-2xl font-bold hover:bg-red-500 hover:text-white transition-all">
+                    <button
+                        onClick={() => fetchReport(true)}
+                        className="px-8 py-3 bg-red-500/10 text-red-500 rounded-2xl font-bold hover:bg-red-500 hover:text-white transition-all"
+                    >
                         Intentar de nuevo
                     </button>
                 </div>
             ) : (
                 <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
                     {viewMode === 'table' ? (
-                        <ReportTable 
-                            data={report?.data || []} 
-                            onSimulate={handleSimulate}
-                            syncStatuses={syncStatuses}
-                            onViewSync={handleSyncDetail}
+                        <ReportTable
+                            data={report?.data || []}
+                            onCharge={handleOpenCharge}
+                            enrichedUsers={enrichedUsers}
                         />
                     ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                             {report?.data.map((item: any) => (
-                                <ReportCard 
-                                    key={item.id} 
-                                    item={item} 
-                                    onSimulate={handleSimulate}
-                                    syncStatus={syncStatuses[item.id]}
-                                    onViewSync={handleSyncDetail}
+                                <ReportCard
+                                    key={item.id}
+                                    item={item}
+                                    onCharge={handleOpenCharge}
+                                    enrichedUser={enrichedUsers[item.id]}
                                 />
                             ))}
                         </div>
@@ -235,37 +242,33 @@ export const MonthlyReportPage = () => {
                 </div>
             )}
 
-            {/* Sync Preview Modal */}
-            <SimulationModal 
-                isOpen={!!simulationData || isSimulating}
-                onClose={() => setSimulationData(null)}
+            {/* Charge Confirmation Modal */}
+            <ChargeModal
+                isOpen={isModalOpen}
+                onClose={handleCloseModal}
+                onConfirm={handleConfirmCharge}
                 data={simulationData}
-                onSync={handleSync}
-            />
-
-            {/* Sync Detail Modal */}
-            <SyncDetailModal 
-                isOpen={!!viewingSync}
-                onClose={() => setViewingSync(null)}
-                data={viewingSync}
+                isLoadingData={isLoadingSimulation}
+                isCharging={isCharging}
+                error={chargeError}
             />
         </div>
     );
 };
 
 // Activity icon for footer
-const Activity = ({ size, className }: any) => (
-  <svg 
-    width={size} 
-    height={size} 
-    viewBox="0 0 24 24" 
-    fill="none" 
-    stroke="currentColor" 
-    strokeWidth="2" 
-    strokeLinecap="round" 
-    strokeLinejoin="round" 
-    className={className}
-  >
-    <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
-  </svg>
+const Activity = ({ size, className }: { size: number; className?: string }) => (
+    <svg
+        width={size}
+        height={size}
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        className={className}
+    >
+        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+    </svg>
 );

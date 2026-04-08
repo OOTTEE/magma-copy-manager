@@ -14,6 +14,7 @@ interface UserCardProps {
   user: User;
   coworkers?: { id?: number; fullName?: string; email?: string }[];
   onEdit: (user: User) => void;
+  onLink: (user: User) => void;
 }
 
 /**
@@ -22,7 +23,7 @@ interface UserCardProps {
  * Grid card view for user management.
  * High visual hierarchy and mobile-friendly.
  */
-export const UserCard: React.FC<UserCardProps> = ({ user, coworkers, onEdit }) => {
+export const UserCard: React.FC<UserCardProps> = ({ user, coworkers, onEdit, onLink }) => {
   const isAdmin = user.role === 'admin';
 
   return (
@@ -81,9 +82,12 @@ export const UserCard: React.FC<UserCardProps> = ({ user, coworkers, onEdit }) =
               <span className={user.nexudusUser ? "text-[10px] font-black uppercase tracking-wider" : "text-[10px] font-black uppercase tracking-wider text-red-500"}>Nexudus</span>
             </div>
             {!user.nexudusUser && (
-              <span className="text-[9px] font-black uppercase tracking-tighter text-red-500 bg-red-500/10 px-2 py-0.5 rounded-lg border border-red-500/20">
-                  Pendiente
-              </span>
+              <button 
+                onClick={() => onLink(user)}
+                className="text-[9px] font-black uppercase tracking-tighter text-red-500 bg-red-500/10 px-2 py-1 rounded-lg border border-red-500/20 hover:bg-red-500 hover:text-white transition-all transform active:scale-95"
+              >
+                  Vincular
+              </button>
             )}
           </div>
           

@@ -20,7 +20,7 @@ import { SyncHistoryPage } from './features/billing/pages/SyncHistoryPage';
  */
 function App() {
   const setVersion = useUIStore((state) => state.setVersion);
-  const { token, setVerifyingSession, logout, login } = useAuthStore();
+  const { token, refreshToken, setVerifyingSession, logout, login } = useAuthStore();
 
   useEffect(() => {
     const initApp = async () => {
@@ -44,7 +44,7 @@ function App() {
             logout();
           } else {
             // Refresh user data (in case role changed)
-            login(token, authData.username || '', authData.role || 'customer');
+            login(token, refreshToken || '', authData.username || '', authData.role || 'customer');
           }
         } catch (error) {
           console.error('[Session] Verification failed:', error);

@@ -8,7 +8,7 @@ description: Comando para generar un nuevo servicio con arquitectura Modulo-per-
     *   Crear directorio `core/services/[nombre_dominio]`.
     *   Crear fichero de lógica `[nombre_dominio].service.ts`.
     *   Crear fichero de tests `[nombre_dominio].service.test.ts`.
-    *   Crear documentación técnica `[NOMBRE]_SERVICE.MD`.
+    *   Crear documentación técnica `[NOMBRE]_SERVICE.MD` (incluyendo análisis de fallos e integraciones).
 4.  **Verificación**: Ejecutar `npm run build` y `npm run test` para asegurar la integridad.
 
 // turbo

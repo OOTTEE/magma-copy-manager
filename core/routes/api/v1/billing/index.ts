@@ -262,6 +262,98 @@ const billingRoute: FastifyPluginAsync = async (fastify) => {
       return reply.code(500).send({ message: err.message || 'Internal server error during Nexudus sync.' });
     }
   });
+
+  /**
+   * GET /api/v1/billing/stats
+   * Global sales and sync statistics for admin dashboard.
+   */
+  fastify.get('/stats', {
+    schema: {
+      tags: ['Billing'],
+      description: 'Get global sales and sync statistics. Admin only.',
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            totalSalesThisMonth: { type: 'integer' },
+            usersPendingSync: { type: 'integer' },
+            period: {
+              type: 'object',
+              properties: {
+                from: { type: 'string' },
+                to: { type: 'string' }
+              }
+            }
+          }
+        },
+        401: { type: 'object', properties: { message: { type: 'string' } } },
+        403: { type: 'object', properties: { message: { type: 'string' } } },
+        500: { type: 'object', properties: { message: { type: 'string' } } }
+      }
+    },
+    preValidation: [fastify.authenticate]
+  }, async (request, reply) => {
+    const requestingUser = request.user as { id: string; role: string };
+    try {
+      const stats = await billingFacade.getSalesStats(requestingUser);
+      return reply.send(stats);
+    } catch (err: any) {
+      if (err.statusCode) return reply.code(err.statusCode).send({ message: err.message });
+      return reply.code(500).send({ message: err.message || 'Internal server error fetching billing stats.' });
+    }
+  });
+
+  /**
+   * DELETE /api/v1/billing/sync/:id?force=true
+   * Performs an automated rollback of a specific sync event. Admin only.
+   */
+  fastify.delete<{
+    Params: { id: string };
+    Querystring: { force?: boolean };
+  }>('/sync/:id', {
+    schema: {
+      tags: ['Billing'],
+      description: 'Rollback a specific synchronization event. Deletes in Nexudus and releases copies in Magma.',
+      params: {
+        type: 'object',
+        properties: {
+          id: { type: 'string' }
+        }
+      },
+      querystring: {
+        type: 'object',
+        properties: {
+          force: { type: 'boolean', default: false }
+        }
+      },
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            localId: { type: 'string' },
+            remoteId: { type: 'integer' },
+            status: { type: 'string' }
+          }
+        },
+        400: { type: 'object', properties: { message: { type: 'string' } } },
+        401: { type: 'object', properties: { message: { type: 'string' } } },
+        403: { type: 'object', properties: { message: { type: 'string' } } },
+        500: { type: 'object', properties: { message: { type: 'string' } } }
+      }
+    },
+    preValidation: [fastify.authenticate]
+  }, async (request, reply) => {
+    const { id } = request.params;
+    const { force } = request.query;
+    const requestingUser = request.user as { id: string; role: string };
+    try {
+      const result = await billingFacade.rollbackSyncEvent(id, requestingUser, !!force);
+      return reply.send(result);
+    } catch (err: any) {
+      if (err.statusCode) return reply.code(err.statusCode).send({ message: err.message });
+      return reply.code(500).send({ message: err.message || 'Internal server error during rollback.' });
+    }
+  });
 };
 
 export default billingRoute;

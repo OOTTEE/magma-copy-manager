@@ -13,7 +13,8 @@ import {
     Zap,
     Loader2,
     AlertCircle,
-    CheckCircle2
+    CheckCircle2,
+    Trash2
 } from 'lucide-react';
 
 /**
@@ -29,17 +30,24 @@ export const SyncHistoryPage = () => {
         isLoading, 
         isRefreshing, 
         error, 
+        stats,
         fetchRecords, 
+        fetchStats,
         setPage,
         setFilters
     } = useSyncStore();
     
     const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
     const [viewingSync, setViewingSync] = useState<any>(null);
+    const [confirmingDelete, setConfirmingDelete] = useState<string | null>(null);
+    const [isForceDelete, setIsForceDelete] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
+    const [deleteSuccess, setDeleteSuccess] = useState(false);
 
     useEffect(() => {
         fetchRecords();
-    }, [fetchRecords]);
+        fetchStats();
+    }, [fetchRecords, fetchStats]);
 
     const handleViewSync = async (id: string) => {
         try {
@@ -53,8 +61,31 @@ export const SyncHistoryPage = () => {
         }
     };
 
-    // Calculate total pages synced in the CURRENT VIEW
-    const currentViewPages = records.reduce((acc, rec) => acc + rec.quantity, 0);
+    const handleDeleteSync = (id: string) => {
+        setConfirmingDelete(id);
+        setIsForceDelete(false); // Reset for each new deletion
+    };
+
+    const confirmRollback = async () => {
+        if (!confirmingDelete) return;
+        setIsDeleting(true);
+        try {
+            const { deleteRecord } = useSyncStore.getState();
+            await deleteRecord(confirmingDelete, isForceDelete);
+            setDeleteSuccess(true);
+            setTimeout(() => {
+                setConfirmingDelete(null);
+                setDeleteSuccess(false);
+                setIsForceDelete(false);
+            }, 2000);
+        } catch (err: any) {
+            console.error("Rollback failed:", err);
+            // Error is handled by store
+        } finally {
+            setIsDeleting(false);
+        }
+    };
+
 
     return (
         <div className="space-y-8 max-w-7xl mx-auto pb-20">
@@ -111,19 +142,25 @@ export const SyncHistoryPage = () => {
                     <div className="absolute right-0 top-0 p-8 text-emerald-500/5 group-hover:scale-110 transition-transform duration-500">
                         <CheckCircle2 size={120} strokeWidth={1} />
                     </div>
-                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-white/20 mb-2">Copias Sincronizadas (Vista Actual)</p>
+                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-white/20 mb-2">Total Páginas Vendidas (Mes Actual)</p>
                     <div className="flex items-baseline gap-2">
                         <p className="text-5xl font-black text-slate-800 dark:text-white tracking-tighter">
-                            {currentViewPages}
+                            {stats?.totalSalesThisMonth ?? 0}
                         </p>
-                        <span className="text-[10px] font-black uppercase text-indigo-500">Páginas Reportadas</span>
+                        <span className="text-[10px] font-black uppercase text-indigo-500">Unidades en Nexudus</span>
                     </div>
                 </div>
-                <div className="p-8 bg-white dark:bg-[#1a1818] rounded-[2.5rem] border border-slate-200 dark:border-white/10 shadow-xl shadow-slate-500/5">
-                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-white/20 mb-2">Eventos de Sync Totales</p>
-                    <p className="text-5xl font-black text-slate-800 dark:text-white tracking-tighter">
-                        {pagination.total_records}
-                    </p>
+                <div className="p-8 bg-white dark:bg-[#1a1818] rounded-[2.5rem] border border-slate-200 dark:border-white/10 shadow-xl shadow-slate-500/5 relative overflow-hidden group">
+                    <div className="absolute right-0 top-0 p-8 text-amber-500/5 group-hover:scale-110 transition-transform duration-500">
+                        <RefreshCw size={120} strokeWidth={1} />
+                    </div>
+                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-white/20 mb-2">Usuarios Pendientes de Sync</p>
+                    <div className="flex items-baseline gap-2">
+                        <p className="text-5xl font-black text-slate-800 dark:text-white tracking-tighter">
+                            {stats?.usersPendingSync ?? 0}
+                        </p>
+                        <span className="text-[10px] font-black uppercase text-amber-500">Requieren Acción</span>
+                    </div>
                 </div>
             </div>
 
@@ -159,11 +196,13 @@ export const SyncHistoryPage = () => {
                         <SyncHistoryTable 
                             data={records} 
                             onView={handleViewSync}
+                            onDelete={handleDeleteSync}
                         />
                     ) : (
                         <SyncHistoryGrid 
                             data={records} 
                             onView={handleViewSync} 
+                            onDelete={handleDeleteSync}
                         />
                     )}
 
@@ -183,6 +222,89 @@ export const SyncHistoryPage = () => {
                 onClose={() => setViewingSync(null)}
                 data={viewingSync}
             />
+
+            {/* Rollback Confirmation Modal */}
+            {confirmingDelete && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                    <div 
+                        className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300"
+                        onClick={() => !isDeleting && setConfirmingDelete(null)}
+                    />
+                    <div className="relative w-full max-w-lg bg-white dark:bg-[#1a1818] rounded-[2.5rem] border border-slate-200 dark:border-white/10 shadow-2xl p-10 animate-in zoom-in-95 slide-in-from-bottom-8 duration-300 overflow-hidden">
+                        {deleteSuccess ? (
+                            <div className="flex flex-col items-center text-center py-4 scale-in-center">
+                                <div className="w-20 h-20 bg-emerald-500/10 text-emerald-500 rounded-full flex items-center justify-center mb-6">
+                                    <CheckCircle2 size={48} />
+                                </div>
+                                <h3 className="text-2xl font-black text-slate-800 dark:text-white tracking-tight mb-2">Rollback Exitoso</h3>
+                                <p className="text-slate-400 dark:text-white/40 font-bold uppercase tracking-widest text-[10px]">La sincronización ha sido revertida</p>
+                            </div>
+                        ) : (
+                            <>
+                                <div className="flex items-center gap-4 mb-8">
+                                    <div className="p-4 rounded-3xl bg-red-500/10 text-red-500">
+                                        <Trash2 size={32} />
+                                    </div>
+                                    <div className="flex-1">
+                                        <h3 className="text-2xl font-black text-slate-800 dark:text-white tracking-tight">Confirmar Rollback</h3>
+                                        <p className="text-slate-400 dark:text-white/40 font-bold text-[10px] uppercase tracking-widest">Esta acción es irreversible</p>
+                                    </div>
+                                </div>
+
+                                <div className="p-6 bg-red-50 dark:bg-red-500/5 rounded-3xl border border-red-100 dark:border-red-500/10 mb-6">
+                                    <p className="text-sm text-red-800 dark:text-red-400 font-bold leading-relaxed">
+                                        Estás a punto de eliminar esta venta de Nexudus automáticamente y liberar las copias en Magma para que puedan ser refacturadas.
+                                    </p>
+                                </div>
+
+                                {/* Force Option */}
+                                <div 
+                                    onClick={() => !isDeleting && setIsForceDelete(!isForceDelete)}
+                                    className={`p-4 rounded-2xl border transition-all cursor-pointer mb-8 flex items-center gap-4 ${isForceDelete ? "bg-amber-500/10 border-amber-500/30 text-amber-600" : "bg-slate-50 dark:bg-white/5 border-slate-200 dark:border-white/10 text-slate-400"}`}
+                                >
+                                    <div className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all ${isForceDelete ? "bg-amber-500 border-amber-500 text-white" : "border-slate-300 dark:border-white/20"}`}>
+                                        {isForceDelete && <CheckCircle2 size={14} />}
+                                    </div>
+                                    <div className="flex-1">
+                                        <p className="text-xs font-black uppercase tracking-widest">Forzar borrado local</p>
+                                        <p className="text-[10px] font-bold opacity-60">Ignorar errores de Nexudus (Ya borrado o facturado)</p>
+                                    </div>
+                                </div>
+
+                                <div className="flex gap-4">
+                                    <button 
+                                        disabled={isDeleting}
+                                        onClick={() => setConfirmingDelete(null)}
+                                        className="flex-1 py-4 bg-slate-100 dark:bg-white/5 text-slate-500 dark:text-white/40 font-black uppercase tracking-widest text-xs rounded-2xl hover:bg-slate-200 dark:hover:bg-white/10 transition-all active:scale-95 disabled:opacity-50"
+                                    >
+                                        Cancelar
+                                    </button>
+                                    <button 
+                                        disabled={isDeleting}
+                                        onClick={confirmRollback}
+                                        className={`flex-1 py-4 font-black uppercase tracking-widest text-xs rounded-2xl shadow-xl transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2 ${isForceDelete ? "bg-amber-500 text-white shadow-amber-500/20 hover:bg-amber-600" : "bg-red-500 text-white shadow-red-500/20 hover:bg-red-600"}`}
+                                    >
+                                        {isDeleting ? (
+                                            <>
+                                                <Loader2 size={16} className="animate-spin" />
+                                                Ejecutando...
+                                            </>
+                                        ) : isForceDelete ? 'Forzar Borrado' : 'Confirmar Borrado'}
+                                    </button>
+                                </div>
+                            </>
+                        )}
+                        
+                        {/* Error message if store has one during this action */}
+                        {!deleteSuccess && error && (
+                             <div className="mt-6 p-4 bg-red-500/10 rounded-2xl border border-red-500/20 flex items-center gap-3 text-red-500 animate-in slide-in-from-top-2">
+                                <AlertCircle size={16} />
+                                <span className="text-[10px] font-bold uppercase tracking-widest">{error}</span>
+                             </div>
+                        )}
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

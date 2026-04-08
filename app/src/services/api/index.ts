@@ -27,11 +27,49 @@ const authMiddleware: Middleware = {
     }
     return request;
   },
-  async onResponse({ response }) {
+  async onResponse({ response, request }) {
+    // If 401 and we have a refresh token, try to refresh
     if (response.status === 401) {
-      console.warn("[API] 401 Unauthorized detected. Clearing session.");
-      useAuthStore.getState().logout();
-      // Forward redirection logic is handled by ProtectedRoute or app state reaction
+      const { refreshToken, updateAccessToken, logout } = useAuthStore.getState();
+
+      // Avoid infinite loop if refreshing fails
+      if (request.url.includes("/auth/refresh")) {
+        console.error("[API] Refresh failed. Logging out.");
+        logout();
+        return response;
+      }
+
+      if (refreshToken) {
+        console.log("[API] 401 detected. Attempting token refresh...");
+        try {
+          // We use fetch directly to avoid triggering the middleware recursively here
+          const refreshRes = await fetch(`${AppConfig.serviceUrl}/api/v1/auth/refresh`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ refreshToken }),
+          });
+
+          if (refreshRes.ok) {
+            const data = await refreshRes.json();
+            console.log("[API] Token refreshed successfully.");
+            updateAccessToken(data.accessToken, data.refreshToken);
+
+            // Retry the original request with the new token
+            const newRequest = new Request(request.url, request);
+            newRequest.headers.set("Authorization", `Bearer ${data.accessToken}`);
+            return fetch(newRequest);
+          } else {
+            console.warn("[API] Refresh token invalid or expired.");
+            logout();
+          }
+        } catch (err) {
+          console.error("[API] Error during refresh attempt:", err);
+          logout();
+        }
+      } else {
+        console.warn("[API] 401 Unauthorized detected and no refresh token available.");
+        logout();
+      }
     }
     return response;
   }

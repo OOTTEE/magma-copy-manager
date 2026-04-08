@@ -24,6 +24,12 @@ interface Filters {
   months?: string[];
 }
 
+interface SyncStats {
+  totalSalesThisMonth: number;
+  usersPendingSync: number;
+  period: { from: string; to: string };
+}
+
 interface SyncState {
   records: SyncRecord[];
   pagination: Pagination;
@@ -31,9 +37,12 @@ interface SyncState {
   isLoading: boolean;
   isRefreshing: boolean;
   error: string | null;
+  stats: SyncStats | null;
   
   // Actions
   fetchRecords: (force?: boolean) => Promise<void>;
+  fetchStats: () => Promise<void>;
+  deleteRecord: (id: string, force?: boolean) => Promise<void>;
   setPage: (page: number) => void;
   setFilters: (filters: Filters) => void;
   reset: () => void;
@@ -59,6 +68,17 @@ export const useSyncStore = create<SyncState>((set, get) => ({
   isLoading: false,
   isRefreshing: false,
   error: null,
+  stats: null,
+
+  fetchStats: async () => {
+    try {
+      const { data, error: apiError } = await api.GET("/api/v1/billing/stats" as any, {});
+      if (apiError) throw apiError;
+      set({ stats: data as any });
+    } catch (err) {
+      console.error("[SyncStore] Error fetching sync stats:", err);
+    }
+  },
 
   fetchRecords: async (force = false) => {
     if (get().isLoading || get().isRefreshing) return;
@@ -97,6 +117,30 @@ export const useSyncStore = create<SyncState>((set, get) => ({
       set({ error: err.message || "Error al cargar el historial de sincronización." });
     } finally {
       set({ isLoading: false, isRefreshing: false });
+    }
+  },
+
+  deleteRecord: async (id: string, force: boolean = false) => {
+    set({ isLoading: true, error: null });
+    try {
+      const { error: apiError } = await api.DELETE("/api/v1/billing/sync/{id}" as any, {
+        params: { 
+          path: { id },
+          query: { force } as any
+        }
+      });
+
+      if (apiError) throw apiError;
+      
+      // Refresh data
+      await get().fetchRecords(true);
+      await get().fetchStats();
+    } catch (err: any) {
+      console.error("[SyncStore] Error deleting sync record:", err);
+      set({ error: err.message || "Error al intentar borrar la venta." });
+      throw err;
+    } finally {
+      set({ isLoading: false });
     }
   },
 

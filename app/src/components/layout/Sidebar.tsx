@@ -7,14 +7,16 @@ import {
   Users, 
   Settings, 
   LogOut, 
-  ChevronLeft, 
+  ChevronLeft,
   ChevronRight,
   LayoutDashboard,
+  Zap,
 } from "lucide-react";
 
 const NAV_ITEMS = [
   { path: "/dashboard", label: "Inicio", icon: LayoutDashboard },
   { path: "/users", label: "Usuarios", icon: Users, adminOnly: true },
+  { path: "/sync-history", label: "Ventas", icon: Zap, adminOnly: true },
   { path: "/reports", label: "Reporte Mensual", icon: BarChart, adminOnly: true },
   { path: "/settings", label: "Ajustes", icon: Settings, adminOnly: true },
 ];

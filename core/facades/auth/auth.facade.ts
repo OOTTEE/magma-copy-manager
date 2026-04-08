@@ -21,5 +21,19 @@ export const authFacade = {
         }
 
         return result;
+    },
+
+    /**
+     * Refreshes an access token using a valid refresh token.
+     */
+    refreshAccessToken: async (fastify: FastifyInstance, refreshToken: string) => {
+        return await authService.refreshAccessToken(fastify, refreshToken);
+    },
+
+    /**
+     * Terminate session by revoking the refresh token.
+     */
+    logout: async (refreshToken: string) => {
+        return await authService.logout(refreshToken);
     }
 };

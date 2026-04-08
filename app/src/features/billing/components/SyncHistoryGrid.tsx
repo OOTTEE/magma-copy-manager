@@ -1,12 +1,11 @@
 import React from 'react';
 import { 
   User, 
-  Calendar, 
   Hash, 
   ExternalLink, 
   Layers,
-  Zap,
-  CheckCircle2
+  CheckCircle2,
+  Trash2
 } from 'lucide-react';
 
 interface SyncRecord {
@@ -23,6 +22,7 @@ interface SyncRecord {
 interface SyncHistoryGridProps {
   data: SyncRecord[];
   onView?: (id: string) => void;
+  onDelete?: (id: string) => void;
 }
 
 /**
@@ -33,7 +33,8 @@ interface SyncHistoryGridProps {
  */
 export const SyncHistoryGrid: React.FC<SyncHistoryGridProps> = ({ 
   data, 
-  onView 
+  onView,
+  onDelete
 }) => {
   
   const formatDate = (dateStr: string) => {
@@ -127,6 +128,13 @@ export const SyncHistoryGrid: React.FC<SyncHistoryGridProps> = ({
             >
               <ExternalLink size={20} />
             </a>
+            <button 
+              onClick={() => onDelete?.(record.id)}
+              className="p-3 rounded-2xl bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all active:scale-90"
+              title="Realizar Rollback (Eliminar)"
+            >
+              <Trash2 size={20} />
+            </button>
           </div>
         </div>
       ))}

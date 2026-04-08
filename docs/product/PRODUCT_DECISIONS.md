@@ -4,7 +4,6 @@ Este documento es la **Memoria Central de Producto** de Magma. Registra la visi�
 
 ---
 
-
 ## 🎯 Visión del Producto
 
 Magma nace para eliminar la fricción operativa en la gestión de costes de impresión de un espacio de coworking. Su propósito es actuar como un **puente inteligente** entre la infraestructura física (impresoras) y la gestión financiera (Nexudus), transformando datos brutos en facturacion automatizada y transparente.
@@ -27,13 +26,11 @@ Magma nace para eliminar la fricción operativa en la gestión de costes de impr
 
 ## 👤 User Personas
 
-
 ### El Administrador (The Orchestrator)
 
 - **Motivación**: Eficiencia y "hacer más con menos".
 - **Dolor**: El cierre de mes y el cuadre manual de hojas de Excel con reportes de impresora.
 - **Necesidad en Magma**: Un Dashboard que diga "Todo está bajo control" o "Aquí hay un problema que requiere tu atención".
-
 
 ### El Cliente (The Consumer)
 
@@ -57,9 +54,11 @@ Magma nace para eliminar la fricción operativa en la gestión de costes de impr
 | 2026-04-06 | UX | Units Over Euros | El Dashboard del cliente priorizará unidades (copias) sobre euros, eliminando la fricción de desincronía de precios entre sistemas. |
 
 | 2026-04-05 | Customer Dashboard | Evolución vs Estado Actual | Reemplazar gráfica de anillas (foco en proporciones) por gráfica de barras mes a mes. Esto aporta más valor visual al cliente al ver su evolución de gasto (YTD). |
+| 2026-04-08 | Admin Billing | Audit-First Sales History | Implementar una vista maestra de auditoría (Enfoque B) para el administrador, facilitando la supervisión global de las ventas sincronizadas con Nexudus frente al detalle individual por usuario. |
+| 2026-04-08 | Billing Sync | Automated Rollback Policy | La eliminación de una venta en Magma debe disparar obligatoriamente el borrado en Nexudus (vía API). Las copias vinculadas deben volver al estado "pendiente" para garantizar la consistencia y evitar duplicidad en re-sincronizaciones. |
+| 2026-04-08 | UX / User Identity | Interactive User Linking | Transformar el estado "Pendiente de Nexudus" de un indicador pasivo a una acción directa (botón -> modal). Esto refuerza el rol de Magma como puente manual guiado cuando la automatización no es posible. |
 
 ---
-
 
 ## 🛠️ Guía de Uso del Log
 

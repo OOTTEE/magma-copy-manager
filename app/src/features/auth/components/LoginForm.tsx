@@ -38,8 +38,8 @@ export const LoginForm = () => {
                 return;
             }
 
-            if (data && 'token' in data && 'role' in data) {
-                login(data.token as string, username, data.role as string);
+            if (data && 'accessToken' in data && 'refreshToken' in data && 'role' in data) {
+                login(data.accessToken as string, data.refreshToken as string, username, data.role as string);
                 navigate("/dashboard");
             }
         } catch (err) {

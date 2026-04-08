@@ -1,4 +1,4 @@
-import { Api, ContentType, NexudusCoworkingCoreQueryDtosBillingCoworkerProductDto } from './generated-api';
+import { Api, ContentType, NexudusCoworkingCoreQueryDtosBillingCoworkerProductDto, NexudusCoworkingCoreActionConfirmation } from './generated-api';
 import { settingsService } from '../settings/settings.service';
 import { logger } from '../../lib/logger';
 
@@ -36,7 +36,7 @@ export class NexudusService {
       return response.data;
     } catch (error: any) {
       // Handle unauthorized (401) with auto-retry login
-      if (error.response?.status === 401) {
+      if (error.status === 401) {
         logger.warn('Nexudus: Token expired or invalid, attempting to refresh...');
         await this.login();
         
@@ -46,13 +46,13 @@ export class NexudusService {
         return retryResponse.data;
       }
       
-      const details = error.response?.data || error.message;
+      const details = error.error || error.message;
       
       // Extensive logging for debugging
       logger.debug({ 
         operation: errorMessage,
-        status: error.response?.status,
-        response: error.response?.data,
+        status: error.status,
+        response: error.error,
         message: error.message
       }, 'Nexudus: Request failed details');
 
@@ -235,6 +235,26 @@ export class NexudusService {
       return result;
     } else {
       throw new Error(result.Message || 'Failed to create coworker product');
+    }
+  }
+
+  /**
+   * Deletes a coworker product (sale) in Nexudus.
+   */
+  async deleteCoworkerProduct(id: number) {
+    const result = await this.executeRequest(
+      (api, params) => api.coworkerProductsApiDeleteId(id, params),
+      'Failed to delete coworker product in Nexudus'
+    ) as NexudusCoworkingCoreActionConfirmation;
+
+    if (result.WasSuccessful) {
+      return result;
+    } else {
+      // If the error message indicates it's already gone, we can consider it success for rollback purposes
+      if (result.Message?.includes('could not be found')) {
+        return result;
+      }
+      throw new Error(result.Message || 'Failed to delete coworker product');
     }
   }
 

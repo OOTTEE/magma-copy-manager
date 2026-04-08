@@ -208,6 +208,7 @@ export const billingService = {
         // Create in Nexudus
         const saleDate = new Date().toISOString();
         const nexudusResponse = await nexudusService.createCoworkerProduct({
+          BusinessId: parseInt(settings.nexudus_business_id || '0'),
           CoworkerId: parseInt(report.data.nexudusUser || '0'),
           ProductId: parseInt(nexudusProductId),
           Quantity: quantity,
@@ -217,34 +218,52 @@ export const billingService = {
         });
 
         if (nexudusResponse.WasSuccessful && nexudusResponse.Value) {
-          const remoteSaleId = (nexudusResponse.Value as any).Id?.toString() || 'unknown';
+          const remoteSaleIdValue = (nexudusResponse.Value as any).Id;
+          const remoteSaleId = remoteSaleIdValue?.toString() || 'unknown';
           const localSaleId = randomUUID();
 
-          await db.transaction(async (tx) => {
-            tx.insert(nexudusSales).values({
-              id: localSaleId,
-              userId: userId,
-              month: monthStr,
-              type: type,
-              quantity: quantity,
-              nexudusSaleId: remoteSaleId,
-              nexudusProductId: nexudusProductId,
-              saleDate: saleDate,
-              createdOn: new Date().toISOString()
-            }).run();
+          try {
+            db.transaction((tx) => {
+              tx.insert(nexudusSales).values({
+                id: localSaleId,
+                userId: userId,
+                month: monthStr,
+                type: type,
+                quantity: quantity,
+                nexudusSaleId: remoteSaleId,
+                nexudusProductId: nexudusProductId,
+                saleDate: saleDate,
+                createdOn: new Date().toISOString()
+              }).run();
 
-            // Link individual copies
-            tx.update(copies)
-              .set({ nexudusSaleId: localSaleId })
-              .where(and(
-                eq(copies.userId, userId),
-                sql`${copies.datetime} >= ${report.period.from}`,
-                sql`${copies.datetime} <= ${report.period.to}`,
-                sql`${copies[type as keyof typeof copies]} > 0`,
-                isNull(copies.nexudusSaleId)
-              )).run();
-          });
-          salesCreated++;
+              // Link individual copies
+              tx.update(copies)
+                .set({ nexudusSaleId: localSaleId })
+                .where(and(
+                  eq(copies.userId, userId),
+                  sql`${copies.datetime} >= ${report.period.from}`,
+                  sql`${copies.datetime} <= ${report.period.to}`,
+                  sql`${copies[type as keyof typeof copies]} > 0`,
+                  isNull(copies.nexudusSaleId)
+                )).run();
+            });
+            salesCreated++;
+          } catch (dbError) {
+            // COMPENSACIÓN: Si falla la transacción local, debemos eliminar la venta en Nexudus
+            // para evitar que el usuario sea cobrado y Magma no lo registre (evitando duplicidad en reintentos).
+            console.error(`[CRITICAL] Persistence failed for Nexudus Sale ${remoteSaleId}. Triggering automated rollback.`);
+            
+            if (remoteSaleId !== 'unknown' && remoteSaleIdValue) {
+              try {
+                await nexudusService.deleteCoworkerProduct(parseInt(remoteSaleId));
+                console.log(`[ROLLBACK] Successfully removed orphan sale ${remoteSaleId} from Nexudus.`);
+              } catch (rollbackError: any) {
+                console.error(`[FATAL] Automated rollback failed for sale ${remoteSaleId} in Nexudus: ${rollbackError.message}`);
+              }
+            }
+            
+            throw dbError; // Re-lanzamos para que syncMonthlyConsumption lo registre
+          }
         }
       }
     }
@@ -283,5 +302,74 @@ export const billingService = {
       period: report.period,
       results
     };
+  },
+
+  /**
+   * Retrieves global statistics for billing and synchronization.
+   */
+  getSalesStats: async () => {
+    const { fromStr, toStr } = await reportsService.getPeriodDates();
+    const monthStr = fromStr.slice(0, 7);
+
+    // 1. Total sales (pages) this billing month
+    const salesVolume = await db
+      .select({ total: sql<number>`SUM(${nexudusSales.quantity})` })
+      .from(nexudusSales)
+      .where(eq(nexudusSales.month, monthStr))
+      .get();
+
+    // 2. Users pending sync (count users in current report with total > 0)
+    const pendingReport = await reportsService.getMonthlyAccumulation();
+    const usersPendingSync = pendingReport.data.filter(u => u.total > 0).length;
+
+    return {
+      totalSalesThisMonth: Number(salesVolume?.total || 0),
+      usersPendingSync,
+      period: { from: fromStr, to: toStr }
+    };
+  },
+
+  /**
+   * Performs an automated rollback of a synchronization event.
+   * Business Logic: Deletes in Nexudus -> Reverts local copy status -> Deletes sync record.
+   * If force is true, fails in Nexudus will be logged but won't stop the local cleanup.
+   */
+  rollbackSyncEvent: async (localId: string, force: boolean = false) => {
+    // 1. Get the local sync record
+    const sale = await db.select().from(nexudusSales).where(eq(nexudusSales.id, localId)).get();
+    if (!sale) throw new Error('Sync record not found.');
+
+    // 2. Delete in Nexudus
+    const remoteId = parseInt(sale.nexudusSaleId);
+    if (!isNaN(remoteId)) {
+      try {
+        await nexudusService.deleteCoworkerProduct(remoteId);
+      } catch (err: any) {
+        if (force) {
+          console.warn(`[WARNING] Nexudus rollback failed for sale ${remoteId}, but proceeding with local cleanup due to force=true: ${err.message}`);
+        } else {
+          // Add context to error to inform it could be forced
+          const error = new Error(`Nexudus deletion failed: ${err.message}. If the item was already deleted or invoiced in Nexudus, use the "Force" option.`);
+          (error as any).statusCode = 400;
+          throw error;
+        }
+      }
+    }
+
+    // 3. Local Transaccional Cleanup
+    db.transaction((tx) => {
+      // Release individual copies
+      tx.update(copies)
+        .set({ nexudusSaleId: null })
+        .where(eq(copies.nexudusSaleId, localId))
+        .run();
+
+      // Delete the sync event record
+      tx.delete(nexudusSales)
+        .where(eq(nexudusSales.id, localId))
+        .run();
+    });
+
+    return { localId, remoteId, status: 'rolled_back' };
   }
 };

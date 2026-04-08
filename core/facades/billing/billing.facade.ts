@@ -84,5 +84,32 @@ export const billingFacade = {
     }
 
     return await billingService.syncMonthlyConsumption();
+  },
+
+  /**
+   * Retrieves global sales statistics for the admin dashboard.
+   */
+  getSalesStats: async (requestingUser: { id: string; role: string }) => {
+    if (requestingUser.role !== 'admin') {
+      const error = new Error('Access denied to billing statistics.');
+      (error as any).statusCode = 403;
+      throw error;
+    }
+
+    return await billingService.getSalesStats();
+  },
+
+  /**
+   * Performs an automated rollback of a specific synchronization event.
+   * Only administrators can perform this action.
+   */
+  rollbackSyncEvent: async (localId: string, requestingUser: { id: string; role: string }, force: boolean = false) => {
+    if (requestingUser.role !== 'admin') {
+      const error = new Error('Access denied. Only administrators can perform rollbacks.');
+      (error as any).statusCode = 403;
+      throw error;
+    }
+
+    return await billingService.rollbackSyncEvent(localId, force);
   }
 };

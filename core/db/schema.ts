@@ -53,3 +53,12 @@ export const nexudusSales = sqliteTable('nexudus_sales', {
   saleDate: text('sale_date').notNull(),
   createdOn: text('created_on').notNull(),
 });
+
+export const refreshTokens = sqliteTable('refresh_tokens', {
+  id: text('id').primaryKey(), // UUID
+  userId: text('user_id').notNull().references(() => users.id),
+  token: text('token').notNull().unique(),
+  expiresAt: text('expires_at').notNull(), // ISO Date
+  revoked: integer('revoked').notNull().default(0), // 0=false, 1=true
+  createdOn: text('created_on').notNull(),
+});

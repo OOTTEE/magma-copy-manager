@@ -14,6 +14,7 @@ interface UserTableProps {
   users: User[];
   coworkers?: { id?: number; fullName?: string; email?: string }[];
   onEdit: (user: User) => void;
+  onLink: (user: User) => void;
 }
 
 /**
@@ -22,7 +23,7 @@ interface UserTableProps {
  * Tabular view for user management.
  * Shows essential technical fields and actions.
  */
-export const UserTable: React.FC<UserTableProps> = ({ users, coworkers, onEdit }) => {
+export const UserTable: React.FC<UserTableProps> = ({ users, coworkers, onEdit, onLink }) => {
   return (
     <div className="overflow-hidden bg-white dark:bg-[#1a1818] rounded-[2rem] border border-slate-200 dark:border-white/5 shadow-xl transition-all">
       <table className="w-full text-left border-collapse">
@@ -66,7 +67,7 @@ export const UserTable: React.FC<UserTableProps> = ({ users, coworkers, onEdit }
                   <div className={`mt-1 p-2 rounded-lg ${user.nexudusUser ? "bg-slate-100 dark:bg-white/5 text-slate-400 dark:text-white/20" : "bg-red-500/10 text-red-500"}`}>
                     <Share2 size={16} strokeWidth={1.5} />
                   </div>
-                  <div className="flex flex-col gap-0.5">
+                  <div className="flex p-1 flex-col gap-0.5">
                     {user.nexudusUser ? (
                       (() => {
                         const coworker = coworkers?.find(c => c.id?.toString() === user.nexudusUser);
@@ -93,9 +94,12 @@ export const UserTable: React.FC<UserTableProps> = ({ users, coworkers, onEdit }
                         );
                       })()
                     ) : (
-                      <span className="text-[10px] font-black uppercase tracking-tight text-red-500 bg-red-500/10 px-2 py-1 rounded-lg border border-red-500/20 w-fit">
+                      <button 
+                        onClick={() => onLink(user)}
+                        className="text-[10px] font-black uppercase tracking-tight text-red-500 bg-red-500/10 px-2.5 py-1.5 rounded-lg border border-red-500/20 w-fit hover:bg-red-500 hover:text-white transition-all transform active:scale-95 group/btn"
+                      >
                         Vincular Nexudus
-                      </span>
+                      </button>
                     )}
                   </div>
                 </div>

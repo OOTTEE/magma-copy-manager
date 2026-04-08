@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Filter, Calendar, User, X, BarChart3 } from 'lucide-react';
+import { Filter, Calendar, User, X, BarChart3 } from 'lucide-react';
 import { api } from '../../../services/api';
 
 interface SyncFiltersProps {
@@ -20,8 +20,8 @@ export const SyncFilters: React.FC<SyncFiltersProps> = ({ onFilterChange }) => {
     // Load users for the filter
     const loadUsers = async () => {
       try {
-        const { data } = await api.GET("/api/v1/users");
-        setUsers(data || []);
+        const { data } = await api.GET("/api/v1/users/", {});
+        setUsers((data as any) || []);
       } catch (err) {
         console.error("Error loading users for filters:", err);
       }

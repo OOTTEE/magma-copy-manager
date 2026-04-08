@@ -40,6 +40,7 @@ La aplicación se construirá utilizando las siguientes tecnologías:
 - Mantener un historial de Git limpio.
 - Para el backend, utilizar el rol de `endpoint-developer`.
 - **Logging**: Queda estrictamente prohibido el uso de `console.log` en el backend (`core/`). Se debe utilizar exclusivamente el logger singleton exportado en `core/lib/logger.ts` (basado en Pino). Esto garantiza que todos los logs sean estructurados, incluyan niveles correctos y sigan la configuración del sistema.
+- **Resiliencia y Transaccionalidad Distribuida**: Dado que Magma depende de integraciones externas irreversibles (ej. Nexudus API), es obligatorio diseñar cada operación de escritura considerando el fallo. Toda integración que modifique un estado externo debe implementar un **Patrón de Compensación (Manual Rollback)** si la persistencia local en Magma falla tras el éxito de la API. Esto garantiza la atomicidad visual del sistema y evita estados inconsistentes o dobles cobros.
 
 ---
 

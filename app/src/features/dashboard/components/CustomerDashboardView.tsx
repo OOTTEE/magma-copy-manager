@@ -78,7 +78,7 @@ export const CustomerDashboardView = () => {
                 
                 {/* Stats */}
                 <div className="lg:col-span-1">
-                    <StatCards currentMonth={data.currentMonthUsage} ytdTotal={data.ytdTotal} />
+                    <StatCards currentMonth={data.currentMonthUsage} ytdTotalPages={data.ytdTotal} />
                 </div>
             </div>
 

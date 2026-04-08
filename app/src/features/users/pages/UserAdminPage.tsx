@@ -5,6 +5,7 @@ import { useUserStore } from '../../../store/userStore';
 import { UserTable } from '../components/UserTable';
 import { UserCard } from '../components/UserCard';
 import { EditUserModal } from '../components/EditUserModal';
+import { LinkNexudusModal } from '../components/LinkNexudusModal';
 import { 
     LayoutGrid, 
     Table as TableIcon, 
@@ -26,6 +27,7 @@ export const UserAdminPage = () => {
     const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
     const [searchTerm, setSearchTerm] = useState("");
     const [editingUser, setEditingUser] = useState<any>(null);
+    const [linkingUser, setLinkingUser] = useState<any>(null);
 
     // 1. RoleGuard: Redirect if not admin
     if (role !== 'admin') {
@@ -37,11 +39,11 @@ export const UserAdminPage = () => {
         fetchCoworkers();
     }, [fetchUsers, fetchCoworkers]);
 
-    const handleUpdateUser = async (updatedData: any) => {
-        if (!editingUser) return;
+    const handleUpdateUser = async (userId: string, updatedData: any) => {
         try {
-            await updateUser(editingUser.id, updatedData);
+            await updateUser(userId, updatedData);
             setEditingUser(null);
+            setLinkingUser(null);
         } catch (err) {
             console.error("Error updating user:", err);
             throw err;
@@ -143,6 +145,7 @@ export const UserAdminPage = () => {
                             users={filteredUsers} 
                             coworkers={coworkers} 
                             onEdit={setEditingUser} 
+                            onLink={setLinkingUser}
                         />
                     ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -152,6 +155,7 @@ export const UserAdminPage = () => {
                                     user={user} 
                                     coworkers={coworkers}
                                     onEdit={setEditingUser} 
+                                    onLink={setLinkingUser}
                                 />
                             ))}
                         </div>
@@ -164,7 +168,18 @@ export const UserAdminPage = () => {
                 <EditUserModal 
                     user={editingUser} 
                     onClose={() => setEditingUser(null)} 
-                    onSave={handleUpdateUser}
+                    onSave={(data) => handleUpdateUser(editingUser.id, data)}
+                />
+            )}
+
+            {/* Link Nexudus specialized modal */}
+            {linkingUser && (
+                <LinkNexudusModal 
+                    user={linkingUser}
+                    onClose={() => setLinkingUser(null)}
+                    onSave={async (nexudusId) => {
+                        await handleUpdateUser(linkingUser.id, { nexudusUser: nexudusId });
+                    }}
                 />
             )}
         </div>

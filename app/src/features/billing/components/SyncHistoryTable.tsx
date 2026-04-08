@@ -5,8 +5,8 @@ import {
   Hash, 
   ExternalLink, 
   Layers,
-  ChevronRight,
-  Zap
+  Zap,
+  Trash2
 } from 'lucide-react';
 
 interface SyncRecord {
@@ -23,6 +23,7 @@ interface SyncRecord {
 interface SyncHistoryTableProps {
   data: SyncRecord[];
   onView?: (id: string) => void;
+  onDelete?: (id: string) => void;
 }
 
 /**
@@ -33,18 +34,10 @@ interface SyncHistoryTableProps {
  */
 export const SyncHistoryTable: React.FC<SyncHistoryTableProps> = ({ 
   data, 
-  onView 
+  onView,
+  onDelete
 }) => {
   
-  const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleDateString('es-ES', { 
-      day: '2-digit', 
-      month: 'short',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
 
   const copyTypeLabels: Record<string, string> = {
     'a4Bw': 'A4 B/N',
@@ -118,6 +111,13 @@ export const SyncHistoryTable: React.FC<SyncHistoryTableProps> = ({
                   >
                     <ExternalLink size={18} />
                   </a>
+                  <button 
+                    onClick={() => onDelete?.(record.id)}
+                    className="p-3 rounded-xl bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all shadow-red-500/30 active:scale-90"
+                    title="Realizar Rollback (Eliminar)"
+                  >
+                    <Trash2 size={18} />
+                  </button>
                 </div>
               </td>
             </tr>

@@ -5,11 +5,13 @@ import { useUserStore } from './userStore';
 
 interface AuthState {
   token: string | null;
+  refreshToken: string | null;
   user: string | null;
   role: string | null;
   isAuthenticated: boolean;
   isVerifyingSession: boolean;
-  login: (token: string, user: string, role: string) => void;
+  login: (token: string, refreshToken: string, user: string, role: string) => void;
+  updateAccessToken: (token: string, refreshToken: string) => void;
   logout: () => void;
   setVerifyingSession: (isVerifying: boolean) => void;
 }
@@ -18,20 +20,22 @@ interface AuthState {
  * AuthStore
  * 
  * Manages the authentication state of the application.
- * Persists the token to localStorage to maintain session across reloads.
+ * Persists the token to sessionStorage to maintain session across tab reloads but not browser closes.
  */
 export const useAuthStore = create<AuthState>()(
   persist(
     (set) => ({
       token: null,
+      refreshToken: null,
       user: null,
       role: null,
       isAuthenticated: false,
       isVerifyingSession: false,
-      login: (token, user, role) => set({ token, user, role, isAuthenticated: true }),
+      login: (token, refreshToken, user, role) => set({ token, refreshToken, user, role, isAuthenticated: true }),
+      updateAccessToken: (token, refreshToken) => set({ token, refreshToken }),
       logout: () => {
         // Clear auth state
-        set({ token: null, user: null, role: null, isAuthenticated: false });
+        set({ token: null, refreshToken: null, user: null, role: null, isAuthenticated: false });
         // Clear other business stores atomically
         useReportStore.getState().reset();
         useUserStore.getState().reset();

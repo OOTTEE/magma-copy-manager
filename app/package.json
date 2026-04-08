@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "gen:api": "npx openapi-typescript ../openapi.yaml -o ./src/services/api/generated/schema.d.ts",
-    "build": "npm run gen:api && tsc -b && vite build",
+    "clean": "rm -rf dist",
+    "build": "npm run clean && npm run gen:api && tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview"
   },

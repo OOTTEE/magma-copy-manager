@@ -4,3 +4,4 @@
 */**/dist
 */**/build
 core/sqlite.db
+core/.env

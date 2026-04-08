@@ -1,0 +1,16 @@
+{
+  "extends": "./tsconfig.json",
+  "exclude": [
+    "node_modules",
+    "dist",
+    "**/*.test.ts",
+    "**/*.spec.ts",
+    "tests/**/*",
+    "**/.env",
+    "**/seed.ts",
+    "**/testEnv.ts",
+    "**/test-encryption.ts",
+    "**/vitest.config.ts",
+    "services/nexudus/generated-api.ts",
+  ]
+}

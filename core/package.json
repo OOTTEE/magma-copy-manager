@@ -4,11 +4,10 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "dev:watch": "npm run build && concurrently -k -p \"[{name}]\" -n \"TypeScript,App\" -c \"yellow.bold,cyan.bold\" \"npm:watch\" \"npm:dev\"",
     "dev": "NODE_ENV=development tsx watch --include . --clear-screen=false server.ts",
-    "build": "tsc",
+    "build": "npm run clean && tsc -p tsconfig.build.json",
+    "clean": "rm -rf dist",
     "start": "node dist/server.js",
-    "watch": "tsc -w",
     "db:generate": "drizzle-kit generate",
     "db:push": "drizzle-kit push",
     "test": "npm run build && NODE_ENV=test NODE_OPTIONS=\"--import tsx\" vitest run",

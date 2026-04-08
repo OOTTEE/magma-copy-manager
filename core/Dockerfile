@@ -1,8 +1,13 @@
 # stage 1: builds the backend
-FROM node:22-alpine AS build
+FROM node:22-slim AS build
 
 # Install native dependencies for better-sqlite3
-RUN apk add --no-cache python3 make g++
+# We use apt-get as we are now on a Debian-based image
+RUN apt-get update && apt-get install -y \
+    python3 \
+    make \
+    g++ \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /home/node/app
 
@@ -10,14 +15,19 @@ COPY core/package*.json ./
 RUN npm install
 
 COPY core/ .
-RUN npm run build
+RUN npm run gen:nexudus \
+    && npm run build
 
 # stage 2: production runtime
-FROM node:22-alpine
+FROM node:22-slim
 
-# Better-sqlite3 might require python/make if it needs to recompile for alpine during run
-# but usually copying node_modules from the build stage is enough if both are alpine.
-RUN apk add --no-cache python3 make g++
+# Install system dependencies for better-sqlite3 and Playwright
+# Playwright needs specific system libraries that are easier to manage in Debian/Ubuntu than Alpine
+RUN apt-get update && apt-get install -y \
+    python3 \
+    make \
+    g++ \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /home/node/app
 
@@ -25,6 +35,10 @@ WORKDIR /home/node/app
 COPY --from=build /home/node/app/dist ./dist
 COPY --from=build /home/node/app/package*.json ./
 COPY --from=build /home/node/app/node_modules ./node_modules
+
+# Install Playwright browsers and their system dependencies
+# We install only Firefox as it is the one used by our scraper to keep the image size optimized
+RUN npx playwright install --with-deps firefox
 
 # Ensure storage directory exists for volume mounting
 RUN mkdir -p /home/node/app/storage

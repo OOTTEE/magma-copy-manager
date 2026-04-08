@@ -11,6 +11,7 @@ services:
       - DATABASE_URL=file:sqlite.db
       - JWT_SECRET=${JWT_SECRET:-magma-secret-prod-12345}
       - ENCRYPTION_KEY=${ENCRYPTION_KEY:-default-encryption-key-32-chars-long}
+#      - ENCRYPTION_KEY=f30d098f6b4d3a2e1c0b9a87766554433221100f8e7d6c5b4a39281706152433
     volumes:
       - ./core/sqlite.db:/home/node/app/sqlite.db
       - ./storage:/home/node/app/storage

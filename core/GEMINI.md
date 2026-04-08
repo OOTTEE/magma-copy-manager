@@ -88,30 +88,3 @@ root/
 │   └── middleware/     # Middlewares
 └── app/                # Aplicación frontend
 ```
-
----
-
-## Modelos de Datos
-
-### Usuario (User)
-
-- id: string (uuid)
-- username: string
-- role: enum (admin, customer)
-- printUser: string
-- nexudusUser: string
-
-### Registro de Copias (CopyRecord)
-
-- id: string (uuid)
-- userId: string
-- nexudusSaleId: string (referencia a la venta en Nexudus, NULL si está pendiente)
-- datetime: string (iso date)
-- a4Color: number
-- a4Bw: number
-- a3Color: number
-- a3Bw: number
-- a4ColorTotal: number (contador acumulado de la impresora)
-- a4BwTotal: number (contador acumulado de la impresora)
-- a3ColorTotal: number (contador acumulado de la impresora)
-- a3BwTotal: number (contador acumulado de la impresora)

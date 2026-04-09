@@ -6,15 +6,16 @@ import { ChargeModal } from '../components/ChargeModal';
 import { useUserEnrichment } from '../hooks/useUserEnrichment';
 import { api } from '../../../services/api';
 import {
-    LayoutGrid,
-    Table as TableIcon,
-    RefreshCw,
-    Calendar,
-    BarChart3,
     Loader2,
     AlertCircle,
-    ArrowUpRight
+    ArrowUpRight,
+    BarChart3,
+    Calendar,
+    Table as TableIcon,
+    LayoutGrid,
+    RefreshCw
 } from 'lucide-react';
+import { DistributionModal } from '../../billing/components/DistributionModal';
 
 interface SimulationResult {
     userId: string;
@@ -40,6 +41,10 @@ export const MonthlyReportPage = () => {
     const [isLoadingSimulation, setIsLoadingSimulation] = useState(false);
     const [isCharging, setIsCharging] = useState(false);
     const [chargeError, setChargeError] = useState<string | null>(null);
+    
+    // Distribution modal state
+    const [isDistModalOpen, setIsDistModalOpen] = useState(false);
+    const [distTarget, setDistTarget] = useState<{ id: string; name: string; consumption: any } | null>(null);
 
     useEffect(() => {
         fetchReport();
@@ -106,6 +111,11 @@ export const MonthlyReportPage = () => {
         setSimulationData(null);
         setChargeError(null);
         setIsLoadingSimulation(false);
+    };
+
+    const handleOpenDistribute = (userId: string, username: string, totalConsumption: any) => {
+        setDistTarget({ id: userId, name: username, consumption: totalConsumption });
+        setIsDistModalOpen(true);
     };
 
     const totalA4 = report?.data.reduce((acc, curr) => acc + curr.a4Bw + curr.a4Color, 0) || 0;
@@ -197,7 +207,7 @@ export const MonthlyReportPage = () => {
                     <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40 mb-4 relative z-10">Total Periodo</p>
                     <p className="text-6xl font-black tracking-tighter relative z-10">{grandTotal}</p>
                     <div className="mt-6 flex items-center gap-2 text-xs font-bold text-white/60 relative z-10">
-                        <Activity size={14} className="animate-pulse" />
+                        <PulseActivity size={14} className="animate-pulse" />
                         Sincronizado con Magma Cloud
                     </div>
                 </div>
@@ -229,6 +239,7 @@ export const MonthlyReportPage = () => {
                         <ReportTable
                             data={report?.data || []}
                             onCharge={handleOpenCharge}
+                            onDistribute={handleOpenDistribute}
                             enrichedUsers={enrichedUsers}
                         />
                     ) : (
@@ -238,6 +249,7 @@ export const MonthlyReportPage = () => {
                                     key={item.id}
                                     item={item}
                                     onCharge={handleOpenCharge}
+                                    onDistribute={handleOpenDistribute}
                                     enrichedUser={enrichedUsers[item.id]}
                                 />
                             ))}
@@ -256,12 +268,22 @@ export const MonthlyReportPage = () => {
                 isCharging={isCharging}
                 error={chargeError}
             />
+
+            {isDistModalOpen && distTarget && (
+                <DistributionModal
+                    userId={distTarget.id}
+                    username={distTarget.name}
+                    totalConsumption={distTarget.consumption}
+                    onClose={() => setIsDistModalOpen(false)}
+                    onSaveSuccess={() => fetchReport(true)}
+                />
+            )}
         </div>
     );
 };
 
 // Activity icon for footer
-const Activity = ({ size, className }: { size: number; className?: string }) => (
+const PulseActivity = ({ size, className }: { size: number; className?: string }) => (
     <svg
         width={size}
         height={size}

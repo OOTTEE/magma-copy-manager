@@ -16,6 +16,39 @@ export const billingFacade = {
     return await billingService.simulateInvoice(userId);
   },
 
+  /**
+   * Retrieves current month's copy distributions for a user.
+   */
+  getDistributions: async (requestingUser: { id: string; role: string }, userId?: string) => {
+    // Determine target user
+    const targetUserId = (requestingUser.role === 'admin' && userId) ? userId : requestingUser.id;
+    
+    const { fromStr } = await reportsService.getPeriodDates();
+    const monthStr = fromStr.slice(0, 7);
+    
+    return await billingService.getDistributions(targetUserId, monthStr);
+  },
+
+  /**
+   * Saves or updates consumption distributions for the current month.
+   */
+  saveDistributions: async (requestingUser: { id: string; role: string }, userId: string | undefined, distributions: any[]) => {
+    // If not admin, the user can only save distributions for themselves
+    const targetUserId = (requestingUser.role === 'admin' && userId) ? userId : requestingUser.id;
+    
+    // Safety check: Users can only distribution their OWN consumption
+    if (requestingUser.role !== 'admin' && userId && userId !== requestingUser.id) {
+       const error = new Error('Unauthorized distribution attempt.');
+       (error as any).statusCode = 403;
+       throw error;
+    }
+
+    const { fromStr } = await reportsService.getPeriodDates();
+    const monthStr = fromStr.slice(0, 7);
+    
+    return await billingService.saveDistributions(targetUserId, monthStr, distributions);
+  },
+
   getSyncStatus: async (userId: string) => {
     const { fromStr } = await reportsService.getPeriodDates();
     const monthStr = fromStr.slice(0, 7);

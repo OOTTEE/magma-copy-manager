@@ -1,5 +1,4 @@
-import React from 'react';
-import { User, Zap } from 'lucide-react';
+import { User, Zap, Share2 } from 'lucide-react';
 
 interface ReportData {
   id: string;
@@ -16,6 +15,7 @@ interface ReportData {
 interface ReportCardProps {
   item: ReportData;
   onCharge: (userId: string) => void;
+  onDistribute?: (userId: string, username: string, totalConsumption: any) => void;
   enrichedUser?: any;
 }
 
@@ -25,7 +25,7 @@ interface ReportCardProps {
  * Grid item for monthly user consumption.
  * Shows a breakdown by category with high visual impact.
  */
-export const ReportCard: React.FC<ReportCardProps> = ({ item, onCharge, enrichedUser }) => {
+export const ReportCard: React.FC<ReportCardProps> = ({ item, onCharge, onDistribute, enrichedUser }) => {
   const colorTotal = item.a4Color + item.a3Color;
   const colorPercentage = item.total > 0 ? (colorTotal / item.total) * 100 : 0;
 
@@ -101,19 +101,33 @@ export const ReportCard: React.FC<ReportCardProps> = ({ item, onCharge, enriched
           <span className="text-2xl font-black text-indigo-500 tracking-tighter">{item.total}</span>
         </div>
 
-        <button
-          onClick={() => onCharge(item.id)}
-          disabled={isChargeDisabled}
-          title={chargeTooltip}
-          className={`flex items-center gap-2 px-5 py-3 rounded-2xl font-bold text-xs transition-all active:scale-95 ${
-            isChargeDisabled
-              ? 'bg-slate-100 text-slate-300 dark:bg-white/5 dark:text-white/20 cursor-not-allowed'
-              : 'bg-[#f15a24]/10 text-[#f15a24] hover:bg-[#f15a24] hover:text-white border border-[#f15a24]/20 shadow-sm shadow-[#f15a24]/20'
-          }`}
-        >
-          <Zap size={14} strokeWidth={2.5} />
-          Vincular
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => onDistribute?.(item.id, item.username, item)}
+            disabled={isChargeDisabled}
+            title="Configurar reparto multi-cuenta"
+            className={`p-3 rounded-2xl transition-all active:scale-90 ${
+              isChargeDisabled
+                ? 'bg-slate-100 text-slate-300 dark:bg-white/5 dark:text-white/20 cursor-not-allowed'
+                : 'bg-indigo-500/10 text-indigo-500 hover:bg-indigo-500 hover:text-white border border-indigo-500/20 shadow-indigo-500/10 shadow-sm'
+            }`}
+          >
+            <Share2 size={16} />
+          </button>
+          <button
+            onClick={() => onCharge(item.id)}
+            disabled={isChargeDisabled}
+            title={chargeTooltip}
+            className={`flex items-center gap-2 px-5 py-3 rounded-2xl font-bold text-xs transition-all active:scale-95 ${
+              isChargeDisabled
+                ? 'bg-slate-100 text-slate-300 dark:bg-white/5 dark:text-white/20 cursor-not-allowed'
+                : 'bg-[#f15a24]/10 text-[#f15a24] hover:bg-[#f15a24] hover:text-white border border-[#f15a24]/20 shadow-sm shadow-[#f15a24]/20'
+            }`}
+          >
+            <Zap size={14} strokeWidth={2.5} />
+            Vincular
+          </button>
+        </div>
       </div>
     </div>
   );

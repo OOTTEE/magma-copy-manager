@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { User, FileText, BarChart3, ChevronDown, ChevronUp, Eye, EyeOff, Zap } from 'lucide-react';
+import { User, FileText, BarChart3, ChevronDown, ChevronUp, Eye, EyeOff, Zap, Share2 } from 'lucide-react';
 
 interface ReportData {
   id: string;
@@ -18,6 +18,7 @@ interface ReportData {
 interface ReportTableProps {
   data: ReportData[];
   onCharge: (userId: string) => void;
+  onDistribute?: (userId: string, username: string, totalConsumption: any) => void;
   enrichedUsers?: Record<string, any>;
 }
 
@@ -27,7 +28,7 @@ interface ReportTableProps {
  * Detailed view for monthly copy accumulation.
  * Categorized by size and color.
  */
-export const ReportTable: React.FC<ReportTableProps> = ({ data, onCharge, enrichedUsers = {} }) => {
+export const ReportTable: React.FC<ReportTableProps> = ({ data, onCharge, onDistribute, enrichedUsers = {} }) => {
   const [showHidden, setShowHidden] = useState(false);
 
   const { visibleData, hiddenData } = useMemo(() => {
@@ -82,18 +83,32 @@ export const ReportTable: React.FC<ReportTableProps> = ({ data, onCharge, enrich
         </div>
       </td>
       <td className="px-8 py-5 text-center">
-        <button
-          onClick={() => onCharge(item.id)}
-          disabled={isChargeDisabled(item)}
-          title={getChargeTooltip(item)}
-          className={`p-3 rounded-xl transition-all active:scale-90 ${
-            isChargeDisabled(item)
-              ? 'bg-slate-100 text-slate-300 dark:bg-white/5 dark:text-white/10 cursor-not-allowed'
-              : 'bg-[#f15a24]/10 text-[#f15a24] hover:bg-[#f15a24] hover:text-white border border-[#f15a24]/20 shadow-[#f15a24]/20 shadow-sm'
-          }`}
-        >
-          <Zap size={18} strokeWidth={2.5} />
-        </button>
+        <div className="flex items-center justify-center gap-2">
+          <button
+            onClick={() => onDistribute?.(item.id, item.username, item)}
+            disabled={isChargeDisabled(item)}
+            title="Configurar reparto multi-cuenta"
+            className={`p-3 rounded-xl transition-all active:scale-90 ${
+              isChargeDisabled(item)
+                ? 'bg-slate-100 text-slate-300 dark:bg-white/5 dark:text-white/10 cursor-not-allowed'
+                : 'bg-indigo-500/10 text-indigo-500 hover:bg-indigo-500 hover:text-white border border-indigo-500/20 shadow-indigo-500/10 shadow-sm'
+            }`}
+          >
+            <Share2 size={18} />
+          </button>
+          <button
+            onClick={() => onCharge(item.id)}
+            disabled={isChargeDisabled(item)}
+            title={getChargeTooltip(item)}
+            className={`p-3 rounded-xl transition-all active:scale-90 ${
+              isChargeDisabled(item)
+                ? 'bg-slate-100 text-slate-300 dark:bg-white/5 dark:text-white/10 cursor-not-allowed'
+                : 'bg-[#f15a24]/10 text-[#f15a24] hover:bg-[#f15a24] hover:text-white border border-[#f15a24]/20 shadow-[#f15a24]/20 shadow-sm'
+            }`}
+          >
+            <Zap size={18} strokeWidth={2.5} />
+          </button>
+        </div>
       </td>
     </tr>
   );

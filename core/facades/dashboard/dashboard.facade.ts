@@ -1,8 +1,9 @@
 import { db } from '../../db';
-import { nexudusSales, syncLogs, systemNotifications } from '../../db/schema';
+import { nexudusSales, syncLogs, systemNotifications, users } from '../../db/schema';
 import { sql, desc, eq, and } from 'drizzle-orm';
 import { autoSyncService } from '../../services/automation/auto-sync.service';
 import { billingJobService } from '../../services/billing/billing-job.service';
+import { reportsService } from '../../services/reports/reports.service';
 import { randomUUID } from 'crypto';
 
 /**
@@ -154,11 +155,15 @@ export const dashboardFacade = {
             status: 'paid'
         }));
 
+        // 5. Pending consumption for distribution
+        const pendingReport = await reportsService.getMonthlyAccumulationForUser(userId);
+
         return {
             ytdMonthlyExpenses,
             currentMonthUsage: { count: Number(currentMonthUsageRes?.count || 0) },
             ytdTotal: Number(ytdTotalRes?.total || 0),
-            recentInvoices
+            recentInvoices,
+            pendingConsumption: pendingReport?.data || null
         };
     }
 };

@@ -2,10 +2,11 @@ import { reportsService } from '../reports/reports.service';
 import { settingsService } from '../settings/settings.service';
 import { nexudusService } from '../nexudus/nexudus.service';
 import { db } from '../../db';
-import { copies, nexudusSales, syncLogs, users, userNexudusAccounts } from '../../db/schema';
+import { copies, nexudusSales, syncLogs, users, userNexudusAccounts, consumptionDistributions } from '../../db/schema';
 import { eq, and, sql, isNull, desc } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 import { logger } from '../../lib/logger';
+import { distributionsRepository } from '../../repositories/distributions.repository';
 
 /**
  * Billing Service
@@ -17,10 +18,25 @@ export const billingService = {
    * Helper to format ISO date to DD-MM-YYYY
    */
   formatDate: (iso: string) => {
-    const d = new Date(iso);
-    const day = String(d.getDate()).padStart(2, '0');
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    return `${day}-${month}-${d.getFullYear()}`;
+    return new Date(iso).toLocaleDateString('es-ES', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    });
+  },
+
+  /**
+   * Returns saved distributions for a specific user and month.
+   */
+  getDistributions: async (userId: string, month: string) => {
+    return await distributionsRepository.findByUserAndMonth(userId, month);
+  },
+
+  /**
+   * Saves distribution intention for a user/month.
+   */
+  saveDistributions: async (userId: string, month: string, distributions: any[]) => {
+    return await distributionsRepository.saveBatch(userId, month, distributions);
   },
 
   /**
@@ -199,39 +215,14 @@ export const billingService = {
   },
 
   /**
-   * Synchronizes consumption to Nexudus for a single user.
+   * Synchronizes consumption to Nexudus for a single user, supporting multi-account distribution.
    */
   syncUserConsumption: async (userId: string, customNote?: string, nexudusAccountId?: string) => {
     const report = await reportsService.getMonthlyAccumulationForUser(userId);
     if (!report) throw new Error('No report data found for user');
 
-    // Identificar cuenta nexudus a utilizar
-    let account;
-    if (nexudusAccountId) {
-      account = await db.select().from(userNexudusAccounts).where(eq(userNexudusAccounts.id, nexudusAccountId)).get();
-    } else {
-      // 1. Intentar buscar la cuenta predeterminada
-      account = await db.select().from(userNexudusAccounts).where(and(
-        eq(userNexudusAccounts.userId, userId),
-        eq(userNexudusAccounts.isDefault, 1)
-      )).get();
-
-      // 2. Fallback: Si no hay predeterminada, tomar la primera de la lista
-      if (!account) {
-        account = await db.select().from(userNexudusAccounts).where(eq(userNexudusAccounts.userId, userId)).get();
-        if (account) {
-          logger.warn({ userId, username: report.data.username }, 'Billing: No default Nexudus account found. Using first available as fallback.');
-        }
-      }
-    }
-
-    if (!account) {
-      throw new Error(`User ${report.data.username} has no valid Nexudus account configured.`);
-    }
-    
-    const settings = await settingsService.getAllSettings();
     const monthStr = report.period.from.slice(0, 7);
-    
+    const settings = await settingsService.getAllSettings();
     const typeToProductIdMap: Record<string, string> = {
       'a4Bw': settings.nexudus_product_id_a4bw,
       'a4Color': settings.nexudus_product_id_a4color,
@@ -240,126 +231,159 @@ export const billingService = {
       'sra3Bw': settings.nexudus_product_id_sra3bw,
       'sra3Color': settings.nexudus_product_id_sra3color,
     };
-
     const copyTypes = ['a4Bw', 'a4Color', 'a3Bw', 'a3Color', 'sra3Bw', 'sra3Color'];
-    const pendingSales = [];
 
-    // 1. Identificar consumos pendientes
+    // 1. Obtener todas las cuentas del usuario
+    const allAccounts = await db.select().from(userNexudusAccounts).where(eq(userNexudusAccounts.userId, userId));
+    const defaultAccount = allAccounts.find(a => a.isDefault === 1) || allAccounts[0];
+    
+    if (!defaultAccount) {
+      throw new Error(`User ${report.data.username} has no valid Nexudus account configured.`);
+    }
+
+    // 2. Obtener repartos manuales guardados
+    const savedDistributions = await distributionsRepository.findByUserAndMonth(userId, monthStr);
+    
+    // 3. Organizar tareas de cobro por cuenta y tipo
+    // Estructura: AccountID -> { type -> { quantity, productId } }
+    const tasksPerAccount: Record<string, Record<string, { quantity: number; productId: string }>> = {};
+
+    const registerTask = (accountId: string, type: string, quantity: number) => {
+      if (quantity <= 0) return;
+      const productId = typeToProductIdMap[type];
+      if (!productId) return;
+      
+      if (!tasksPerAccount[accountId]) tasksPerAccount[accountId] = {};
+      if (!tasksPerAccount[accountId][type]) tasksPerAccount[accountId][type] = { quantity: 0, productId };
+      tasksPerAccount[accountId][type].quantity += quantity;
+    };
+
+    // A. Procesar repartos manuales
+    const totalDistributedByType: Record<string, number> = {};
+    for (const dist of savedDistributions) {
+      registerTask(dist.nexudusAccountId, dist.type, dist.quantity);
+      totalDistributedByType[dist.type] = (totalDistributedByType[dist.type] || 0) + dist.quantity;
+    }
+
+    // B. Calcular remanente para la cuenta por defecto (o cuenta específica si se pasó por parámetro)
+    const targetRemainderAccountId = nexudusAccountId || defaultAccount.id;
     for (const type of copyTypes) {
-      const quantity = report.data[type];
-      const nexudusProductId = typeToProductIdMap[type];
-
-      if (quantity > 0 && nexudusProductId) {
-        const existingSync = await db.select().from(nexudusSales).where(and(
-          eq(nexudusSales.userId, userId),
-          eq(nexudusSales.month, monthStr),
-          eq(nexudusSales.type, type)
-        )).get();
-
-        if (!existingSync) {
-          pendingSales.push({ type, quantity, nexudusProductId });
-        }
+      const totalRequested = report.data[type as keyof typeof report.data] as number || 0;
+      const distributed = totalDistributedByType[type] || 0;
+      const remainder = totalRequested - distributed;
+      
+      if (remainder > 0) {
+        registerTask(targetRemainderAccountId, type, remainder);
       }
     }
 
-    if (pendingSales.length === 0) return { userId, salesCreated: 0 };
+    if (Object.keys(tasksPerAccount).length === 0) return { userId, salesCreated: 0 };
 
-    // 2. Calcular Periodo para la Nota
+    // 4. Preparar Periodo para la Nota
     const latestSync = await db.select()
       .from(nexudusSales)
-      .where(and(
-        eq(nexudusSales.userId, userId),
-        eq(nexudusSales.month, monthStr)
-      ))
+      .where(and(eq(nexudusSales.userId, userId), eq(nexudusSales.month, monthStr)))
       .orderBy(desc(nexudusSales.saleDate))
       .get();
 
     const inicioPeriodo = latestSync ? latestSync.saleDate : report.period.from;
     const fechaActual = new Date().toISOString();
     const periodNote = `Periodo: ${billingService.formatDate(inicioPeriodo)} - ${billingService.formatDate(fechaActual)}`;
+    const saleDate = fechaActual;
 
     const createdNexudusIds: number[] = [];
     const salesToPersist: any[] = [];
-    const saleDate = fechaActual;
 
     try {
-      // 3. Ejecutar cobros en Nexudus (Fase de Cobro)
-      for (const sale of pendingSales) {
-        const nexudusResponse = await nexudusService.createCoworkerProduct({
-          BusinessId: parseInt(settings.nexudus_business_id || '0'),
-          CoworkerId: parseInt(account.nexudusUserId || '0'),
-          ProductId: parseInt(sale.nexudusProductId),
-          Quantity: sale.quantity,
-          SaleDate: saleDate,
-          Notes: customNote || periodNote,
-          InvoiceThisCoworker: false
-        });
+      // 5. Fase de Ejecución: Nexudus API
+      for (const accountId in tasksPerAccount) {
+        const account = allAccounts.find(a => a.id === accountId);
+        if (!account) continue;
 
-        if (!nexudusResponse.WasSuccessful || !nexudusResponse.Value) {
-          throw new Error(`Nexudus error for ${sale.type}: ${nexudusResponse.Message || 'Unknown error'}`);
+        for (const type in tasksPerAccount[accountId]) {
+          const task = tasksPerAccount[accountId][type];
+          
+          const nexudusResponse = await nexudusService.createCoworkerProduct({
+            BusinessId: parseInt(settings.nexudus_business_id || '0'),
+            CoworkerId: parseInt(account.nexudusUserId || '0'),
+            ProductId: parseInt(task.productId),
+            Quantity: task.quantity,
+            SaleDate: saleDate,
+            Notes: customNote || periodNote,
+            InvoiceThisCoworker: false
+          });
+
+          if (!nexudusResponse.WasSuccessful || !nexudusResponse.Value) {
+            throw new Error(`Nexudus error for ${type} in account ${account.nexudusUserId}: ${nexudusResponse.Message || 'Unknown error'}`);
+          }
+
+          const remoteId = (nexudusResponse.Value as any).Id;
+          createdNexudusIds.push(remoteId);
+          salesToPersist.push({
+            type,
+            quantity: task.quantity,
+            nexudusProductId: task.productId,
+            remoteId: remoteId.toString(),
+            accountId: account.id
+          });
+        }
+      }
+
+      // 6. Fase de Compromiso: DB Local
+      await db.transaction(async (tx) => {
+        // Guardar cada venta creada
+        for (const sale of salesToPersist) {
+          const localSaleId = randomUUID();
+          
+          await tx.insert(nexudusSales).values({
+            id: localSaleId,
+            userId: userId,
+            month: monthStr,
+            type: sale.type,
+            quantity: sale.quantity,
+            nexudusSaleId: sale.remoteId,
+            nexudusProductId: sale.nexudusProductId,
+            nexudusAccountId: sale.accountId,
+            saleDate: saleDate,
+            createdOn: new Date().toISOString()
+          });
+
+          // Vincular registros de copias originales
+          const getPhysicalColumn = (type: string) => {
+            if (type === 'sra3Color') return copies.a3Color;
+            if (type === 'sra3Bw') return copies.a3Bw;
+            return (copies as any)[type];
+          };
+
+          const column = getPhysicalColumn(sale.type);
+
+          await tx.update(copies)
+            .set({ nexudusSaleId: localSaleId })
+            .where(and(
+              eq(copies.userId, userId),
+              sql`${copies.datetime} >= ${report.period.from}`,
+              sql`${copies.datetime} <= ${report.period.to}`,
+              sql`${column} > 0`,
+              isNull(copies.nexudusSaleId)
+            ));
         }
 
-        const remoteId = (nexudusResponse.Value as any).Id;
-        createdNexudusIds.push(remoteId);
-        salesToPersist.push({
-          ...sale,
-          remoteId: remoteId.toString()
-        });
-      }
-
-          // 3. Persistir localmente en una única transacción (Fase de Compromiso)
-          try {
-            db.transaction((tx) => {
-              for (const sale of salesToPersist) {
-                const localSaleId = randomUUID();
-                
-                tx.insert(nexudusSales).values({
-                  id: localSaleId,
-                  userId: userId,
-                  month: monthStr,
-                  type: sale.type,
-                  quantity: sale.quantity,
-                  nexudusSaleId: sale.remoteId,
-                  nexudusProductId: sale.nexudusProductId,
-                  nexudusAccountId: account.id,
-                  saleDate: saleDate,
-                  createdOn: new Date().toISOString()
-                }).run();
-
-                // Mapeo de columnas: sra3Color -> a3Color, sra3Bw -> a3Bw
-                const getPhysicalColumn = (type: string) => {
-                  if (type === 'sra3Color') return copies.a3Color;
-                  if (type === 'sra3Bw') return copies.a3Bw;
-                  return copies[type as keyof typeof copies];
-                };
-
-                const column = getPhysicalColumn(sale.type);
-
-                tx.update(copies)
-                  .set({ nexudusSaleId: localSaleId })
-                  .where(and(
-                    eq(copies.userId, userId),
-                    sql`${copies.datetime} >= ${report.period.from}`,
-                    sql`${copies.datetime} <= ${report.period.to}`,
-                    sql`${column} > 0`,
-                    isNull(copies.nexudusSaleId)
-                  )).run();
-              }
-            });
-          } catch (dbError: any) {
-        console.error(`[CRITICAL] DB Transaction failed for user ${userId}. Rolling back Nexudus sales.`);
-        throw dbError; // Capturado por el bloque catch exterior para compensar en Nexudus
-      }
+        // Limpiar repartos procesados
+        await tx.delete(consumptionDistributions).where(and(
+          eq(consumptionDistributions.userId, userId),
+          eq(consumptionDistributions.month, monthStr)
+        ));
+      });
 
     } catch (error: any) {
-      // 4. Rollback Compensatorio en Nexudus (Todo o Nada)
+      // 7. Rollback Compensatorio en Nexudus
       if (createdNexudusIds.length > 0) {
-        console.warn(`[ROLLBACK] Removing ${createdNexudusIds.length} orphan sales from Nexudus for user ${userId}`);
+        logger.warn({ userId, count: createdNexudusIds.length }, `[ROLLBACK] Removing orphan sales from Nexudus due to failure.`);
         for (const remoteId of createdNexudusIds) {
           try {
             await nexudusService.deleteCoworkerProduct(remoteId);
           } catch (rollbackErr: any) {
-            console.error(`[FATAL] Failed to rollback Nexudus sale ${remoteId}: ${rollbackErr.message}`);
+            logger.error({ remoteId, err: rollbackErr.message }, `[FATAL] Failed to rollback Nexudus sale`);
           }
         }
       }

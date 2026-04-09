@@ -314,20 +314,29 @@ paths:
                     items:
                       type: object
                       properties:
-                        id:
-                          type: string
                         userId:
                           type: string
                         username:
                           type: string
                         month:
                           type: string
-                        type:
+                        saleDate:
                           type: string
-                        quantity:
+                        totalQuantity:
                           type: integer
-                        nexudusSaleId:
-                          type: string
+                        items:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              id:
+                                type: string
+                              type:
+                                type: string
+                              quantity:
+                                type: integer
+                              nexudusSaleId:
+                                type: string
                         nexudusCoworkerId:
                           type:
                             - "null"
@@ -357,6 +366,8 @@ paths:
               type: object
               properties:
                 userId:
+                  type: string
+                note:
                   type: string
               required:
                 - userId
@@ -566,6 +577,168 @@ paths:
                 properties:
                   message:
                     type: string
+  /api/v1/billing/sync/group:
+    delete:
+      tags:
+        - Billing
+      description: Rollback a group of synchronization events.
+      parameters:
+        - schema:
+            anyOf:
+              - type: string
+              - type: array
+                items:
+                  type: string
+          in: query
+          name: ids
+          required: true
+        - schema:
+            type: boolean
+            default: false
+          in: query
+          name: force
+          required: false
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    localId:
+                      type: string
+                    remoteId:
+                      type: integer
+                    status:
+                      type: string
+  /api/v1/copies/:
+    get:
+      tags:
+        - Copies
+      description: Get all copy increments sorted by date.
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                    userId:
+                      type: string
+                    username:
+                      type: string
+                    datetime:
+                      type: string
+                    a4Bw:
+                      type: number
+                    a4Color:
+                      type: number
+                    a3Bw:
+                      type: number
+                    a3Color:
+                      type: number
+                    a4BwTotal:
+                      type: number
+                    a4ColorTotal:
+                      type: number
+                    a3BwTotal:
+                      type: number
+                    a3ColorTotal:
+                      type: number
+                    isSynced:
+                      type: boolean
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        "500":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+  /api/v1/copies/batch:
+    delete:
+      tags:
+        - Copies
+      description: Delete multiple copy increments.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - ids
+              properties:
+                ids:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        "204":
+          description: Default Response
+        "400":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        "500":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
   /api/v1/dashboard/stats:
     get:
       tags:
@@ -585,50 +758,6 @@ paths:
                       type: string
                     total:
                       type: number
-  /api/v1/dashboard/customer:
-    get:
-      tags:
-        - Dashboard
-      description: Get personal usage statistics and recent sales for the customer.
-      responses:
-        "200":
-          description: Default Response
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  ytdMonthlyExpenses:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        month:
-                          type: string
-                        total:
-                          type: number
-                  currentMonthUsage:
-                    type: object
-                    properties:
-                      count:
-                        type: integer
-                  ytdTotal:
-                    type: number
-                  recentInvoices:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        id:
-                          type: string
-                        from:
-                          type: string
-                        to:
-                          type: string
-                        total:
-                          type: number
-                        status:
-                          type: string
   /api/v1/dashboard/activity:
     get:
       tags:
@@ -689,6 +818,14 @@ paths:
           in: path
           name: id
           required: true
+      responses:
+        "200":
+          description: Default Response
+  /api/v1/dashboard/customer:
+    get:
+      tags:
+        - Dashboard
+      description: Get personal usage statistics and recent sales for the customer.
       responses:
         "200":
           description: Default Response
@@ -924,6 +1061,49 @@ paths:
                 properties:
                   message:
                     type: string
+  /api/v1/nexudus/coworkers/{id}:
+    get:
+      tags:
+        - Nexudus
+      description: Get a specific coworker from Nexudus by ID.
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: id
+          required: true
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: number
+                  fullName:
+                    type: string
+                  email:
+                    type: string
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        "404":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
   /api/v1/reports/monthly:
     get:
       tags:
@@ -1037,6 +1217,39 @@ paths:
       responses:
         "204":
           description: Default Response
+        "400":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+  /api/v1/settings/test-email:
+    post:
+      tags:
+        - Settings
+      description: Send a test email to verify SMTP configuration.
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
         "400":
           description: Default Response
           content:
@@ -1432,6 +1645,270 @@ paths:
           required: true
       responses:
         "202":
+          description: Default Response
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  trace_id:
+                    type: string
+                  error_type:
+                    type: string
+                  message:
+                    type: string
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  trace_id:
+                    type: string
+                  error_type:
+                    type: string
+                  message:
+                    type: string
+        "500":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  trace_id:
+                    type: string
+                  error_type:
+                    type: string
+                  message:
+                    type: string
+  /api/v1/users/{id}/nexudus-accounts:
+    get:
+      tags:
+        - Users
+      description: Get all Nexudus accounts for a user.
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: id
+          required: true
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                    userId:
+                      type: string
+                    nexudusUserId:
+                      type: string
+                    isDefault:
+                      type: number
+                    createdOn:
+                      type: string
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  trace_id:
+                    type: string
+                  error_type:
+                    type: string
+                  message:
+                    type: string
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  trace_id:
+                    type: string
+                  error_type:
+                    type: string
+                  message:
+                    type: string
+        "500":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  trace_id:
+                    type: string
+                  error_type:
+                    type: string
+                  message:
+                    type: string
+    post:
+      tags:
+        - Users
+      description: Add a new Nexudus account to a user.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - nexudusUserId
+              properties:
+                nexudusUserId:
+                  type: string
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: id
+          required: true
+      responses:
+        "201":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  userId:
+                    type: string
+                  nexudusUserId:
+                    type: string
+                  isDefault:
+                    type: number
+                  createdOn:
+                    type: string
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  trace_id:
+                    type: string
+                  error_type:
+                    type: string
+                  message:
+                    type: string
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  trace_id:
+                    type: string
+                  error_type:
+                    type: string
+                  message:
+                    type: string
+        "500":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  trace_id:
+                    type: string
+                  error_type:
+                    type: string
+                  message:
+                    type: string
+  /api/v1/users/{id}/nexudus-accounts/{accountId}:
+    delete:
+      tags:
+        - Users
+      description: Delete a Nexudus account.
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: id
+          required: true
+        - schema:
+            type: string
+          in: path
+          name: accountId
+          required: true
+      responses:
+        "204":
+          description: Default Response
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  trace_id:
+                    type: string
+                  error_type:
+                    type: string
+                  message:
+                    type: string
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  trace_id:
+                    type: string
+                  error_type:
+                    type: string
+                  message:
+                    type: string
+        "500":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  trace_id:
+                    type: string
+                  error_type:
+                    type: string
+                  message:
+                    type: string
+  /api/v1/users/{id}/nexudus-accounts/{accountId}/default:
+    patch:
+      tags:
+        - Users
+      description: Set a Nexudus account as default.
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: id
+          required: true
+        - schema:
+            type: string
+          in: path
+          name: accountId
+          required: true
+      responses:
+        "204":
           description: Default Response
         "401":
           description: Default Response

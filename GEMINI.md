@@ -1,6 +1,6 @@
 # Project: Magma copy counter
 
-## Depscription
+## Description
 **Magma** is a project to deploy a web application (API + Web app) that will help manage the internal operations of a coworking space.
 
 ## Features description
@@ -8,6 +8,7 @@
 - Store in a db a copy history in records (A4_BW, A4_COLOR, A3_BW, A3_COLOR)
 - Create a monthly summary of user copys by category (A4_BW, A4_COLOR, A3_BW, A3_COLOR, SRA3_BW, SRA3_COLOR)
 - Create a monthly invoice preview for each user with the total cost of their copies
+- Allow users and admins to distribute consumption across multiple Nexudus accounts (Multi-account Copy Distribution)
 - Push the monthly invoice to nexudus & persist
 
 ## Tech stack
@@ -36,4 +37,5 @@ The aplication will be built using the following technologies:
 - The admin user will have access to all the features of the application.
 - The admin user will be able to create, update, delete and list all the users.
 - The system will have two types of users: "admin" and "customer"
-- each customer will have a "printUser" and a "nexudusUser" as properties. "printUser" is the user that will be used to authenticate with the print server. "nexudusUser" is the user that will be used to authenticate with the nexudus API.
+- Each customer will have a "printUser" and a "nexudusUser" as properties. "printUser" is the user that will be used to authenticate with the print server. "nexudusUser" is the user that will be used to authenticate with the nexudus API.
+- **Consumption Distribution**: Users can define how many copies are billed to each linked Nexudus account. Any remainder is automatically assigned to the default account.

@@ -82,3 +82,13 @@ export const systemNotifications = sqliteTable('system_notifications', {
   read: integer('read').notNull().default(0),
   createdAt: text('created_at').notNull(),
 });
+
+export const consumptionDistributions = sqliteTable('consumption_distributions', {
+  id: text('id').primaryKey(),
+  userId: text('user_id').notNull().references(() => users.id),
+  nexudusAccountId: text('nexudus_account_id').notNull().references(() => userNexudusAccounts.id),
+  month: text('month').notNull(), // YYYY-MM
+  type: text('type').notNull(),  // a4Bw, a4Color, a3Bw, a3Color, sra3Bw, sra3Color
+  quantity: integer('quantity').notNull(),
+  createdAt: text('created_at').notNull(),
+});

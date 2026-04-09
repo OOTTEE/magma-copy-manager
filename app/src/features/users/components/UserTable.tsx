@@ -1,5 +1,5 @@
-import React from 'react';
 import { User as UserIcon, Printer, Share2, Edit3 } from 'lucide-react';
+import { NexudusAccountBadge } from './NexudusAccountBadge';
 
 interface User {
   id: string;
@@ -12,7 +12,6 @@ interface User {
 
 interface UserTableProps {
   users: User[];
-  coworkers?: { id?: number; fullName?: string; email?: string }[];
   onEdit: (user: User) => void;
   onLink: (user: User) => void;
 }
@@ -23,7 +22,7 @@ interface UserTableProps {
  * Tabular view for user management.
  * Shows essential technical fields and actions.
  */
-export const UserTable: React.FC<UserTableProps> = ({ users, coworkers, onEdit, onLink }) => {
+export const UserTable: React.FC<UserTableProps> = ({ users, onEdit, onLink }) => {
   return (
     <div className="overflow-hidden bg-white dark:bg-[#1a1818] rounded-[2rem] border border-slate-200 dark:border-white/5 shadow-xl transition-all">
       <table className="w-full text-left border-collapse">
@@ -69,30 +68,7 @@ export const UserTable: React.FC<UserTableProps> = ({ users, coworkers, onEdit, 
                   </div>
                   <div className="flex p-1 flex-col gap-0.5">
                     {user.nexudusUser ? (
-                      (() => {
-                        const coworker = coworkers?.find(c => c.id?.toString() === user.nexudusUser);
-                        return (
-                          <>
-                            {coworker ? (
-                              <>
-                                <span className="text-sm font-bold text-slate-700 dark:text-white/80 leading-none">
-                                  {coworker.fullName}
-                                </span>
-                                <span className="text-[11px] font-medium text-slate-400 dark:text-white/20">
-                                  {coworker.email}
-                                </span>
-                              </>
-                            ) : (
-                              <span className="text-sm font-medium text-slate-400 dark:text-white/20 italic animate-pulse">
-                                Cargando detalles...
-                              </span>
-                            )}
-                            <code className="text-[9px] font-mono mt-1 opacity-40 group-hover:opacity-100 transition-opacity">
-                              ID: {user.nexudusUser}
-                            </code>
-                          </>
-                        );
-                      })()
+                      <NexudusAccountBadge nexudusUserId={user.nexudusUser} />
                     ) : (
                       <button 
                         onClick={() => onLink(user)}

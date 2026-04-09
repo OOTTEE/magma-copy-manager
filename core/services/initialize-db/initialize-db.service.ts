@@ -2,6 +2,7 @@ import * as argon2 from 'argon2';
 import crypto from 'node:crypto';
 import { usersRepository } from '../../repositories/users.repository';
 import { logger } from '../../lib/logger';
+import { sanitizeUsername } from '../../lib/string.utils';
 
 /**
  * Service to ensure the database is correctly initialized with essential data.
@@ -25,7 +26,7 @@ export const initializeDbService = {
             const hashedPassword = await argon2.hash('m4gm4');
             const adminUser = {
                 id: crypto.randomUUID(),
-                username: 'admin',
+                username: sanitizeUsername('admin'),
                 password: hashedPassword,
                 role: 'admin',
                 printUser: 'admin',

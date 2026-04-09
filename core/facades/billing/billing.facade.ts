@@ -22,7 +22,7 @@ export const billingFacade = {
     return await billingService.getSyncStatus(userId, monthStr);
   },
 
-  syncUserConsumption: async (requestingUser: { id: string; role: string }, userId: string, customNote?: string) => {
+  syncUserConsumption: async (requestingUser: { id: string; role: string }, userId: string, customNote?: string, nexudusAccountId?: string) => {
     if (requestingUser.role !== 'admin') {
       const error = new Error('Only admins can trigger synchronization.');
       (error as any).statusCode = 403;
@@ -36,7 +36,7 @@ export const billingFacade = {
       throw error;
     }
 
-    return await billingService.syncUserConsumption(userId, customNote);
+    return await billingService.syncUserConsumption(userId, customNote, nexudusAccountId);
   },
 
   getSyncDetails: async (requestingUser: { id: string; role: string }, id: string) => {

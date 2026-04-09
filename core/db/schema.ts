@@ -6,8 +6,17 @@ export const users = sqliteTable('users', {
   password: text('password').notNull(),
   role: text('role').notNull().default('customer'),
   printUser: text('print_user').notNull(),
+  /** @deprecated User nexudus_accounts instead */
   nexudusUser: text('nexudus_user'),
   a3NoPaperMode: integer('a3_no_paper_mode').notNull().default(0),
+});
+
+export const userNexudusAccounts = sqliteTable('user_nexudus_accounts', {
+  id: text('id').primaryKey(),
+  userId: text('user_id').notNull().references(() => users.id),
+  nexudusUserId: text('nex_user_id').notNull(), // El ID real de Nexudus
+  isDefault: integer('is_default').notNull().default(0),
+  createdOn: text('created_on').notNull(),
 });
 
 export const copies = sqliteTable('copies', {
@@ -50,6 +59,7 @@ export const nexudusSales = sqliteTable('nexudus_sales', {
   quantity: integer('quantity').notNull(),
   nexudusSaleId: text('nexudus_sale_id').notNull(), // ID retornado por Nexudus
   nexudusProductId: text('nexudus_product_id').notNull(), // ID del producto de Nexudus usado
+  nexudusAccountId: text('nexudus_account_id').references(() => userNexudusAccounts.id),
   saleDate: text('sale_date').notNull(),
   createdOn: text('created_on').notNull(),
 });

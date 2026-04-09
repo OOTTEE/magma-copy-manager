@@ -63,7 +63,7 @@ export const nexudusFacade = {
     const records = await nexudusService.getBusinesses();
     return records.map((r: any) => ({
       id: r.Id,
-      name: r.Name || r.ToStringText
+      name: r.Name || r.FullName
     }));
   },
 
@@ -80,7 +80,7 @@ export const nexudusFacade = {
     const records = await nexudusService.getCurrencies();
     return records.map((r: any) => ({
       id: r.Id,
-      name: r.Name || r.ToStringText,
+      name: r.Name || r.FullName,
       code: r.Code
     }));
   },
@@ -98,7 +98,7 @@ export const nexudusFacade = {
     const records = await nexudusService.getProducts();
     return records.map((r: any) => ({
       id: r.Id,
-      name: r.Name || r.ToStringText
+      name: r.Name || r.FullName
     }));
   },
 
@@ -115,8 +115,26 @@ export const nexudusFacade = {
     const records = await nexudusService.searchCoworkers(search);
     return records.map((r: any) => ({
       id: r.Id,
-      fullName: r.FullName || r.Name || r.ToStringText,
+      fullName: r.FullName || r.ToStringText,
       email: r.Email
     }));
+  },
+
+  /**
+   * Returns a single coworker by ID.
+   */
+  getCoworkerById: async (requestingUser: { id: string; role: string }, id: number) => {
+    if (requestingUser.role !== 'admin') {
+      const error = new Error('Unauthorized');
+      (error as any).statusCode = 403;
+      throw error;
+    }
+
+    const r = await nexudusService.getCoworkerById(id);
+    return {
+      id: r.Id,
+      fullName: r.FullName || r.ToStringText,
+      email: r.Email
+    };
   }
 };

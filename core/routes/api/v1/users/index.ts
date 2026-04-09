@@ -21,6 +21,17 @@ const userSchema = {
   }
 };
 
+const nexudusAccountSchema = {
+  type: 'object',
+  properties: {
+    id: { type: 'string' },
+    userId: { type: 'string' },
+    nexudusUserId: { type: 'string' },
+    isDefault: { type: 'number' },
+    createdOn: { type: 'string' }
+  }
+};
+
 const errorSchema = {
   type: 'object',
   properties: {
@@ -171,6 +182,111 @@ const usersRoute: FastifyPluginAsync = async (fastify) => {
     const user = request.user as { id: string; role: string };
     await usersFacade.deleteUser(user, request.params.id);
     return reply.status(202).send();
+  });
+
+  // --- Nexudus Accounts Management ---
+
+  fastify.get<{ Params: { id: string } }>('/:id/nexudus-accounts', {
+    schema: {
+      description: 'Get all Nexudus accounts for a user.',
+      tags: ['Users'],
+      params: {
+        type: 'object',
+        properties: { id: { type: 'string' } },
+        required: ['id']
+      },
+      response: {
+        200: { type: 'array', items: nexudusAccountSchema },
+        401: errorSchema,
+        403: errorSchema,
+        500: errorSchema
+      }
+    },
+    preValidation: [fastify.authenticate]
+  }, async (request, reply) => {
+    const user = request.user as { id: string; role: string };
+    const result = await usersFacade.getNexudusAccounts(user, request.params.id);
+    return reply.send(result);
+  });
+
+  fastify.post<{ Params: { id: string }, Body: { nexudusUserId: string } }>('/:id/nexudus-accounts', {
+    schema: {
+      description: 'Add a new Nexudus account to a user.',
+      tags: ['Users'],
+      params: {
+        type: 'object',
+        properties: { id: { type: 'string' } },
+        required: ['id']
+      },
+      body: {
+        type: 'object',
+        required: ['nexudusUserId'],
+        properties: { nexudusUserId: { type: 'string' } }
+      },
+      response: {
+        201: nexudusAccountSchema,
+        401: errorSchema,
+        403: errorSchema,
+        500: errorSchema
+      }
+    },
+    preValidation: [fastify.authenticate, fastify.requireRole('admin')]
+  }, async (request, reply) => {
+    const user = request.user as { id: string; role: string };
+    const result = await usersFacade.addNexudusAccount(user, request.params.id, request.body.nexudusUserId);
+    return reply.status(201).send(result);
+  });
+
+  fastify.delete<{ Params: { id: string, accountId: string } }>('/:id/nexudus-accounts/:accountId', {
+    schema: {
+      description: 'Delete a Nexudus account.',
+      tags: ['Users'],
+      params: {
+        type: 'object',
+        properties: { 
+          id: { type: 'string' },
+          accountId: { type: 'string' }
+        },
+        required: ['id', 'accountId']
+      },
+      response: {
+        204: { type: 'null' },
+        401: errorSchema,
+        403: errorSchema,
+        500: errorSchema
+      }
+    },
+    preValidation: [fastify.authenticate, fastify.requireRole('admin')]
+  }, async (request, reply) => {
+    const user = request.user as { id: string; role: string };
+    await usersFacade.deleteNexudusAccount(user, request.params.accountId);
+    return reply.status(204).send();
+  });
+
+  fastify.patch<{ Params: { id: string, accountId: string } }>('/:id/nexudus-accounts/:accountId/default', {
+    schema: {
+      description: 'Set a Nexudus account as default.',
+      tags: ['Users'],
+      params: {
+        type: 'object',
+        properties: { 
+          id: { type: 'string' },
+          accountId: { type: 'string' }
+        },
+        required: ['id', 'accountId']
+      },
+      response: {
+        204: { type: 'null' },
+        401: errorSchema,
+        403: errorSchema,
+        500: errorSchema
+      }
+    },
+    preValidation: [fastify.authenticate, fastify.requireRole('admin')]
+  }, async (request, reply) => {
+    const user = request.user as { id: string; role: string };
+    await usersFacade.setDefaultNexudusAccount(user, request.params.id, request.params.accountId);
+    return reply.status(204).send();
   });
 };
 

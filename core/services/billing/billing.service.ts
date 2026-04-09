@@ -2,9 +2,10 @@ import { reportsService } from '../reports/reports.service';
 import { settingsService } from '../settings/settings.service';
 import { nexudusService } from '../nexudus/nexudus.service';
 import { db } from '../../db';
-import { copies, nexudusSales, syncLogs, users } from '../../db/schema';
-import { eq, and, sql, isNull } from 'drizzle-orm';
+import { copies, nexudusSales, syncLogs, users, userNexudusAccounts } from '../../db/schema';
+import { eq, and, sql, isNull, desc } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
+import { logger } from '../../lib/logger';
 
 /**
  * Billing Service
@@ -123,7 +124,7 @@ export const billingService = {
       SELECT 
         ns.user_id as userId,
         u.username as username,
-        u.nexudus_user as nexudusCoworkerId,
+        na.nex_user_id as nexudusCoworkerId,
         ns.month as month,
         ns.sale_date as saleDate,
         SUM(ns.quantity) as totalQuantity,
@@ -136,6 +137,7 @@ export const billingService = {
         MAX(ns.created_on) as createdOn
       FROM nexudus_sales ns
       JOIN users u ON ns.user_id = u.id
+      LEFT JOIN user_nexudus_accounts na ON ns.nexudus_account_id = na.id
       WHERE ${whereClause}
       GROUP BY ns.user_id, ns.sale_date
       ORDER BY ns.sale_date DESC
@@ -183,13 +185,15 @@ export const billingService = {
         type: nexudusSales.type,
         quantity: nexudusSales.quantity,
         nexudusSaleId: nexudusSales.nexudusSaleId,
-        nexudusCoworkerId: users.nexudusUser,
+        nexudusCoworkerId: userNexudusAccounts.nexudusUserId,
         nexudusProductId: nexudusSales.nexudusProductId,
         saleDate: nexudusSales.saleDate,
         createdOn: nexudusSales.createdOn,
+        nexudusAccountId: nexudusSales.nexudusAccountId,
       })
       .from(nexudusSales)
       .innerJoin(users, eq(users.id, nexudusSales.userId))
+      .leftJoin(userNexudusAccounts, eq(userNexudusAccounts.id, nexudusSales.nexudusAccountId))
       .where(eq(nexudusSales.id, id))
       .get();
   },
@@ -197,10 +201,33 @@ export const billingService = {
   /**
    * Synchronizes consumption to Nexudus for a single user.
    */
-  syncUserConsumption: async (userId: string, customNote?: string) => {
+  syncUserConsumption: async (userId: string, customNote?: string, nexudusAccountId?: string) => {
     const report = await reportsService.getMonthlyAccumulationForUser(userId);
     if (!report) throw new Error('No report data found for user');
-    if (!report.data.nexudusUser) throw new Error(`User ${report.data.username} has no Nexudus ID mapped.`);
+
+    // Identificar cuenta nexudus a utilizar
+    let account;
+    if (nexudusAccountId) {
+      account = await db.select().from(userNexudusAccounts).where(eq(userNexudusAccounts.id, nexudusAccountId)).get();
+    } else {
+      // 1. Intentar buscar la cuenta predeterminada
+      account = await db.select().from(userNexudusAccounts).where(and(
+        eq(userNexudusAccounts.userId, userId),
+        eq(userNexudusAccounts.isDefault, 1)
+      )).get();
+
+      // 2. Fallback: Si no hay predeterminada, tomar la primera de la lista
+      if (!account) {
+        account = await db.select().from(userNexudusAccounts).where(eq(userNexudusAccounts.userId, userId)).get();
+        if (account) {
+          logger.warn({ userId, username: report.data.username }, 'Billing: No default Nexudus account found. Using first available as fallback.');
+        }
+      }
+    }
+
+    if (!account) {
+      throw new Error(`User ${report.data.username} has no valid Nexudus account configured.`);
+    }
     
     const settings = await settingsService.getAllSettings();
     const monthStr = report.period.from.slice(0, 7);
@@ -237,20 +264,34 @@ export const billingService = {
 
     if (pendingSales.length === 0) return { userId, salesCreated: 0 };
 
+    // 2. Calcular Periodo para la Nota
+    const latestSync = await db.select()
+      .from(nexudusSales)
+      .where(and(
+        eq(nexudusSales.userId, userId),
+        eq(nexudusSales.month, monthStr)
+      ))
+      .orderBy(desc(nexudusSales.saleDate))
+      .get();
+
+    const inicioPeriodo = latestSync ? latestSync.saleDate : report.period.from;
+    const fechaActual = new Date().toISOString();
+    const periodNote = `Periodo: ${billingService.formatDate(inicioPeriodo)} - ${billingService.formatDate(fechaActual)}`;
+
     const createdNexudusIds: number[] = [];
     const salesToPersist: any[] = [];
-    const saleDate = new Date().toISOString();
+    const saleDate = fechaActual;
 
     try {
-      // 2. Ejecutar cobros en Nexudus (Fase de Cobro)
+      // 3. Ejecutar cobros en Nexudus (Fase de Cobro)
       for (const sale of pendingSales) {
         const nexudusResponse = await nexudusService.createCoworkerProduct({
           BusinessId: parseInt(settings.nexudus_business_id || '0'),
-          CoworkerId: parseInt(report.data.nexudusUser || '0'),
+          CoworkerId: parseInt(account.nexudusUserId || '0'),
           ProductId: parseInt(sale.nexudusProductId),
           Quantity: sale.quantity,
           SaleDate: saleDate,
-          Notes: customNote || `periodo ${billingService.formatDate(report.period.from)} ${billingService.formatDate(report.period.to)}`,
+          Notes: customNote || periodNote,
           InvoiceThisCoworker: false
         });
 
@@ -280,6 +321,7 @@ export const billingService = {
                   quantity: sale.quantity,
                   nexudusSaleId: sale.remoteId,
                   nexudusProductId: sale.nexudusProductId,
+                  nexudusAccountId: account.id,
                   saleDate: saleDate,
                   createdOn: new Date().toISOString()
                 }).run();
@@ -335,7 +377,6 @@ export const billingService = {
     const results: any[] = [];
     
     for (const userData of report.data) {
-      if (!userData.nexudusUser) continue;
       try {
         const result = await billingService.syncUserConsumption(userData.id);
         results.push({ ...result, username: userData.username, status: 'success' });

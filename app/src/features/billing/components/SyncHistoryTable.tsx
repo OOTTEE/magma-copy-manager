@@ -4,12 +4,17 @@ import {
   Calendar, 
   ExternalLink, 
   Layers,
-  Trash2
+  Trash2,
+  CheckSquare,
+  Square
 } from 'lucide-react';
 
 interface SyncHistoryTableProps {
   data: SyncRecord[];
   onDelete?: (ids: string[]) => void;
+  selectedRows?: Set<string>;
+  onToggleRow?: (rowId: string) => void;
+  onToggleAll?: () => void;
 }
 
 /**
@@ -19,9 +24,13 @@ interface SyncHistoryTableProps {
  */
 export const SyncHistoryTable: React.FC<SyncHistoryTableProps> = ({ 
   data, 
-  onDelete
+  onDelete,
+  selectedRows = new Set(),
+  onToggleRow,
+  onToggleAll
 }) => {
   
+  const getRowId = (record: SyncRecord, index: number) => `${record.userId}-${record.saleDate}-${index}`;
 
   const copyTypeLabels: Record<string, string> = {
     'a4Bw': 'A4 B/N',
@@ -37,24 +46,49 @@ export const SyncHistoryTable: React.FC<SyncHistoryTableProps> = ({
       <table className="w-full text-left border-collapse">
         <thead>
           <tr className="border-b border-slate-100 dark:border-white/5 bg-slate-50/50 dark:bg-white/[0.02]">
-            <th className="px-8 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-white/20">Coworker</th>
+            <th className="px-6 py-6 w-10">
+               <button 
+                onClick={onToggleAll}
+                className="text-slate-400 hover:text-indigo-500 transition-colors"
+               >
+                 {selectedRows.size > 0 && selectedRows.size === data.length ? (
+                   <CheckSquare size={18} className="text-indigo-500" />
+                 ) : (
+                   <Square size={18} />
+                 )}
+               </button>
+            </th>
+            <th className="px-6 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-white/20">Coworker</th>
             <th className="px-8 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-white/20">Mes Reportado</th>
             <th className="px-8 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-white/20">Conceptos Sincronizados</th>
-            <th className="px-8 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-white/20 text-center">Total Páginas</th>
-            <th className="px-8 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-white/20 text-center">Acciones</th>
+            <th className="px-6 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-white/20 text-center">Total Páginas</th>
+            <th className="px-6 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-white/20 text-center">Acciones</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-50 dark:divide-white/5">
-          {data.map((record, idx) => (
-            <tr key={`${record.userId}-${record.saleDate}-${idx}`} className="group hover:bg-slate-50/50 dark:hover:bg-white/5 transition-colors">
-              <td className="px-8 py-5">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-slate-50 dark:bg-white/5 flex items-center justify-center text-slate-400 group-hover:text-indigo-500 transition-colors">
-                    <User size={18} strokeWidth={1.5} />
+          {data.map((record, idx) => {
+            const rowId = getRowId(record, idx);
+            const isSelected = selectedRows.has(rowId);
+            
+            return (
+              <tr 
+                key={rowId} 
+                onClick={() => onToggleRow?.(rowId)}
+                className={`group cursor-pointer transition-colors ${isSelected ? 'bg-indigo-500/5' : 'hover:bg-slate-50/50 dark:hover:bg-white/5'}`}
+              >
+                <td className="px-6 py-5">
+                   <div className={`${isSelected ? 'text-indigo-500' : 'text-slate-300 dark:text-white/10 group-hover:text-indigo-300'}`}>
+                      {isSelected ? <CheckSquare size={18} /> : <Square size={18} />}
+                   </div>
+                </td>
+                <td className="px-6 py-5">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-slate-50 dark:bg-white/5 flex items-center justify-center text-slate-400 group-hover:text-indigo-500 transition-colors">
+                      <User size={18} strokeWidth={1.5} />
+                    </div>
+                    <span className="font-bold text-slate-700 dark:text-white/80">{record.username}</span>
                   </div>
-                  <span className="font-bold text-slate-700 dark:text-white/80">{record.username}</span>
-                </div>
-              </td>
+                </td>
               <td className="px-8 py-5">
                 <div className="flex items-center gap-2 text-slate-600 dark:text-white/40 font-bold text-xs uppercase tracking-widest">
                   <Calendar size={14} className="text-indigo-500/60" />
@@ -113,7 +147,8 @@ export const SyncHistoryTable: React.FC<SyncHistoryTableProps> = ({
                 </div>
               </td>
             </tr>
-          ))}
+          );
+          })}
         </tbody>
       </table>
     </div>

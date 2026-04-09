@@ -153,6 +153,44 @@ const nexudusRoute: FastifyPluginAsync = async (fastify) => {
     const coworkers = await nexudusFacade.getCoworkers(user, search || '');
     return reply.send(coworkers);
   });
+
+  // GET coworker by ID
+  fastify.get<{ Params: { id: string } }>('/coworkers/:id', {
+    schema: {
+      tags: ['Nexudus'],
+      description: 'Get a specific coworker from Nexudus by ID.',
+      params: {
+        type: 'object',
+        properties: { id: { type: 'string' } },
+        required: ['id']
+      },
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            id: { type: 'number' },
+            fullName: { type: 'string' },
+            email: { type: 'string' }
+          }
+        },
+        403: { type: 'object', properties: { message: { type: 'string' } } },
+        404: { type: 'object', properties: { message: { type: 'string' } } }
+      }
+    },
+    preValidation: [fastify.authenticate, fastify.requireRole('admin')]
+  }, async (request, reply) => {
+    const user = request.user as { id: string; role: string };
+    const { id } = request.params;
+    try {
+      const coworker = await nexudusFacade.getCoworkerById(user, parseInt(id));
+      return reply.send(coworker);
+    } catch (err: any) {
+      if (err.message?.includes('not be found')) {
+        return reply.status(404).send({ message: 'Coworker not found' });
+      }
+      throw err;
+    }
+  });
 };
 
 export default nexudusRoute;

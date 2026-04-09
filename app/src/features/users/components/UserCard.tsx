@@ -1,5 +1,6 @@
 import React from 'react';
 import { User as UserIcon, Printer, Share2, Edit3, ShieldAlert, ShieldCheck } from 'lucide-react';
+import { NexudusAccountBadge } from './NexudusAccountBadge';
 
 interface User {
   id: string;
@@ -12,18 +13,17 @@ interface User {
 
 interface UserCardProps {
   user: User;
-  coworkers?: { id?: number; fullName?: string; email?: string }[];
   onEdit: (user: User) => void;
   onLink: (user: User) => void;
 }
 
 /**
- * UserCard Component
+ * UserCard
  * 
  * Grid card view for user management.
  * High visual hierarchy and mobile-friendly.
  */
-export const UserCard: React.FC<UserCardProps> = ({ user, coworkers, onEdit, onLink }) => {
+export const UserCard: React.FC<UserCardProps> = ({ user, onEdit, onLink }) => {
   const isAdmin = user.role === 'admin';
 
   return (
@@ -81,38 +81,19 @@ export const UserCard: React.FC<UserCardProps> = ({ user, coworkers, onEdit, onL
               <Share2 size={16} strokeWidth={1.5} className={user.nexudusUser ? "" : "text-red-500"} />
               <span className={user.nexudusUser ? "text-[10px] font-black uppercase tracking-wider" : "text-[10px] font-black uppercase tracking-wider text-red-500"}>Nexudus</span>
             </div>
-            {!user.nexudusUser && (
-              <button 
-                onClick={() => onLink(user)}
-                className="text-[9px] font-black uppercase tracking-tighter text-red-500 bg-red-500/10 px-2 py-1 rounded-lg border border-red-500/20 hover:bg-red-500 hover:text-white transition-all transform active:scale-95"
-              >
-                  Vincular
-              </button>
-            )}
           </div>
           
-          {user.nexudusUser && (
-            <div className="flex flex-col items-end gap-0.5">
-              {(() => {
-                const coworker = coworkers?.find(c => c.id?.toString() === user.nexudusUser);
-                return coworker ? (
-                  <>
-                    <span className="text-xs font-bold text-slate-600 dark:text-white/60">
-                      {coworker.fullName}
-                    </span>
-                    <span className="text-[10px] text-slate-400 dark:text-white/20">
-                      {coworker.email}
-                    </span>
-                  </>
-                ) : (
-                  <span className="text-[10px] font-medium text-slate-400 dark:text-white/20 italic animate-pulse">
-                    Cargando...
-                  </span>
-                );
-              })()}
-              <code className="text-[9px] font-mono opacity-40 group-hover:opacity-100 transition-opacity">
-                ID: {user.nexudusUser}
-              </code>
+          {user.nexudusUser ? (
+            <NexudusAccountBadge nexudusUserId={user.nexudusUser} className="w-full" />
+          ) : (
+            <div className="flex flex-col items-center gap-3 py-4 bg-slate-50 dark:bg-white/5 rounded-2xl border border-dashed border-slate-200 dark:border-white/5">
+              <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Sin vinculación</span>
+              <button 
+                onClick={() => onLink(user)}
+                className="text-[10px] font-black uppercase tracking-tight text-red-500 bg-red-500/10 px-4 py-2 rounded-xl border border-red-500/20 hover:bg-red-500 hover:text-white transition-all transform active:scale-95"
+              >
+                Vincular Nexudus
+              </button>
             </div>
           )}
         </div>

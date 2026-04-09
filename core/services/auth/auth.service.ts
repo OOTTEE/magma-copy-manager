@@ -1,5 +1,6 @@
 import { FastifyInstance } from 'fastify';
 import { usersRepository } from '../../repositories/users.repository';
+import { sanitizeUsername } from '../../lib/string.utils';
 import { authRepository } from '../../repositories/auth.repository';
 import * as argon2 from 'argon2';
 import { randomUUID } from 'crypto';
@@ -9,7 +10,8 @@ export const authService = {
      * Authenticates user and generates initial token pair.
      */
     login: async (fastify: FastifyInstance, username: string, pass: string) => {
-        const user = await usersRepository.findByUsername(username);
+        const sanitizedUsername = sanitizeUsername(username);
+        const user = await usersRepository.findByUsername(sanitizedUsername);
         if (!user) return null;
 
         const isValid = await argon2.verify(user.password, pass);

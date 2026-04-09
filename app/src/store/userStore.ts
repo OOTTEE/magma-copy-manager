@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { api } from '../services/api';
 
-interface NexudusCoworker {
+export interface NexudusCoworker {
   id?: number;
   fullName?: string;
   email?: string;
@@ -20,6 +20,7 @@ interface UserState {
   fetchCoworkers: () => Promise<void>;
   updateUser: (id: string, data: any) => Promise<void>;
   deleteUser: (id: string) => Promise<void>;
+  fetchCoworkerById: (id: string) => Promise<void>;
   reset: () => void;
 }
 
@@ -110,6 +111,26 @@ export const useUserStore = create<UserState>((set, get) => ({
     } catch (err: any) {
       console.error("Error deleting user:", err);
       throw err;
+    }
+  },
+  
+  fetchCoworkerById: async (id) => {
+    // 1. Check if we already have it in the cache
+    const existing = get().coworkers.find(c => c.id?.toString() === id);
+    if (existing) return;
+
+    try {
+      const { data, error } = await api.GET("/api/v1/nexudus/coworkers/{id}", {
+        params: { path: { id } }
+      });
+      if (error) throw error;
+      if (data) {
+        set({
+          coworkers: [...get().coworkers, data as NexudusCoworker]
+        });
+      }
+    } catch (err: any) {
+      console.error(`[UserStore] Error fetching coworker ${id}:`, err);
     }
   },
 

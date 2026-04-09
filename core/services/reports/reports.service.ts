@@ -1,6 +1,6 @@
 import { db } from '../../db';
-import { users, copies } from '../../db/schema';
-import { eq, and, sql, gte, lte, isNull } from 'drizzle-orm';
+import { users, copies, nexudusSales } from '../../db/schema';
+import { eq, and, sql, gte, lte, isNull, desc } from 'drizzle-orm';
 import { settingsService } from '../settings/settings.service';
 
 /**
@@ -97,8 +97,20 @@ export const reportsService = {
 
     if (!result) return null;
 
+    // Buscar información de la última vinculación en este mes
+    const monthStr = fromStr.slice(0, 7);
+    const latestSync = await db.select()
+      .from(nexudusSales)
+      .where(and(
+        eq(nexudusSales.userId, userId),
+        eq(nexudusSales.month, monthStr)
+      ))
+      .orderBy(desc(nexudusSales.saleDate))
+      .get();
+
     return {
       period: { from: fromStr, to: toStr },
+      lastSyncDate: latestSync?.saleDate || null,
       data: reportsService.mapAccumulationResult(result)
     };
   },

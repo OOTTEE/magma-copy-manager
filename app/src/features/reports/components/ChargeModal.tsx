@@ -1,5 +1,15 @@
-import React, { useEffect } from 'react';
-import { X, Zap, AlertTriangle, Loader2, FileText } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { X, Zap, AlertTriangle, Loader2, FileText, Share2, Check } from 'lucide-react';
+import { api } from '../../../services/api';
+import { NexudusAccountBadge } from '../../users/components/NexudusAccountBadge';
+
+interface NexudusAccount {
+  id: string;
+  userId: string;
+  nexudusUserId: string;
+  isDefault: number;
+  createdOn: string;
+}
 
 interface SimulationLine {
   concept: string;
@@ -13,10 +23,16 @@ interface SimulationResult {
   lines: SimulationLine[];
 }
 
+export interface NexudusCoworker {
+  id?: number;
+  fullName?: string;
+  email?: string;
+}
+
 interface ChargeModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onConfirm: (note: string) => Promise<void>;
+  onConfirm: (note: string, nexudusAccountId?: string) => Promise<void>;
   data: SimulationResult | null;
   isLoadingData: boolean;
   isCharging: boolean;
@@ -32,7 +48,10 @@ export const ChargeModal: React.FC<ChargeModalProps> = ({
   isCharging,
   error,
 }) => {
-  const [note, setNote] = React.useState('');
+  const [note, setNote] = useState('');
+  const [accounts, setAccounts] = useState<NexudusAccount[]>([]);
+  const [selectedAccountId, setSelectedAccountId] = useState<string | undefined>(undefined);
+  const [isLoadingAccounts, setIsLoadingAccounts] = useState(false);
 
   const formatDateDDMMYYYY = (iso: string) => {
     const d = new Date(iso);
@@ -41,17 +60,47 @@ export const ChargeModal: React.FC<ChargeModalProps> = ({
     return `${day}-${month}-${d.getFullYear()}`;
   };
 
-  const getDefaultNote = (period: { from: string; to: string } | undefined) => {
+  const getDefaultNote = (
+    period: { from: string; to: string } | undefined,
+    lastSyncDate?: string | null
+  ) => {
     if (!period) return '';
-    return `periodo ${formatDateDDMMYYYY(period.from)} ${formatDateDDMMYYYY(period.to)}`;
+    
+    // El inicio es la última vinculación o el inicio del ciclo
+    const startDate = lastSyncDate || period.from;
+    const endDate = new Date().toISOString();
+    
+    return `Periodo: ${formatDateDDMMYYYY(startDate)} - ${formatDateDDMMYYYY(endDate)}`;
   };
 
-  // Reset note when data changes
+  // Reset note and fetch accounts when data changes
   useEffect(() => {
     if (data) {
-      setNote(getDefaultNote(data.period));
+      setNote(getDefaultNote(data.period, (data as any).lastSyncDate));
+      
+      const fetchAccounts = async () => {
+        setIsLoadingAccounts(true);
+        try {
+          const { data: accs, error: apiError } = await api.GET("/api/v1/users/{id}/nexudus-accounts" as any, {
+            params: { path: { id: data.userId } }
+          });
+          if (apiError) throw apiError;
+          const typedAccs = accs as NexudusAccount[];
+          setAccounts(typedAccs || []);
+          const def = typedAccs?.find(a => a.isDefault === 1);
+          if (def) setSelectedAccountId(def.id);
+          else if (typedAccs?.length > 0) setSelectedAccountId(typedAccs[0].id);
+        } catch (err) {
+          console.error("Error fetching user accounts:", err);
+        } finally {
+          setIsLoadingAccounts(false);
+        }
+      };
+      
+      fetchAccounts();
     }
   }, [data]);
+
   // Close on Escape key
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -78,7 +127,7 @@ export const ChargeModal: React.FC<ChargeModalProps> = ({
 
       {/* Panel */}
       <div className="relative z-10 w-full max-w-lg animate-in fade-in zoom-in-95 duration-200">
-        <div className="bg-white dark:bg-[#1a1818] rounded-[2rem] border border-slate-200 dark:border-white/10 shadow-2xl overflow-hidden">
+        <div className="bg-white dark:bg-[#1a1818] rounded-[3rem] border border-slate-200 dark:border-white/10 shadow-2xl overflow-hidden">
 
           {/* Header */}
           <div className="flex items-center justify-between px-8 pt-8 pb-6 border-b border-slate-100 dark:border-white/5">
@@ -150,20 +199,57 @@ export const ChargeModal: React.FC<ChargeModalProps> = ({
                   ))}
                 </div>
 
-                {/* Total row */}
-                <div className="flex items-center justify-between px-5 py-4 bg-indigo-500/10 dark:bg-indigo-500/10 rounded-2xl border border-indigo-500/20">
-                  <span className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-500">
-                    Total copias
-                  </span>
-                  <span className="text-2xl font-black text-indigo-500 tracking-tighter">
-                    {totalQuantity}
-                  </span>
+                {/* Total Quantity Helper */}
+                <div className="flex items-center justify-between px-5 py-3 bg-indigo-500/5 rounded-xl border border-indigo-500/10">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-indigo-500">Total calculado</span>
+                  <span className="text-lg font-black text-indigo-500">{totalQuantity} uds</span>
+                </div>
+
+                {/* Account Selection */}
+                <div className="space-y-3">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-white/20 ml-2">
+                    Cuenta Nexudus de Destino
+                  </label>
+                  {isLoadingAccounts ? (
+                    <div className="flex items-center gap-2 px-5 py-4 bg-slate-50 dark:bg-white/5 rounded-2xl animate-pulse">
+                      <Loader2 size={14} className="animate-spin text-slate-300" />
+                      <span className="text-xs font-bold text-slate-400">Cargando cuentas...</span>
+                    </div>
+                  ) : accounts.length === 0 ? (
+                    <div className="flex items-center gap-3 px-5 py-4 bg-red-500/5 rounded-2xl border border-red-500/10">
+                      <AlertTriangle size={16} className="text-red-500" />
+                      <p className="text-xs font-bold text-red-500">No hay cuentas Nexudus vinculadas.</p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 gap-2">
+                      {accounts.map(acc => (
+                        <button
+                          key={acc.id}
+                          type="button"
+                          onClick={() => setSelectedAccountId(acc.id)}
+                          className={`flex items-center justify-between px-5 py-3.5 rounded-2xl border transition-all ${
+                            selectedAccountId === acc.id 
+                              ? 'bg-[#f15a24]/10 border-[#f15a24] text-[#f15a24] shadow-md shadow-[#f15a24]/5' 
+                              : 'bg-slate-50 dark:bg-white/5 border-slate-100 dark:border-white/5 text-slate-600 dark:text-white/40 hover:border-[#f15a24]/30'
+                          }`}
+                        >
+                          <div className="flex items-center gap-3">
+                            <Share2 size={14} className={selectedAccountId === acc.id ? 'text-[#f15a24]' : 'text-slate-400'} />
+                            <div className="flex-1">
+                              <NexudusAccountBadge nexudusUserId={acc.nexudusUserId} hideEmail />
+                            </div>
+                          </div>
+                          {selectedAccountId === acc.id && <Check size={16} />}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 {/* Custom Note field */}
                 <div className="space-y-3">
                   <div className="flex items-center justify-between px-2">
-                    <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-white/20">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-white/20">
                       Nota en Nexudus
                     </label>
                     <button 
@@ -192,15 +278,6 @@ export const ChargeModal: React.FC<ChargeModalProps> = ({
               </div>
             )}
 
-            {/* Warning */}
-            {!isLoadingData && data && !error && (
-              <div className="flex items-start gap-3 px-5 py-4 bg-amber-500/10 rounded-2xl border border-amber-500/20">
-                <AlertTriangle size={16} className="text-amber-500 shrink-0 mt-0.5" />
-                <p className="text-xs font-semibold text-amber-600 dark:text-amber-400">
-                  Esta operación vinculará los consumos en Nexudus. Es irreversible desde Magma.
-                </p>
-              </div>
-            )}
           </div>
 
           {/* Footer */}
@@ -213,10 +290,10 @@ export const ChargeModal: React.FC<ChargeModalProps> = ({
               Cancelar
             </button>
             <button
-              onClick={() => onConfirm(note)}
-              disabled={isLoadingData || isCharging || !data || !!error}
+              onClick={() => onConfirm(note, selectedAccountId)}
+              disabled={isLoadingData || isCharging || !data || !!error || !selectedAccountId}
               className={`flex items-center gap-2 px-7 py-3 rounded-2xl text-sm font-black transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed ${
-                !isCharging && data && !error
+                !isCharging && data && !error && selectedAccountId
                   ? 'bg-[#f15a24] text-white shadow-lg shadow-[#f15a24]/30 hover:brightness-110'
                   : 'bg-slate-200 text-slate-400 dark:bg-white/10 dark:text-white/30'
               }`}

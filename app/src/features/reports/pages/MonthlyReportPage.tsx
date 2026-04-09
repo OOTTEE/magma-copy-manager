@@ -73,7 +73,7 @@ export const MonthlyReportPage = () => {
         }
     };
 
-    const handleConfirmCharge = async (note: string) => {
+    const handleConfirmCharge = async (note: string, nexudusAccountId?: string) => {
         if (!selectedUserId) return;
         setIsCharging(true);
         setChargeError(null);
@@ -82,7 +82,8 @@ export const MonthlyReportPage = () => {
             const { error } = await api.POST('/api/v1/billing/sync' as any, {
                 body: { 
                     userId: selectedUserId,
-                    note
+                    note,
+                    nexudusAccountId
                 }
             });
             if (error) {

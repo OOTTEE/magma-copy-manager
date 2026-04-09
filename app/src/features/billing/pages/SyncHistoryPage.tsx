@@ -36,6 +36,7 @@ export const SyncHistoryPage = () => {
     } = useSyncStore();
     
     const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
+    const [selectedSyncRows, setSelectedSyncRows] = useState<Set<string>>(new Set());
     const [confirmingDelete, setConfirmingDelete] = useState<string[] | null>(null);
     const [isForceDelete, setIsForceDelete] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
@@ -46,20 +47,53 @@ export const SyncHistoryPage = () => {
         fetchStats();
     }, [fetchRecords, fetchStats]);
 
+    // Cleanup selection when filters or pagination changes
+    useEffect(() => {
+        setSelectedSyncRows(new Set());
+    }, [records]);
+
+    const handleToggleRow = (rowId: string) => {
+        const next = new Set(selectedSyncRows);
+        if (next.has(rowId)) next.delete(rowId);
+        else next.add(rowId);
+        setSelectedSyncRows(next);
+    };
+
+    const handleToggleAll = () => {
+        if (selectedSyncRows.size > 0) {
+            setSelectedSyncRows(new Set());
+        } else {
+            const allIds = records.map((r, i) => `${r.userId}-${r.saleDate}-${i}`);
+            setSelectedSyncRows(new Set(allIds));
+        }
+    };
 
     const handleDeleteSync = (ids: string[]) => {
-        setConfirmingDelete(ids as any); // Storing array of IDs
+        setConfirmingDelete(ids); // Storing array of IDs
         setIsForceDelete(false);
+    };
+
+    const handleBulkDelete = () => {
+        const allItemIds: string[] = [];
+        records.forEach((record, idx) => {
+            const rowId = `${record.userId}-${record.saleDate}-${idx}`;
+            if (selectedSyncRows.has(rowId)) {
+                allItemIds.push(...record.items.map(i => i.id));
+            }
+        });
+        
+        if (allItemIds.length > 0) {
+            handleDeleteSync(allItemIds);
+        }
     };
 
     const confirmRollback = async () => {
         if (!confirmingDelete) return;
         setIsDeleting(true);
         try {
-            const { deleteGroup } = useSyncStore.getState();
-            const ids = Array.isArray(confirmingDelete) ? confirmingDelete : [confirmingDelete];
-            await deleteGroup(ids, isForceDelete);
+            await useSyncStore.getState().deleteGroup(confirmingDelete, isForceDelete);
             setDeleteSuccess(true);
+            setSelectedSyncRows(new Set()); // Clear selection on success
             setTimeout(() => {
                 setConfirmingDelete(null);
                 setDeleteSuccess(false);
@@ -67,7 +101,7 @@ export const SyncHistoryPage = () => {
             }, 2000);
         } catch (err: any) {
             console.error("Rollback failed:", err);
-            // Error is handled by store
+            // Error is handled by store and displayed in modal
         } finally {
             setIsDeleting(false);
         }
@@ -75,7 +109,7 @@ export const SyncHistoryPage = () => {
 
 
     return (
-        <div className="space-y-8 max-w-7xl mx-auto pb-20">
+        <div className="space-y-8 max-w-7xl mx-auto pb-40 relative">
             {/* Page Header */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                 <div className="flex items-center gap-4">
@@ -160,7 +194,7 @@ export const SyncHistoryPage = () => {
                     <Loader2 size={48} className="text-indigo-500 animate-spin" />
                     <p className="text-slate-400 dark:text-white/20 font-black uppercase tracking-widest text-xs">Cargando Histórico...</p>
                 </div>
-            ) : error ? (
+            ) : error && records.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-32 p-10 bg-red-500/5 rounded-[3rem] border border-red-500/10 text-center">
                     <AlertCircle size={48} className="text-red-500/40 mb-4" />
                     <h3 className="text-xl font-bold text-red-500 mb-2">Error en el Listado</h3>
@@ -183,6 +217,9 @@ export const SyncHistoryPage = () => {
                         <SyncHistoryTable 
                             data={records} 
                             onDelete={handleDeleteSync}
+                            selectedRows={selectedSyncRows}
+                            onToggleRow={handleToggleRow}
+                            onToggleAll={handleToggleAll}
                         />
                     ) : (
                         <SyncHistoryGrid 
@@ -198,6 +235,26 @@ export const SyncHistoryPage = () => {
                         limit={pagination.limit}
                         onPageChange={setPage}
                     />
+                </div>
+            )}
+
+            {/* Floating Selection Bar */}
+            {selectedSyncRows.size > 0 && (
+                <div className="fixed bottom-10 left-1/2 -translate-x-1/2 z-40 animate-in slide-in-from-bottom-10 duration-500">
+                    <div className="px-8 py-5 bg-[#221f1f]/90 backdrop-blur-xl border border-white/10 rounded-[2.5rem] shadow-2xl flex items-center gap-10">
+                        <div className="flex flex-col">
+                            <span className="text-[10px] uppercase font-black tracking-widest text-[#f15a24]">Batch Operation</span>
+                            <span className="text-white font-bold text-sm leading-none">{selectedSyncRows.size} sesiones seleccionadas</span>
+                        </div>
+                        <div className="h-6 w-px bg-white/10" />
+                        <button
+                            onClick={handleBulkDelete}
+                            className="flex items-center gap-3 px-6 py-3 bg-red-500 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg shadow-red-500/30 hover:bg-red-600 transition-all hover:scale-105 active:scale-95"
+                        >
+                            <Trash2 size={16} />
+                            Desvincular Selección
+                        </button>
+                    </div>
                 </div>
             )}
 
@@ -225,7 +282,7 @@ export const SyncHistoryPage = () => {
                                     </div>
                                     <div className="flex-1">
                                         <h3 className="text-2xl font-black text-slate-800 dark:text-white tracking-tight">Confirmar Rollback</h3>
-                                        <p className="text-slate-400 dark:text-white/40 font-bold text-[10px] uppercase tracking-widest">Esta acción es irreversible</p>
+                                        <p className="text-slate-400 dark:text-white/40 font-bold text-[10px] uppercase tracking-widest">Se procesarán {confirmingDelete.length} registros de facturación</p>
                                     </div>
                                 </div>
 
@@ -235,19 +292,21 @@ export const SyncHistoryPage = () => {
                                     </p>
                                 </div>
 
-                                {/* Force Option */}
-                                <div 
-                                    onClick={() => !isDeleting && setIsForceDelete(!isForceDelete)}
-                                    className={`p-4 rounded-2xl border transition-all cursor-pointer mb-8 flex items-center gap-4 ${isForceDelete ? "bg-amber-500/10 border-amber-500/30 text-amber-600" : "bg-slate-50 dark:bg-white/5 border-slate-200 dark:border-white/10 text-slate-400"}`}
-                                >
-                                    <div className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all ${isForceDelete ? "bg-amber-500 border-amber-500 text-white" : "border-slate-300 dark:border-white/20"}`}>
-                                        {isForceDelete && <CheckCircle2 size={14} />}
+                                {/* Force Option - ONLY SHOW AFTER ERROR (User Request) */}
+                                {error && !isLoading && (
+                                    <div 
+                                        onClick={() => !isDeleting && setIsForceDelete(!isForceDelete)}
+                                        className={`p-4 rounded-2xl border transition-all cursor-pointer mb-8 flex items-center gap-4 animate-in slide-in-from-top-2 duration-300 ${isForceDelete ? "bg-amber-500/10 border-amber-500/30 text-amber-600" : "bg-slate-50 dark:bg-white/5 border-slate-200 dark:border-white/10 text-slate-400"}`}
+                                    >
+                                        <div className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all ${isForceDelete ? "bg-amber-500 border-amber-500 text-white" : "border-slate-300 dark:border-white/20"}`}>
+                                            {isForceDelete && <CheckCircle2 size={14} />}
+                                        </div>
+                                        <div className="flex-1">
+                                            <p className="text-xs font-black uppercase tracking-widest">Forzar borrado local</p>
+                                            <p className="text-[10px] font-bold opacity-60">Ignorar errores de Nexudus (Ya borrado o facturado)</p>
+                                        </div>
                                     </div>
-                                    <div className="flex-1">
-                                        <p className="text-xs font-black uppercase tracking-widest">Forzar borrado local</p>
-                                        <p className="text-[10px] font-bold opacity-60">Ignorar errores de Nexudus (Ya borrado o facturado)</p>
-                                    </div>
-                                </div>
+                                )}
 
                                 <div className="flex gap-4">
                                     <button 
@@ -273,11 +332,11 @@ export const SyncHistoryPage = () => {
                             </>
                         )}
                         
-                        {/* Error message if store has one during this action */}
+                        {/* Error message */}
                         {!deleteSuccess && error && (
                              <div className="mt-6 p-4 bg-red-500/10 rounded-2xl border border-red-500/20 flex items-center gap-3 text-red-500 animate-in slide-in-from-top-2">
                                 <AlertCircle size={16} />
-                                <span className="text-[10px] font-bold uppercase tracking-widest">{error}</span>
+                                <span className="text-[10px] font-bold uppercase tracking-widest truncate">{error}</span>
                              </div>
                         )}
                     </div>

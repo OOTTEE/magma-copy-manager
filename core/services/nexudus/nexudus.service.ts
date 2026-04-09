@@ -259,9 +259,6 @@ export class NexudusService {
   }
 
 
-  /**
-   * Searches for coworkers in Nexudus by name or email.
-   */
   async searchCoworkers(search: string) {
     const result = await this.executeRequest(
       (api, params) => api.coworkersApiGetPageSizeOrderByDirWithTariffGlobalSearch({ 
@@ -271,6 +268,16 @@ export class NexudusService {
       'Failed to search coworkers in Nexudus'
     );
     return result.Records || [];
+  }
+
+  /**
+   * Retrieves a single coworker by ID.
+   */
+  async getCoworkerById(id: number) {
+    return await this.executeRequest(
+      (api, params) => api.coworkersApiGetId(id, params),
+      `Failed to retrieve coworker ${id} from Nexudus`
+    );
   }
 
 

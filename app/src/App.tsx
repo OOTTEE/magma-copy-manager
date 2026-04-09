@@ -12,6 +12,7 @@ import { MonthlyReportPage } from './features/reports/pages/MonthlyReportPage';
 import { SettingsPage } from './features/settings/pages/SettingsPage';
 import { DashboardPage } from './features/dashboard/pages/DashboardPage';
 import { SyncHistoryPage } from './features/billing/pages/SyncHistoryPage';
+import { MasterCopiesPage } from './features/reports/pages/MasterCopiesPage';
 
 /**
  * Main Application Component
@@ -84,6 +85,8 @@ function App() {
               <Route path="/reports" element={<MonthlyReportPage />} />
               {/* Synchronization History */}
               <Route path="/sync-history" element={<SyncHistoryPage />} />
+              {/* Master Copies History */}
+              <Route path="/master-history" element={<MasterCopiesPage />} />
               {/* System Settings */}
               <Route path="/settings" element={<SettingsPage />} />
             </Route>

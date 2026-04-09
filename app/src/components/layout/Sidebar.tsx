@@ -11,14 +11,16 @@ import {
   ChevronRight,
   LayoutDashboard,
   Zap,
+  History,
 } from "lucide-react";
 
 const NAV_ITEMS = [
-  { path: "/dashboard", label: "Inicio", icon: LayoutDashboard },
-  { path: "/users", label: "Usuarios", icon: Users, adminOnly: true },
-  { path: "/sync-history", label: "Copias Vinculadas", icon: Zap, adminOnly: true },
+  { path: "/dashboard", label: "Inicio", icon: LayoutDashboard },,
   { path: "/reports", label: "Reporte Mensual", icon: BarChart, adminOnly: true },
-  { path: "/settings", label: "Ajustes", icon: Settings, adminOnly: true },
+  { path: "/sync-history", label: "Copias Vinculadas", icon: Zap, adminOnly: true },
+  { path: "/master-history", label: "Historial Maestro", icon: History, adminOnly: true },
+  { path: "/users", label: "Usuarios", icon: Users, adminOnly: true },
+  { path: "/settings", label: "Ajustes", icon: Settings, adminOnly: true }
 ];
 
 /**

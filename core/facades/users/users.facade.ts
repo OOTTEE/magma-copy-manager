@@ -100,5 +100,57 @@ export const usersFacade = {
         }
 
         await usersService.delete(targetId);
+    },
+
+    /**
+     * Gets all Nexudus accounts for a user.
+     */
+    getNexudusAccounts: async (requestingUser: { id: string; role: string }, userId: string) => {
+        if (requestingUser.role !== 'admin' && requestingUser.id !== userId) {
+            const error = new Error('Unauthorized access to Nexudus accounts.');
+            (error as any).statusCode = 403;
+            throw error;
+        }
+
+        return await usersService.getNexudusAccounts(userId);
+    },
+
+    /**
+     * Adds a new Nexudus account to a user.
+     */
+    addNexudusAccount: async (requestingUser: { id: string; role: string }, userId: string, nexudusUserId: string) => {
+        if (requestingUser.role !== 'admin') {
+            const error = new Error('Only admins can link Nexudus accounts.');
+            (error as any).statusCode = 403;
+            throw error;
+        }
+
+        return await usersService.addNexudusAccount(userId, nexudusUserId);
+    },
+
+    /**
+     * Deletes a Nexudus account.
+     */
+    deleteNexudusAccount: async (requestingUser: { id: string; role: string }, accountId: string) => {
+        if (requestingUser.role !== 'admin') {
+            const error = new Error('Only admins can delete linked accounts.');
+            (error as any).statusCode = 403;
+            throw error;
+        }
+
+        await usersService.deleteNexudusAccount(accountId);
+    },
+
+    /**
+     * Sets a Nexudus account as default.
+     */
+    setDefaultNexudusAccount: async (requestingUser: { id: string; role: string }, userId: string, accountId: string) => {
+        if (requestingUser.role !== 'admin') {
+            const error = new Error('Only admins can change the default account.');
+            (error as any).statusCode = 403;
+            throw error;
+        }
+
+        await usersService.setDefaultNexudusAccount(userId, accountId);
     }
 };

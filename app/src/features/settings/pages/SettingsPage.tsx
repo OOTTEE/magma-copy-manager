@@ -47,6 +47,13 @@ export const SettingsPage = () => {
         nexudus_product_id_sra3color: string;
         nexudus_business_id: string;
         nexudus_currency_id: string;
+        email_notifications_enabled: boolean;
+        email_recipient: string;
+        smtp_host: string;
+        smtp_port: string;
+        smtp_user: string;
+        smtp_password: string;
+        smtp_secure: boolean;
     }>({
         printer_url: '',
         billing_cycle_day: '27',
@@ -66,7 +73,14 @@ export const SettingsPage = () => {
         nexudus_product_id_sra3bw: '',
         nexudus_product_id_sra3color: '',
         nexudus_business_id: '',
-        nexudus_currency_id: ''
+        nexudus_currency_id: '',
+        email_notifications_enabled: false,
+        email_recipient: '',
+        smtp_host: '',
+        smtp_port: '587',
+        smtp_user: '',
+        smtp_password: '',
+        smtp_secure: false
     });
     const [originalSettings, setOriginalSettings] = useState(settings);
     const [isLoading, setIsLoading] = useState(true);
@@ -76,6 +90,8 @@ export const SettingsPage = () => {
     const [metadata, setMetadata] = useState<{ businesses: any[]; currencies: any[]; products: any[] }>({ businesses: [], currencies: [], products: [] });
     const [status, setStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
     const [testStatus, setTestStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+    const [emailTestStatus, setEmailTestStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+    const [isTestingEmail, setIsTestingEmail] = useState(false);
 
     const fetchSettings = async () => {
         setIsLoading(true);
@@ -103,7 +119,14 @@ export const SettingsPage = () => {
                     nexudus_product_id_sra3bw: fetched.nexudus_product_id_sra3bw || '',
                     nexudus_product_id_sra3color: fetched.nexudus_product_id_sra3color || '',
                     nexudus_business_id: fetched.nexudus_business_id?.toString() || '',
-                    nexudus_currency_id: fetched.nexudus_currency_id?.toString() || ''
+                    nexudus_currency_id: fetched.nexudus_currency_id?.toString() || '',
+                    email_notifications_enabled: fetched.email_notifications_enabled === true || fetched.email_notifications_enabled === "true" || fetched.email_notifications_enabled === 1 || fetched.email_notifications_enabled === "1",
+                    email_recipient: fetched.email_recipient || '',
+                    smtp_host: fetched.smtp_host || '',
+                    smtp_port: fetched.smtp_port?.toString() || '587',
+                    smtp_user: fetched.smtp_user || '',
+                    smtp_password: fetched.smtp_password || '',
+                    smtp_secure: fetched.smtp_secure === true || fetched.smtp_secure === "true" || fetched.smtp_secure === 1 || fetched.smtp_secure === "1"
                 };
                 setSettings(newSettings);
                 setOriginalSettings(newSettings);
@@ -189,6 +212,21 @@ export const SettingsPage = () => {
             setIsTestingConnection(false);
             // Hide message after some time if success
             setTimeout(() => setTestStatus(null), 10000);
+        }
+    };
+
+    const handleTestEmail = async () => {
+        setIsTestingEmail(true);
+        setEmailTestStatus(null);
+        try {
+            const { error } = await (api as any).POST("/api/v1/settings/test-email", {});
+            if (error) throw error;
+            setEmailTestStatus({ type: 'success', message: "Correo de prueba enviado. Revisa tu bandeja de entrada." });
+        } catch (err: any) {
+            setEmailTestStatus({ type: 'error', message: err.message || "Error al enviar el correo de prueba." });
+        } finally {
+            setIsTestingEmail(false);
+            setTimeout(() => setEmailTestStatus(null), 10000);
         }
     };
 
@@ -680,6 +718,125 @@ export const SettingsPage = () => {
                                         </p>
                                     </div>
                                 </div>
+                            </div>
+                        </div>
+
+                        {/* Divider */}
+                        <div className="h-px w-full bg-slate-100 dark:bg-white/5" />
+
+                        {/* Divider */}
+                        <div className="h-px w-full bg-slate-100 dark:bg-white/5" />
+
+                        {/* Email Notifications Section */}
+                        <div className="space-y-8">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <div className="p-2 rounded-xl bg-blue-500/10 text-blue-500 border border-blue-500/20">
+                                        <Settings size={18} />
+                                    </div>
+                                    <h3 className="text-lg font-black text-slate-800 dark:text-white tracking-tight">Notificaciones por Email</h3>
+                                </div>
+                                
+                                <button 
+                                    type="button"
+                                    onClick={() => setSettings({...settings, email_notifications_enabled: !settings.email_notifications_enabled})}
+                                    className={`flex items-center gap-2 px-4 py-2 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all ${
+                                        settings.email_notifications_enabled 
+                                        ? "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20" 
+                                        : "bg-slate-100 dark:bg-white/5 text-slate-400 border border-transparent"
+                                    }`}
+                                >
+                                    {settings.email_notifications_enabled ? <ToggleRight size={20} /> : <ToggleLeft size={20} />}
+                                    {settings.email_notifications_enabled ? "Emails Activos" : "Emails Desactivados"}
+                                </button>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                <div className="space-y-4 md:col-span-2">
+                                    <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-white/20 ml-2">Email del Destinatario (Administrador)</label>
+                                    <input 
+                                        type="email"
+                                        value={settings.email_recipient}
+                                        onChange={(e) => setSettings({...settings, email_recipient: e.target.value})}
+                                        placeholder="admin@tu-coworking.com"
+                                        className="w-full h-16 px-6 rounded-2xl bg-slate-50 dark:bg-black/20 border border-slate-100 dark:border-white/5 text-slate-700 dark:text-white font-bold focus:ring-2 focus:ring-blue-500/20 outline-none"
+                                    />
+                                </div>
+
+                                <div className="space-y-4">
+                                    <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-white/20 ml-2">Servidor SMTP (Host)</label>
+                                    <input 
+                                        type="text"
+                                        value={settings.smtp_host}
+                                        onChange={(e) => setSettings({...settings, smtp_host: e.target.value})}
+                                        placeholder="smtp.gmail.com"
+                                        className="w-full h-16 px-6 rounded-2xl bg-slate-50 dark:bg-black/20 border border-slate-100 dark:border-white/5 text-slate-700 dark:text-white font-bold focus:ring-2 focus:ring-blue-500/20 outline-none"
+                                    />
+                                </div>
+
+                                <div className="space-y-4">
+                                    <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-white/20 ml-2">Puerto SMTP</label>
+                                    <input 
+                                        type="number"
+                                        value={settings.smtp_port}
+                                        onChange={(e) => setSettings({...settings, smtp_port: e.target.value})}
+                                        placeholder="587"
+                                        className="w-full h-16 px-6 rounded-2xl bg-slate-50 dark:bg-black/20 border border-slate-100 dark:border-white/5 text-slate-700 dark:text-white font-bold focus:ring-2 focus:ring-blue-500/20 outline-none"
+                                    />
+                                </div>
+
+                                <div className="space-y-4">
+                                    <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-white/20 ml-2">Usuario SMTP</label>
+                                    <input 
+                                        type="text"
+                                        value={settings.smtp_user}
+                                        onChange={(e) => setSettings({...settings, smtp_user: e.target.value})}
+                                        placeholder="notificaciones@tu-coworking.com"
+                                        className="w-full h-16 px-6 rounded-2xl bg-slate-50 dark:bg-black/20 border border-slate-100 dark:border-white/5 text-slate-700 dark:text-white font-bold focus:ring-2 focus:ring-blue-500/20 outline-none"
+                                    />
+                                </div>
+
+                                <div className="space-y-4">
+                                    <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-white/20 ml-2">Contraseña SMTP</label>
+                                    <input 
+                                        type="password"
+                                        value={settings.smtp_password}
+                                        onChange={(e) => setSettings({...settings, smtp_password: e.target.value})}
+                                        placeholder="********"
+                                        className="w-full h-16 px-6 rounded-2xl bg-slate-50 dark:bg-black/20 border border-slate-100 dark:border-white/5 text-slate-700 dark:text-white font-bold focus:ring-2 focus:ring-blue-500/20 outline-none"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="flex flex-col gap-4">
+                                <button
+                                    type="button"
+                                    onClick={handleTestEmail}
+                                    disabled={isTestingEmail || !settings.smtp_host || !settings.smtp_user}
+                                    className={`flex items-center gap-2 self-start px-6 h-12 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all ${
+                                        isTestingEmail
+                                        ? "bg-slate-100 dark:bg-white/5 text-slate-400"
+                                        : "bg-blue-500/10 text-blue-500 border border-blue-500/20 hover:bg-blue-500 hover:text-white"
+                                    } disabled:opacity-50 disabled:cursor-not-allowed`}
+                                >
+                                    {isTestingEmail ? (
+                                        <Loader2 size={16} className="animate-spin" />
+                                    ) : (
+                                        <CheckCircle2 size={16} />
+                                    )}
+                                    {isTestingEmail ? "Enviando..." : "Probar Envío de Email"}
+                                </button>
+
+                                {emailTestStatus && (
+                                    <div className={`flex items-center gap-2 p-4 rounded-xl text-[11px] font-bold animate-in fade-in slide-in-from-left-2 ${
+                                        emailTestStatus.type === 'success' 
+                                        ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20' 
+                                        : 'bg-red-500/10 text-red-500 border border-red-500/20'
+                                    }`}>
+                                        {emailTestStatus.type === 'success' ? <CheckCircle2 size={14} /> : <AlertCircle size={14} />}
+                                        {emailTestStatus.message}
+                                    </div>
+                                )}
                             </div>
                         </div>
 

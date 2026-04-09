@@ -1,5 +1,6 @@
 import { settingsService } from '../../services/settings/settings.service';
 import { autoBillingService } from '../../services/automation/auto-billing.service';
+import { emailService } from '../../services/notifications/email.service';
 
 import { logger } from '../../lib/logger';
 
@@ -64,5 +65,18 @@ export const settingsFacade = {
             logger.info('AutoBilling: Settings changed, re-initializing scheduler...');
             await autoBillingService.init();
         }
+    },
+
+    /**
+     * Tests the current SMTP configuration by sending a test email.
+     */
+    testEmailConnection: async (requestingUser: { id: string; role: string }) => {
+        if (requestingUser.role !== 'admin') {
+            const error = new Error('Unauthorized.');
+            (error as any).statusCode = 403;
+            throw error;
+        }
+
+        await emailService.testConnection();
     }
 };

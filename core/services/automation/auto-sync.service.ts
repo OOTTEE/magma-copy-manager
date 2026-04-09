@@ -5,6 +5,7 @@ import { db } from '../../db';
 import { syncLogs } from '../../db/schema';
 import { randomUUID } from 'crypto';
 import { logger } from '../../lib/logger';
+import { emailService } from '../notifications/email.service';
 
 /**
  * AutoSync Service
@@ -99,6 +100,15 @@ export class AutoSyncService {
 
             // Persist last error for proactive notification
             await settingsService.updateSetting('auto_sync_last_error', err.message);
+
+            // Notify by email
+            await emailService.sendNotification({
+                subject: 'Fallo en Sincronización de Impresora',
+                title: '❌ Error Crítico de Lectura',
+                message: 'El sistema no ha podido recuperar los contadores de la impresora tras varios intentos.',
+                type: 'error',
+                details: err.message
+            });
         } finally {
             // Save Log
             await db.insert(syncLogs).values({

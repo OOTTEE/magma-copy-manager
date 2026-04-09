@@ -9,7 +9,7 @@ const ALGORITHM = 'aes-256-cbc';
 const ENCRYPTION_KEY = Buffer.from(serverConfig.encryptionKey.slice(0, 32)); // Must be 32 bytes
 const IV_LENGTH = 16; // For AES, this is always 16
 
-const SECRET_KEYS = ['nexudus_token', 'nexudus_password'];
+const SECRET_KEYS = ['nexudus_token', 'nexudus_password', 'smtp_password'];
 
 /**
  * Settings Service
@@ -34,6 +34,13 @@ export const settingsService = {
     nexudus_product_id_a3color: '',
     nexudus_product_id_sra3bw: '',
     nexudus_product_id_sra3color: '',
+    email_notifications_enabled: 'false',
+    email_recipient: '',
+    smtp_host: '',
+    smtp_port: '587',
+    smtp_user: '',
+    smtp_password: '',
+    smtp_secure: 'false',
   } as Record<string, string>,
 
   /**

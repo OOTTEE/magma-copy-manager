@@ -6,6 +6,7 @@ import { db } from '../../db';
 import { syncLogs, users } from '../../db/schema';
 import { randomUUID } from 'crypto';
 import { logger } from '../../lib/logger';
+import { emailService } from '../notifications/email.service';
 
 /**
  * AutoBilling Service
@@ -159,6 +160,15 @@ export class AutoBillingService {
                 summary,
                 details: JSON.stringify(results)
             }).run();
+
+            // Notify by email
+            await emailService.sendNotification({
+                subject: `Resumen de Facturación Mensual: ${status.toUpperCase()}`,
+                title: status === 'success' ? '✅ Proceso de Facturación Completado' : '⚠️ Resumen de Facturación con Incidencias',
+                message: summary,
+                type: status === 'success' ? 'success' : 'warning',
+                details: JSON.stringify(results, null, 2)
+            });
 
             this.isRunning = false;
             logger.info({ logId, status }, 'AutoBilling: Job finished');

@@ -53,6 +53,28 @@ const settingsRoute: FastifyPluginAsync = async (fastify) => {
       throw error;
     }
   });
+
+  // POST test-email
+  fastify.post('/test-email', {
+    schema: {
+      tags: ['Settings'],
+      description: 'Send a test email to verify SMTP configuration.',
+      response: {
+        200: { type: 'object', properties: { message: { type: 'string' } } },
+        400: { type: 'object', properties: { message: { type: 'string' } } },
+        403: { type: 'object', properties: { message: { type: 'string' } } }
+      }
+    },
+    preValidation: [fastify.authenticate, fastify.requireRole('admin')]
+  }, async (request, reply) => {
+    const user = request.user as { id: string; role: string };
+    try {
+      await settingsFacade.testEmailConnection(user);
+      return reply.send({ message: 'Test email sent successfully.' });
+    } catch (error: any) {
+      return reply.code(400).send({ message: error.message });
+    }
+  });
 };
 
 export default settingsRoute;

@@ -8,9 +8,9 @@ on:
 jobs:
   build-and-push:
     # Trigger only if the commit message starts with [RELEASE minor]
-    if: startsWith(github.event.head_commit.message, '[RELEASE minor]')
+    if: startsWith(github.event.head_commit.message, '[RELEASE]')
     runs-on: self-hosted
-    
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4

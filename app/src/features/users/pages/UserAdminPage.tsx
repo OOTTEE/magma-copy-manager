@@ -23,7 +23,7 @@ import {
  */
 export const UserAdminPage = () => {
     const { role } = useAuthStore();
-    const { users, coworkers, isLoading, error, fetchUsers, fetchCoworkers, updateUser } = useUserStore();
+    const { users, isLoading, error, fetchUsers, fetchCoworkers, updateUser } = useUserStore();
     const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
     const [searchTerm, setSearchTerm] = useState("");
     const [editingUser, setEditingUser] = useState<any>(null);
@@ -143,7 +143,6 @@ export const UserAdminPage = () => {
                     {viewMode === 'table' ? (
                         <UserTable 
                             users={filteredUsers} 
-                            coworkers={coworkers} 
                             onEdit={setEditingUser} 
                             onLink={setLinkingUser}
                         />
@@ -153,7 +152,6 @@ export const UserAdminPage = () => {
                                 <UserCard 
                                     key={user.id} 
                                     user={user} 
-                                    coworkers={coworkers}
                                     onEdit={setEditingUser} 
                                     onLink={setLinkingUser}
                                 />

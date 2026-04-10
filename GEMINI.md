@@ -1,9 +1,11 @@
 # Project: Magma copy counter
 
 ## Description
+
 **Magma** is a project to deploy a web application (API + Web app) that will help manage the internal operations of a coworking space.
 
 ## Features description
+
 - Scrap the copies count for print users from the print server
 - Store in a db a copy history in records (A4_BW, A4_COLOR, A3_BW, A3_COLOR)
 - Create a monthly summary of user copys by category (A4_BW, A4_COLOR, A3_BW, A3_COLOR, SRA3_BW, SRA3_COLOR)
@@ -12,9 +14,11 @@
 - Push the monthly invoice to nexudus & persist
 
 ## Tech stack
+
 The aplication will be built using the following technologies:
 
 ### Backend
+
 - NPM
 - Node + TypeScript
 - Fastify + OpenAPI
@@ -22,20 +26,25 @@ The aplication will be built using the following technologies:
 - Nexudus API client
 
 ### Frontend
+
 - NPM
 - React + TypeScript
 - Vite
 - TailwindCSS
 
 ## Development Conventions
+
 - Follow standard conventions for the language and framework chosen.
 - Maintain a clean Git history.
 - For backend use `endpoint-developer` role.
+- **Prohibición de Debugging de Frontend**: El debugging directo del frontend (vía el uso del browser) por parte de la IA está prohibido. Solo se permitirá bajo autorización expresa del usuario. Si se requiere información (logs, capturas de pantalla, red/requests), se debe solicitar al usuario.
 
-## Domain / Business Logic 
+## Domain / Business Logic
+
 - Only will existe a single admin user, this user will be created automatically when the application is deployed.
 - The admin user will have access to all the features of the application.
 - The admin user will be able to create, update, delete and list all the users.
 - The system will have two types of users: "admin" and "customer"
 - Each customer will have a "printUser" and a "nexudusUser" as properties. "printUser" is the user that will be used to authenticate with the print server. "nexudusUser" is the user that will be used to authenticate with the nexudus API.
 - **Consumption Distribution**: Users can define how many copies are billed to each linked Nexudus account. Any remainder is automatically assigned to the default account.
+

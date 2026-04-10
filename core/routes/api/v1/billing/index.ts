@@ -121,7 +121,8 @@ const billingRoute: FastifyPluginAsync = async (fastify) => {
                         id: { type: 'string' },
                         type: { type: 'string' },
                         quantity: { type: 'integer' },
-                        nexudusSaleId: { type: 'string' }
+                        nexudusSaleId: { type: 'string' },
+                        nexudusCoworkerId: { type: ['string', 'null'] }
                       }
                     }
                   },
@@ -420,6 +421,80 @@ const billingRoute: FastifyPluginAsync = async (fastify) => {
       if (err.statusCode) return reply.code(err.statusCode).send({ message: err.message });
       return reply.code(500).send({ message: err.message || 'Internal server error during group rollback.' });
     }
+  });
+
+  /**
+   * GET /api/v1/billing/distributions
+   * Get current consumption distributions for a user.
+   */
+  fastify.get<{ Querystring: { userId: string } }>('/distributions', {
+    schema: {
+      tags: ['Billing'],
+      description: 'Get current consumption distributions for a user.',
+      querystring: {
+        type: 'object',
+        properties: { userId: { type: 'string' } },
+        required: ['userId']
+      },
+      response: {
+        200: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              nexudusAccountId: { type: 'string' },
+              type: { type: 'string' },
+              quantity: { type: 'integer' }
+            }
+          }
+        }
+      }
+    },
+    preValidation: [fastify.authenticate]
+  }, async (request, reply) => {
+    const requestingUser = request.user as { id: string; role: string };
+    const { userId } = request.query;
+    const distributions = await billingFacade.getDistributions(requestingUser, userId);
+    return reply.send(distributions);
+  });
+
+  /**
+   * POST /api/v1/billing/distributions
+   * Save consumption distributions for a user.
+   */
+  fastify.post<{ Body: { userId: string; distributions: Array<{ nexudusAccountId: string; type: string; quantity: number }> } }>('/distributions', {
+    schema: {
+      tags: ['Billing'],
+      description: 'Save consumption distributions for a user.',
+      body: {
+        type: 'object',
+        required: ['userId', 'distributions'],
+        properties: {
+          userId: { type: 'string' },
+          distributions: {
+            type: 'array',
+            items: {
+              type: 'object',
+              required: ['nexudusAccountId', 'type', 'quantity'],
+              properties: {
+                nexudusAccountId: { type: 'string' },
+                type: { type: 'string' },
+                quantity: { type: 'integer' }
+              }
+            }
+          }
+        }
+      },
+      response: {
+        200: { type: 'object', properties: { success: { type: 'boolean' } } }
+      }
+    },
+    preValidation: [fastify.authenticate]
+  }, async (request, reply) => {
+    const requestingUser = request.user as { id: string; role: string };
+    const { userId, distributions } = request.body;
+    await billingFacade.saveDistributions(requestingUser, userId, distributions);
+    return reply.send({ success: true });
   });
 };
 

@@ -22,6 +22,7 @@ Toda creación de servicio debe seguir inexorablemente estas pautas:
     * **COBERTURA**: 100% en métodos públicos.
 5. **Clean Code**: Seguir los principios de Responsabilidad Única y desacoplamiento definidos en `ARCHITECTURE.MD`.
 6. **Independencia**: El servicio no debe conocer nada de la capa de transporte (HTTP/Fastify).
+6. **Drizzle Sync Rule**: Dado que se utiliza el driver `better-sqlite3`, las transacciones de base de datos (`db.transaction`) son estrictamente **síncronas**. El callback NUNCA debe ser `async` ni retornar promesas.
 
 ---
 

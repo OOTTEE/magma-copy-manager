@@ -614,6 +614,74 @@ paths:
                       type: integer
                     status:
                       type: string
+  /api/v1/billing/distributions:
+    get:
+      tags:
+        - Billing
+      description: Get current consumption distributions for a user.
+      parameters:
+        - schema:
+            type: string
+          in: query
+          name: userId
+          required: true
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    nexudusAccountId:
+                      type: string
+                    type:
+                      type: string
+                    quantity:
+                      type: integer
+    post:
+      tags:
+        - Billing
+      description: Save consumption distributions for a user.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - userId
+                - distributions
+              properties:
+                userId:
+                  type: string
+                distributions:
+                  type: array
+                  items:
+                    type: object
+                    required:
+                      - nexudusAccountId
+                      - type
+                      - quantity
+                    properties:
+                      nexudusAccountId:
+                        type: string
+                      type:
+                        type: string
+                      quantity:
+                        type: integer
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
   /api/v1/copies/:
     get:
       tags:

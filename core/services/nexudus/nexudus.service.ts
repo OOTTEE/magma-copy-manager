@@ -191,10 +191,14 @@ export class NexudusService {
       if (data && data.access_token) {
         const newToken = data.access_token;
         
-        // If we are using stored credentials, we update the token
-        if (!email && !password) {
-          this.token = newToken;
+        // Always update internal state if we got a token
+        this.token = newToken;
+        if (this.api) {
           this.api.setSecurityData(this.token);
+        }
+        
+        // If we are using stored credentials (auto-refresh flow), persist to DB
+        if (!email && !password) {
           await settingsService.updateSetting('nexudus_token', this.token as string);
         }
         

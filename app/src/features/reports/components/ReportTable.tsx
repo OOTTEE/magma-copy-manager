@@ -1,5 +1,18 @@
 import React, { useState, useMemo } from 'react';
-import { User, FileText, BarChart3, ChevronDown, ChevronUp, Eye, EyeOff, Zap, Share2 } from 'lucide-react';
+import { 
+  User, 
+  Zap, 
+  Share2, 
+  ChevronUp,
+  FileText, 
+  BarChart3, 
+  ChevronDown, 
+  Eye, 
+  EyeOff, 
+  ChevronRight,
+  AlertTriangle
+} from 'lucide-react';
+import { DistributionDraftManager } from './DistributionDraftManager';
 
 interface ReportData {
   id: string;
@@ -18,7 +31,6 @@ interface ReportData {
 interface ReportTableProps {
   data: ReportData[];
   onCharge: (userId: string) => void;
-  onDistribute?: (userId: string, username: string, totalConsumption: any) => void;
   enrichedUsers?: Record<string, any>;
 }
 
@@ -28,8 +40,10 @@ interface ReportTableProps {
  * Detailed view for monthly copy accumulation.
  * Categorized by size and color.
  */
-export const ReportTable: React.FC<ReportTableProps> = ({ data, onCharge, onDistribute, enrichedUsers = {} }) => {
+export const ReportTable: React.FC<ReportTableProps> = ({ data, onCharge, enrichedUsers = {} }) => {
   const [showHidden, setShowHidden] = useState(false);
+  const [expandedRowId, setExpandedRowId] = useState<string | null>(null);
+  const [balancedStatuses, setBalancedStatuses] = useState<Record<string, boolean>>({});
 
   const { visibleData, hiddenData } = useMemo(() => {
     const active = data
@@ -39,6 +53,10 @@ export const ReportTable: React.FC<ReportTableProps> = ({ data, onCharge, onDist
     return { visibleData: active, hiddenData: inactive };
   }, [data]);
 
+  const toggleExpand = (userId: string) => {
+    setExpandedRowId(expandedRowId === userId ? null : userId);
+  };
+
   const getChargeTooltip = (item: ReportData): string => {
     if (item.total === 0) return 'No hay consumos registrados para vincular';
     
@@ -46,72 +64,115 @@ export const ReportTable: React.FC<ReportTableProps> = ({ data, onCharge, onDist
     if (!enrichedUser) return 'Cargando información de usuario...';
     if (!enrichedUser.nexudusUser) return 'Usuario sin cuenta de Nexudus vinculada';
     
+    if (balancedStatuses[item.id] === false) return 'El reparto no está balanceado. Por favor, ajusta las cantidades antes de sincronizar.';
+    
     return 'Vincular copias en Nexudus';
   };
 
   const isChargeDisabled = (item: ReportData) => {
     if (item.total === 0) return true;
     const enrichedUser = enrichedUsers[item.id];
-    return !enrichedUser || !enrichedUser.nexudusUser;
+    const nexudusUserOk = enrichedUser && enrichedUser.nexudusUser;
+    
+    // Si sabemos que no está balanceado, bloqueamos
+    const isUnbalanced = balancedStatuses[item.id] === false;
+    
+    return !nexudusUserOk || isUnbalanced;
   };
 
-  const renderRow = (item: ReportData) => (
-    <tr key={item.id} className="group hover:bg-slate-50/50 dark:hover:bg-white/5 transition-colors">
-      <td className="px-8 py-5">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-slate-50 dark:bg-white/5 flex items-center justify-center text-slate-400 group-hover:text-[#f15a24] transition-colors">
-            <User size={20} strokeWidth={1.5} />
-          </div>
-          <div>
-            <p className="font-bold text-slate-700 dark:text-white/80">{item.username}</p>
-            <p className="text-[10px] font-black text-slate-400 dark:text-white/20 uppercase tracking-widest">
-              {item.printUser}
-            </p>
-          </div>
-        </div>
-      </td>
-      <td className="px-8 py-5 text-center font-mono text-sm text-slate-600 dark:text-white/60">{item.a4Bw}</td>
-      <td className="px-8 py-5 text-center font-mono text-sm font-bold text-indigo-500">{item.a4Color}</td>
-      <td className="px-8 py-5 text-center font-mono text-sm text-slate-600 dark:text-white/60">{item.a3Bw}</td>
-      <td className="px-8 py-5 text-center font-mono text-sm font-bold text-[#f15a24]">{item.a3Color}</td>
-      <td className="px-8 py-5 text-center font-mono text-sm text-emerald-500/60">{item.sra3Bw}</td>
-      <td className="px-8 py-5 text-center font-mono text-sm font-bold text-emerald-500">{item.sra3Color}</td>
-      <td className="px-8 py-5 text-right">
-        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-100 dark:bg-white/5 text-slate-700 dark:text-white font-black text-sm">
-          <FileText size={14} className="text-slate-400" />
-          {item.total}
-        </div>
-      </td>
-      <td className="px-8 py-5 text-center">
-        <div className="flex items-center justify-center gap-2">
-          <button
-            onClick={() => onDistribute?.(item.id, item.username, item)}
-            disabled={isChargeDisabled(item)}
-            title="Configurar reparto multi-cuenta"
-            className={`p-3 rounded-xl transition-all active:scale-90 ${
-              isChargeDisabled(item)
-                ? 'bg-slate-100 text-slate-300 dark:bg-white/5 dark:text-white/10 cursor-not-allowed'
-                : 'bg-indigo-500/10 text-indigo-500 hover:bg-indigo-500 hover:text-white border border-indigo-500/20 shadow-indigo-500/10 shadow-sm'
-            }`}
-          >
-            <Share2 size={18} />
-          </button>
-          <button
-            onClick={() => onCharge(item.id)}
-            disabled={isChargeDisabled(item)}
-            title={getChargeTooltip(item)}
-            className={`p-3 rounded-xl transition-all active:scale-90 ${
-              isChargeDisabled(item)
-                ? 'bg-slate-100 text-slate-300 dark:bg-white/5 dark:text-white/10 cursor-not-allowed'
-                : 'bg-[#f15a24]/10 text-[#f15a24] hover:bg-[#f15a24] hover:text-white border border-[#f15a24]/20 shadow-[#f15a24]/20 shadow-sm'
-            }`}
-          >
-            <Zap size={18} strokeWidth={2.5} />
-          </button>
-        </div>
-      </td>
-    </tr>
-  );
+  const renderRow = (item: ReportData) => {
+    const isExpanded = expandedRowId === item.id;
+    const isUnbalanced = balancedStatuses[item.id] === false;
+
+    return (
+      <React.Fragment key={item.id}>
+        <tr className={`group transition-all ${isExpanded ? 'bg-indigo-50/50 dark:bg-white/[0.02]' : 'hover:bg-slate-50/50 dark:hover:bg-white/5'}`}>
+          <td className="px-8 py-5">
+            <div className="flex items-center gap-4">
+              <button 
+                onClick={() => toggleExpand(item.id)}
+                className={`p-1.5 rounded-lg transition-all ${isExpanded ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/20 rotate-90' : 'bg-slate-50 dark:bg-white/5 text-slate-400 hover:text-indigo-500'}`}
+              >
+                <ChevronRight size={14} />
+              </button>
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-slate-50 dark:bg-white/5 flex items-center justify-center text-slate-400 group-hover:text-indigo-500 transition-colors">
+                  <User size={20} strokeWidth={1.5} />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <p className="font-bold text-slate-700 dark:text-white/80">{item.username}</p>
+                    {isUnbalanced && (
+                      <span title="Reparto pendiente de balancear">
+                        <AlertTriangle size={14} className="text-amber-500 animate-pulse" />
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[10px] font-black text-slate-400 dark:text-white/20 uppercase tracking-widest">
+                    {item.printUser}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </td>
+          <td className="px-8 py-5 text-center font-mono text-sm text-slate-600 dark:text-white/60">{item.a4Bw}</td>
+          <td className="px-8 py-5 text-center font-mono text-sm font-bold text-indigo-500">{item.a4Color}</td>
+          <td className="px-8 py-5 text-center font-mono text-sm text-slate-600 dark:text-white/60">{item.a3Bw}</td>
+          <td className="px-8 py-5 text-center font-mono text-sm font-bold text-[#f15a24]">{item.a3Color}</td>
+          <td className="px-8 py-5 text-center font-mono text-sm text-emerald-500/60">{item.sra3Bw}</td>
+          <td className="px-8 py-5 text-center font-mono text-sm font-bold text-emerald-500">{item.sra3Color}</td>
+          <td className="px-8 py-5 text-right">
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-100 dark:bg-white/5 text-slate-700 dark:text-white font-black text-sm">
+              <FileText size={14} className="text-slate-400" />
+              {item.total}
+            </div>
+          </td>
+          <td className="px-8 py-5 text-center">
+            <div className="flex items-center justify-center gap-2">
+              <button
+                onClick={() => toggleExpand(item.id)}
+                title="Configurar reparto multi-cuenta"
+                className={`p-3 rounded-xl transition-all active:scale-90 ${
+                  isExpanded
+                    ? 'bg-indigo-500 text-white shadow-lg'
+                    : 'bg-indigo-500/10 text-indigo-500 hover:bg-indigo-500 hover:text-white border border-indigo-500/20'
+                }`}
+              >
+                <Share2 size={18} />
+              </button>
+              <button
+                onClick={() => onCharge(item.id)}
+                disabled={isChargeDisabled(item)}
+                title={getChargeTooltip(item)}
+                className={`p-3 rounded-xl transition-all active:scale-90 ${
+                  isChargeDisabled(item)
+                    ? 'bg-slate-100 text-slate-300 dark:bg-white/5 dark:text-white/10 cursor-not-allowed'
+                    : 'bg-[#f15a24]/10 text-[#f15a24] hover:bg-[#f15a24] hover:text-white border border-[#f15a24]/20 shadow-[#f15a24]/20 shadow-sm'
+                }`}
+              >
+                <Zap size={18} strokeWidth={2.5} />
+              </button>
+            </div>
+          </td>
+        </tr>
+        
+        {/* Expansion Panel */}
+        {isExpanded && (
+          <tr>
+            <td colSpan={9} className="px-0 py-0 border-b border-indigo-500/10">
+              <div className="bg-indigo-50/30 dark:bg-white/[0.01]">
+                <DistributionDraftManager 
+                  userId={item.id}
+                  consumption={item}
+                  onBalanceChange={(balanced) => setBalancedStatuses(prev => ({ ...prev, [item.id]: balanced }))}
+                />
+              </div>
+            </td>
+          </tr>
+        )}
+      </React.Fragment>
+    );
+  };
 
   return (
     <div className="overflow-hidden bg-white dark:bg-[#1a1818] rounded-[2rem] border border-slate-200 dark:border-white/5 shadow-xl">

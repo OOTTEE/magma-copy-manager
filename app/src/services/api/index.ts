@@ -12,6 +12,10 @@ export const api = createClient<paths>({
   baseUrl: AppConfig.serviceUrl,
 });
 
+// To handle multiple simultaneous 401s, we use a single flight refresh strategy.
+// All concurrent 401s will wait for this promise.
+let refreshPromise: Promise<string | null> | null = null;
+
 /**
  * Auth Middleware
  * 
@@ -40,30 +44,50 @@ const authMiddleware: Middleware = {
       }
 
       if (refreshToken) {
-        console.log("[API] 401 detected. Attempting token refresh...");
         try {
-          // We use fetch directly to avoid triggering the middleware recursively here
-          const refreshRes = await fetch(`${AppConfig.serviceUrl}/api/v1/auth/refresh`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ refreshToken }),
-          });
+          // Check if we already have a refresh in progress
+          if (!refreshPromise) {
+            console.log("[API] 401 detected. Initiating single-flight token refresh...");
+            refreshPromise = (async () => {
+              try {
+                const refreshRes = await fetch(`${AppConfig.serviceUrl}/api/v1/auth/refresh`, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ refreshToken }),
+                });
 
-          if (refreshRes.ok) {
-            const data = await refreshRes.json();
-            console.log("[API] Token refreshed successfully.");
-            updateAccessToken(data.accessToken, data.refreshToken);
+                if (refreshRes.ok) {
+                  const data = await refreshRes.json();
+                  console.log("[API] Token refreshed successfully.");
+                  updateAccessToken(data.accessToken, data.refreshToken);
+                  return data.accessToken;
+                }
+                return null;
+              } catch (err) {
+                console.error("[API] Error inside refresh promise:", err);
+                return null;
+              } finally {
+                // Important: Reset the promise so future refreshes can happen
+                refreshPromise = null;
+              }
+            })();
+          } else {
+            console.log("[API] 401 detected. Waiting for existing refresh promise...");
+          }
 
+          const newAccessToken = await refreshPromise;
+
+          if (newAccessToken) {
             // Retry the original request with the new token
             const newRequest = new Request(request.url, request);
-            newRequest.headers.set("Authorization", `Bearer ${data.accessToken}`);
+            newRequest.headers.set("Authorization", `Bearer ${newAccessToken}`);
             return fetch(newRequest);
           } else {
-            console.warn("[API] Refresh token invalid or expired.");
+            console.warn("[API] Refresh attempt failed or returned null.");
             logout();
           }
         } catch (err) {
-          console.error("[API] Error during refresh attempt:", err);
+          console.error("[API] Error during refresh management:", err);
           logout();
         }
       } else {

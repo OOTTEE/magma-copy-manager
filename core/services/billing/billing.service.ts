@@ -140,7 +140,7 @@ export const billingService = {
       SELECT 
         ns.user_id as userId,
         u.username as username,
-        na.nex_user_id as nexudusCoworkerId,
+        na.nex_user_id as nexudusCoworkerId, -- Keep for backwards compat if needed, but primarily use from items
         ns.month as month,
         ns.sale_date as saleDate,
         SUM(ns.quantity) as totalQuantity,
@@ -148,7 +148,8 @@ export const billingService = {
           'id', ns.id,
           'type', ns.type,
           'quantity', ns.quantity,
-          'nexudusSaleId', ns.nexudus_sale_id
+          'nexudusSaleId', ns.nexudus_sale_id,
+          'nexudusCoworkerId', na.nex_user_id
         )) as items,
         MAX(ns.created_on) as createdOn
       FROM nexudus_sales ns
@@ -329,13 +330,13 @@ export const billingService = {
         }
       }
 
-      // 6. Fase de Compromiso: DB Local
-      await db.transaction(async (tx) => {
+      // 6. Fase de Compromiso: DB Local (Transacción Síncrona)
+      db.transaction((tx) => {
         // Guardar cada venta creada
         for (const sale of salesToPersist) {
           const localSaleId = randomUUID();
           
-          await tx.insert(nexudusSales).values({
+          tx.insert(nexudusSales).values({
             id: localSaleId,
             userId: userId,
             month: monthStr,
@@ -346,7 +347,7 @@ export const billingService = {
             nexudusAccountId: sale.accountId,
             saleDate: saleDate,
             createdOn: new Date().toISOString()
-          });
+          }).run();
 
           // Vincular registros de copias originales
           const getPhysicalColumn = (type: string) => {
@@ -357,7 +358,7 @@ export const billingService = {
 
           const column = getPhysicalColumn(sale.type);
 
-          await tx.update(copies)
+          tx.update(copies)
             .set({ nexudusSaleId: localSaleId })
             .where(and(
               eq(copies.userId, userId),
@@ -365,14 +366,14 @@ export const billingService = {
               sql`${copies.datetime} <= ${report.period.to}`,
               sql`${column} > 0`,
               isNull(copies.nexudusSaleId)
-            ));
+            )).run();
         }
 
         // Limpiar repartos procesados
-        await tx.delete(consumptionDistributions).where(and(
+        tx.delete(consumptionDistributions).where(and(
           eq(consumptionDistributions.userId, userId),
           eq(consumptionDistributions.month, monthStr)
-        ));
+        )).run();
       });
 
     } catch (error: any) {

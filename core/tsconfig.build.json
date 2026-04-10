@@ -12,5 +12,6 @@
     "**/test-encryption.ts",
     "**/vitest.config.ts",
     "services/nexudus/generated-api.ts",
+    "scripts/**/*"
   ]
 }

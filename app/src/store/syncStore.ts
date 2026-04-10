@@ -6,6 +6,7 @@ export interface SyncItem {
   type: string;
   quantity: number;
   nexudusSaleId: string;
+  nexudusCoworkerId: string | null;
 }
 
 export interface SyncRecord {

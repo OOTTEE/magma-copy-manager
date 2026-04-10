@@ -45,6 +45,7 @@ export const CustomerDashboardView = () => {
         );
     }
 
+    console.log(data.pendingConsumption);
     return (
         <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20 max-w-7xl mx-auto">
             {/* Aesthetic Header Pattern */}

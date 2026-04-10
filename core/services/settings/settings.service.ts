@@ -131,6 +131,11 @@ export const settingsService = {
    * Updates or creates a setting.
    */
   updateSetting: async (key: string, value: string) => {
+    if (SECRET_KEYS.includes(key) && value === '********') {
+      logger.debug({ key }, 'Settings: Ignoring masked value update for secret key');
+      return;
+    }
+
     let finalValue = value;
 
     // Encrypt sensitive fields

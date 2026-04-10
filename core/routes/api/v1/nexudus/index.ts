@@ -177,7 +177,7 @@ const nexudusRoute: FastifyPluginAsync = async (fastify) => {
         404: { type: 'object', properties: { message: { type: 'string' } } }
       }
     },
-    preValidation: [fastify.authenticate, fastify.requireRole('admin')]
+    preValidation: [fastify.authenticate]
   }, async (request, reply) => {
     const user = request.user as { id: string; role: string };
     const { id } = request.params;

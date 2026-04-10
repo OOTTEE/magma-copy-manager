@@ -25,6 +25,8 @@ Cuando asumes este rol, realizas las siguientes tareas:
 
 ### 3. Optimización de Performance
 - **Query Audit**: Revisar queries de Drizzle para identificar posibles problemas de N+1 o falta de índices.
+- **Drizzle Sync Audit**: Detectar y corregir el uso de transacciones asíncronas (`async db.transaction`). Dado el uso de `better-sqlite3`, todas las transacciones deben ser síncronas.
+
 - **Frontend Hydration**: Optimizar hooks de Zustand y React para minimizar re-renders innecesarios en dashboards complejos.
 
 ---

@@ -15,7 +15,6 @@ import {
     LayoutGrid,
     RefreshCw
 } from 'lucide-react';
-import { DistributionModal } from '../../billing/components/DistributionModal';
 
 interface SimulationResult {
     userId: string;
@@ -41,11 +40,6 @@ export const MonthlyReportPage = () => {
     const [isLoadingSimulation, setIsLoadingSimulation] = useState(false);
     const [isCharging, setIsCharging] = useState(false);
     const [chargeError, setChargeError] = useState<string | null>(null);
-    
-    // Distribution modal state
-    const [isDistModalOpen, setIsDistModalOpen] = useState(false);
-    const [distTarget, setDistTarget] = useState<{ id: string; name: string; consumption: any } | null>(null);
-
     useEffect(() => {
         fetchReport();
     }, [fetchReport]);
@@ -111,11 +105,6 @@ export const MonthlyReportPage = () => {
         setSimulationData(null);
         setChargeError(null);
         setIsLoadingSimulation(false);
-    };
-
-    const handleOpenDistribute = (userId: string, username: string, totalConsumption: any) => {
-        setDistTarget({ id: userId, name: username, consumption: totalConsumption });
-        setIsDistModalOpen(true);
     };
 
     const totalA4 = report?.data.reduce((acc, curr) => acc + curr.a4Bw + curr.a4Color, 0) || 0;
@@ -239,7 +228,6 @@ export const MonthlyReportPage = () => {
                         <ReportTable
                             data={report?.data || []}
                             onCharge={handleOpenCharge}
-                            onDistribute={handleOpenDistribute}
                             enrichedUsers={enrichedUsers}
                         />
                     ) : (
@@ -249,7 +237,6 @@ export const MonthlyReportPage = () => {
                                     key={item.id}
                                     item={item}
                                     onCharge={handleOpenCharge}
-                                    onDistribute={handleOpenDistribute}
                                     enrichedUser={enrichedUsers[item.id]}
                                 />
                             ))}
@@ -268,16 +255,6 @@ export const MonthlyReportPage = () => {
                 isCharging={isCharging}
                 error={chargeError}
             />
-
-            {isDistModalOpen && distTarget && (
-                <DistributionModal
-                    userId={distTarget.id}
-                    username={distTarget.name}
-                    totalConsumption={distTarget.consumption}
-                    onClose={() => setIsDistModalOpen(false)}
-                    onSaveSuccess={() => fetchReport(true)}
-                />
-            )}
         </div>
     );
 };

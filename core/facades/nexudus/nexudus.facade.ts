@@ -1,4 +1,5 @@
 import { nexudusService } from '../../services/nexudus/nexudus.service';
+import { usersService } from '../../services/users/users.service';
 import { logger } from '../../lib/logger';
 
 /**
@@ -124,10 +125,17 @@ export const nexudusFacade = {
    * Returns a single coworker by ID.
    */
   getCoworkerById: async (requestingUser: { id: string; role: string }, id: number) => {
+    // 1. Authorization Check
     if (requestingUser.role !== 'admin') {
-      const error = new Error('Unauthorized');
-      (error as any).statusCode = 403;
-      throw error;
+      const linkedAccounts = await usersService.getNexudusAccounts(requestingUser.id);
+      const isOwner = linkedAccounts.some(acc => acc.nexudusUserId === id.toString());
+      
+      if (!isOwner) {
+        logger.warn({ userId: requestingUser.id, targetId: id }, 'Unauthorized access attempt to Nexudus coworker data');
+        const error = new Error('No tienes permiso para ver los detalles de esta cuenta de Nexudus.');
+        (error as any).statusCode = 403;
+        throw error;
+      }
     }
 
     const r = await nexudusService.getCoworkerById(id);

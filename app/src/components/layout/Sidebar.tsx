@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 
 const NAV_ITEMS = [
-  { path: "/dashboard", label: "Inicio", icon: LayoutDashboard },,
+  { path: "/dashboard", label: "Inicio", icon: LayoutDashboard },
   { path: "/reports", label: "Reporte Mensual", icon: BarChart, adminOnly: true },
   { path: "/sync-history", label: "Copias Vinculadas", icon: Zap, adminOnly: true },
   { path: "/master-history", label: "Historial Maestro", icon: History, adminOnly: true },

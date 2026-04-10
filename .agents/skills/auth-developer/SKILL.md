@@ -20,3 +20,5 @@ description: Expert in JWT authentication implementation for Fastify backends.
 ## Route Protection Middleware
 - Fastify custom middleware logic must validate the token layout, its expiration, and extract the payload injecting it into `request.user`.
 - On validation failure, or missing headers, intercept the system flow and return an isolated Fastify Unauthorized error matching `ErrorResponse` standards (with a unique `trace_id`, `error_type: 'unauthorized'`, and `message`).
+## Database Operations
+- **Drizzle Sync Rule**: In this project, database transactions (`db.transaction`) must be synchronous due to `better-sqlite3`. Do not use `async` callbacks for transactions.

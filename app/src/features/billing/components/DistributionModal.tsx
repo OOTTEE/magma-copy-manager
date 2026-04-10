@@ -13,6 +13,7 @@ import {
     Share2
 } from 'lucide-react';
 import { api } from '../../../services/api';
+import { NexudusAccountBadge } from '../../users/components/NexudusAccountBadge';
 
 const COPY_TYPES = [
     { key: 'a4Bw', label: 'A4 B/N', color: 'slate' },
@@ -28,9 +29,11 @@ interface Distribution {
 }
 
 interface NexudusAccount {
-    id: string;
-    nexudusUserId: string;
-    isDefault: number;
+    id?: string;
+    userId?: string;
+    nexudusUserId?: string;
+    isDefault?: number;
+    createdOn?: string;
 }
 
 interface DistributionModalProps {
@@ -50,7 +53,7 @@ export const DistributionModal: React.FC<DistributionModalProps> = ({
 }) => {
     const [accounts, setAccounts] = useState<NexudusAccount[]>([]);
     const [distributions, setDistributions] = useState<Distribution[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
+    const [isLoading, setIsLoading] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -59,17 +62,17 @@ export const DistributionModal: React.FC<DistributionModalProps> = ({
         const loadData = async () => {
             setIsLoading(true);
             try {
-                // 1. Fetch Accounts
-                const { data: accountsData } = await api.GET("/api/v1/users/{id}/nexudus-accounts" as any, {
+                // 1. Fetch Accounts — use path param via openapi-fetch
+                const { data: accountsData } = await api.GET('/api/v1/users/{id}/nexudus-accounts', {
                     params: { path: { id: userId } }
                 });
-                setAccounts(accountsData || []);
+                setAccounts((accountsData as any) || []);
 
                 // 2. Fetch Existing Distributions
-                const { data: distData } = await api.GET("/api/v1/billing/distributions" as any, {
+                const { data: distData } = await api.GET("/api/v1/billing/distributions", {
                     params: { query: { userId } }
                 });
-                setDistributions(distData || []);
+                setDistributions((distData as any) || []);
             } catch (err) {
                 console.error("Failed to load distribution data:", err);
                 setError("Error al cargar la información de reparto.");
@@ -84,12 +87,15 @@ export const DistributionModal: React.FC<DistributionModalProps> = ({
     const assignedTotals = useMemo(() => {
         const totals: Record<string, number> = {};
         distributions.forEach(d => {
-            totals[d.type] = (totals[d.type] || 0) + d.quantity;
+            if (d.type !== undefined) {
+                totals[d.type] = (totals[d.type] || 0) + d.quantity;
+            }
         });
         return totals;
     }, [distributions]);
 
-    const handleUpdateQuantity = (accountId: string, type: string, delta: number) => {
+    const handleUpdateQuantity = (accountId: string | undefined, type: string, delta: number) => {
+        if (!accountId) return;
         const currentDist = distributions.find(d => d.nexudusAccountId === accountId && d.type === type);
         const currentQty = currentDist?.quantity || 0;
         const newQty = Math.max(0, currentQty + delta);
@@ -107,8 +113,9 @@ export const DistributionModal: React.FC<DistributionModalProps> = ({
         }
     };
 
+
     const updateState = (accountId: string, type: string, quantity: number) => {
-        setDistributions(prev => {
+        setDistributions((prev: Distribution[]) => {
             const filtered = prev.filter(d => !(d.nexudusAccountId === accountId && d.type === type));
             if (quantity === 0) return filtered;
             return [...filtered, { nexudusAccountId: accountId, type, quantity }];
@@ -119,7 +126,7 @@ export const DistributionModal: React.FC<DistributionModalProps> = ({
         setIsSaving(true);
         setError(null);
         try {
-            const { error: apiError } = await api.POST("/api/v1/billing/distributions" as any, {
+            const { error: apiError } = await api.POST("/api/v1/billing/distributions", {
                 body: { userId, distributions }
             });
             if (apiError) throw apiError;
@@ -206,8 +213,12 @@ export const DistributionModal: React.FC<DistributionModalProps> = ({
                                             <Share2 size={16} />
                                         </div>
                                         <div>
-                                            <p className="text-xs font-black text-slate-800 dark:text-white uppercase tracking-wider">Cuenta: {account.nexudusUserId}</p>
-                                            {account.isDefault === 1 && <span className="text-[8px] font-black uppercase tracking-widest text-orange-500">Predeterminada (Recibe el resto)</span>}
+                                            <NexudusAccountBadge nexudusUserId={account.nexudusUserId || ''} />
+                                            {account.isDefault === 1 && (
+                                                <span className="text-[8px] font-black uppercase tracking-widest text-orange-500 block mt-1">
+                                                    Predeterminada (Recibe el resto)
+                                                </span>
+                                            )}
                                         </div>
                                     </div>
                                     <div className="h-px md:h-8 md:w-px bg-white/5" />

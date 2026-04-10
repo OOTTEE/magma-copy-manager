@@ -20,6 +20,8 @@ Para generar una feature completa, **tú mismo** debes escribir el código de la
     * Reutilizar servicios existentes si es posible.
     * Si se requiere lógica nueva, crear un nuevo servicio siguiendo `service-developer`.
     * **Prohibido**: Lógica de visibilidad o de transporte en esta capa.
+    * **Drizzle Sync Rule**: Las transacciones de DB en este proyecto son **síncronas**. NUNCA usar `async/await` en `db.transaction`.
+
 
 3. **Capa de Orquestación y Seguridad (Facade)**:
     * Crear o actualizar la Fachada siguiendo `facade-developer`.

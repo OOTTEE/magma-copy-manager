@@ -15,12 +15,14 @@ export const distributionsRepository = {
     },
 
     saveBatch: async (userId: string, month: string, distributions: any[]) => {
-        return await db.transaction(async (tx) => {
+        // En better-sqlite3 las transacciones de Drizzle son síncronas.
+        // El uso de async dentro del callback provoca el error "Transaction function cannot return a promise".
+        db.transaction((tx) => {
             // 1. Limpiar repartos anteriores para ese mes/usuario
-            await tx.delete(consumptionDistributions).where(and(
+            tx.delete(consumptionDistributions).where(and(
                 eq(consumptionDistributions.userId, userId),
                 eq(consumptionDistributions.month, month)
-            ));
+            )).run();
 
             // 2. Insertar nuevos repartos
             if (distributions.length > 0) {
@@ -34,7 +36,7 @@ export const distributionsRepository = {
                     quantity: d.quantity,
                     createdAt: now
                 }));
-                await tx.insert(consumptionDistributions).values(values);
+                tx.insert(consumptionDistributions).values(values).run();
             }
         });
     },

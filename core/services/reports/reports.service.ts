@@ -127,6 +127,7 @@ export const reportsService = {
 
     return {
       ...r,
+      userId: r.id,
       a4Color,
       a4Bw,
       a3Color: isSRA3 ? 0 : a3ColorRaw,

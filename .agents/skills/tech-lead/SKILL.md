@@ -46,3 +46,5 @@ Toda nueva funcionalidad debe ser validada técnicamente siguiendo estas fases:
 4. **Strictness**: El tech-lead debe ser "el guardián de la arquitectura". Si algo no cumple con Clean Code o el patrón Modulo-per-Folder, debe ser rechazado.
 5. **Protocolo Fast-Track**: Para cambios menores (Labels, fixes triviales, cambios de color específicos), el Tech Lead puede autorizar la implementación directa **SIN** generar un `technical_design.md`.
 6. **Delegación**: Una vez aprobado el diseño (o autorizado el Fast-Track), delega la ejecución.
+7. **Drizzle Sync Rule**: Dado el uso de `better-sqlite3`, las transacciones (`db.transaction`) son **síncronas**. Cualquier diseño técnico debe asegurar que los callbacks de transacción no sean `async`.
+

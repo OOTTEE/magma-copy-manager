@@ -3,5 +3,5 @@
 */**/node_modules
 */**/dist
 */**/build
-core/sqlite.db
-core/.env
+*/**.db
+*/**.env

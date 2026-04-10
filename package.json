@@ -1,0 +1,16 @@
+@{
+  "name": "magma-copy-manager",
+  "version": "1.5.0",
+  "description": "Magma Copy Manager - Infrastructure & Orchestration",
+  "private": true,
+  "scripts": {
+    "release": "bash scripts/release.sh",
+    "release:docker": "docker build -t magma-release-agent -f infra/Dockerfile.release . && docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v \"$(pwd):/app\" magma-release-agent",
+    "clean": "npm run clean --prefix core && npm run clean --prefix app",
+    "build": "npm run build --prefix core && npm run build --prefix app",
+    "test": "npm run test --prefix core"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  }
+}

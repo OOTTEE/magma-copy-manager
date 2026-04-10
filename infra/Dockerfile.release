@@ -1,0 +1,36 @@
+FROM node:22-slim
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    ca-certificates \
+    curl \
+    gnupg \
+    git \
+    procps \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Docker CLI (client only) to talk with the host daemon
+RUN install -m 0755 -d /etc/apt/keyrings && \
+    curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg && \
+    chmod a+r /etc/apt/keyrings/docker.gpg && \
+    echo \
+    "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/debian \
+    $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | \
+    tee /etc/apt/sources.list.d/docker.list > /dev/null && \
+    apt-get update && \
+    apt-get install -y docker-ce-cli && \
+    rm -rf /var/lib/apt/lists/*
+
+# Set the working directory
+WORKDIR /app
+
+# Ensure we have a default Git identity to allow npm version to run without configuration
+# (Can be overridden by passing --env to docker run if needed)
+RUN git config --global user.name "Magma Release Bot" && \
+    git config --global user.email "bot@magma-copy-manager.internal"
+
+# Note: We don't COPY the source code here because we will mount it as a volume 
+# for real-time versioning updates on the host.
+
+# Use bash to run the release script
+ENTRYPOINT ["bash", "scripts/release.sh"]

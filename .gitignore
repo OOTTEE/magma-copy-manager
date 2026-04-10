@@ -5,3 +5,5 @@
 */**/build
 */**.db
 */**.env
+magma-prod/
+node_modules/

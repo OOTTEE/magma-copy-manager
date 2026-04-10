@@ -1,15 +1,16 @@
-name: Docker Hub Publish
+name: Minor Release Build
 
 on:
   push:
     branches:
       - main
-    tags:
-      - "v*"
 
 jobs:
   build-and-push:
+    # Trigger only if the commit message starts with [RELEASE minor]
+    if: startsWith(github.event.head_commit.message, '[RELEASE minor]')
     runs-on: self-hosted
+    
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -23,15 +24,14 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Extract metadata (tags, labels) for Core
+      - name: Extract metadata for Core
         id: meta-core
         uses: docker/metadata-action@v5
         with:
           images: oottee/ote
           tags: |
-            type=ref,event=branch,prefix=magma-core-
-            type=semver,pattern=magma-core-{{version}}
-            type=sha,format=short,prefix=magma-core-
+            type=raw,value=magma-core-minor-latest
+            type=sha,format=short,prefix=magma-core-minor-
 
       - name: Build and push Core
         uses: docker/build-push-action@v5
@@ -44,15 +44,14 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Extract metadata (tags, labels) for App
+      - name: Extract metadata for App
         id: meta-app
         uses: docker/metadata-action@v5
         with:
           images: oottee/ote
           tags: |
-            type=ref,event=branch,prefix=magma-app-
-            type=semver,pattern=magma-app-{{version}}
-            type=sha,format=short,prefix=magma-app-
+            type=raw,value=magma-app-minor-latest
+            type=sha,format=short,prefix=magma-app-minor-
 
       - name: Build and push App
         uses: docker/build-push-action@v5

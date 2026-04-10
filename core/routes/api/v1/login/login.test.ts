@@ -37,7 +37,7 @@ describe('POST /api/v1/login', () => {
         
         expect(response.statusCode).toBe(200);
         const body = JSON.parse(response.payload);
-        expect(body).toHaveProperty('token');
-        expect(typeof body.token).toBe('string');
+        expect(body).toHaveProperty('accessToken');
+        expect(typeof body.accessToken).toBe('string');
     });
 });

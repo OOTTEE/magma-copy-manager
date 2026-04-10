@@ -2,10 +2,14 @@ import { describe, it, expect, vi } from 'vitest';
 import { reportScrapperService } from './report.scrapper.service';
 import * as fs from 'node:fs';
 
-vi.mock('node:fs', () => ({
-    existsSync: vi.fn(),
-    readFileSync: vi.fn(),
+const { mockFs } = vi.hoisted(() => ({
+    mockFs: {
+        existsSync: vi.fn(),
+        readFileSync: vi.fn(),
+    }
 }));
+
+vi.mock('node:fs', () => mockFs);
 
 describe('ReportScrapperService', () => {
     it('should parse a Konica Minolta report correctly', async () => {
@@ -24,8 +28,8 @@ describe('ReportScrapperService', () => {
             "Planb\t13\t0\t13\t11\t2\t13\t2\t5\t10\t0\t0\t0\t1\t2\t0\t0\t0\t4\t8\t0\t0\t2\t4\t0\t0"
         ].join('\n');
 
-        vi.mocked(fs.existsSync).mockReturnValue(true);
-        vi.mocked(fs.readFileSync).mockReturnValue(mockContent);
+        mockFs.existsSync.mockReturnValue(true);
+        mockFs.readFileSync.mockReturnValue(mockContent);
 
         const results = await reportScrapperService.parseReport(mockFilePath);
 

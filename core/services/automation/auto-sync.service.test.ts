@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { autoSyncService } from './auto-sync.service';
 import { copiesFacade } from '../../facades/copies/copies.facade';
 import { settingsService } from '../settings/settings.service';
@@ -16,15 +16,16 @@ vi.mock('../settings/settings.service', () => ({
     }
 }));
 
-const mockRun = vi.fn();
-vi.mock('../../db', () => ({
-    db: {
-        insert: vi.fn(() => ({
-            values: vi.fn(() => ({
-                run: mockRun,
-            }))
-        })),
+const { mockDb } = vi.hoisted(() => ({
+    mockDb: {
+        insert: vi.fn().mockReturnThis(),
+        values: vi.fn().mockReturnThis(),
+        run: vi.fn(),
     }
+}));
+
+vi.mock('../../db', () => ({
+    db: mockDb
 }));
 
 describe('AutoSyncService', () => {
@@ -32,14 +33,29 @@ describe('AutoSyncService', () => {
 
     beforeEach(() => {
         vi.clearAllMocks();
-        // Speed up retries
-        vi.spyOn(global, 'setTimeout').mockImplementation((fn: any) => fn() as any);
+        vi.useFakeTimers();
+        autoSyncService.resetState();
+        
+        // Setup default DB chain
+        mockDb.insert.mockReturnThis();
+        mockDb.values.mockReturnThis();
+        mockDb.run.mockReturnValue({ changes: 1 });
+    });
+
+    afterEach(() => {
+        vi.useRealTimers();
     });
 
     it('should retry up to 3 times on printer error and persist last error', async () => {
         vi.mocked(copiesFacade.syncPrinterCopies).mockRejectedValue(new Error('Connection Timed Out'));
 
-        const result = await autoSyncService.runJob(adminUser);
+        const promise = autoSyncService.runJob(adminUser);
+        
+        // Advance timers for 3 retries
+        await vi.advanceTimersByTimeAsync(30000);
+        await vi.advanceTimersByTimeAsync(30000);
+        
+        const result = await promise;
 
         expect(copiesFacade.syncPrinterCopies).toHaveBeenCalledTimes(3);
         expect(result?.status).toBe('failed');
@@ -77,6 +93,9 @@ describe('AutoSyncService', () => {
         const promise2 = autoSyncService.runJob(adminUser, 'manual');
 
         await expect(promise2).rejects.toThrow(/already running/);
+        
+        // Advance timers to resolve promise1
+        vi.advanceTimersByTime(100);
         await promise1;
     });
 });

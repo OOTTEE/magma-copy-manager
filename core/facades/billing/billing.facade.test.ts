@@ -39,7 +39,7 @@ describe('BillingFacade', () => {
             const result = await billingFacade.syncUserConsumption(adminUser, 'user-1');
             
             expect(result.salesCreated).toBe(1);
-            expect(billingService.syncUserConsumption).toHaveBeenCalledWith('user-1');
+            expect(billingService.syncUserConsumption).toHaveBeenCalledWith('user-1', undefined, undefined);
         });
 
         it('should throw error if already synced', async () => {

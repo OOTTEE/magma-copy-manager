@@ -7,6 +7,9 @@ import { logger } from '../../lib/logger';
 class PrinterScraperService {
 
     public async downloadMonthlyCopies(): Promise<string> {
+        if (process.env.NODE_ENV === 'test') {
+            throw new Error('SECURE LOCK: PrinterScraperService.downloadMonthlyCopies called in test environment. Use mocks!');
+        }
         let browser;
         try {
             logger.info('Scraper: Launching Firefox browser...');

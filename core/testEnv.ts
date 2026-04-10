@@ -16,45 +16,55 @@ export const getTestEnv = async () => {
 
     if (!initPromise) {
         initPromise = (async () => {
-            appInstance = buildApp();
-            await appInstance.ready();
+            try {
+                appInstance = buildApp();
+                await appInstance.ready();
 
-            // Run migrations
-            await migrate(db, { migrationsFolder: join(__dirname, 'drizzle') });
+                // Run migrations
+                console.log('TestEnv: Running migrations...');
+                await migrate(db, { migrationsFolder: join(__dirname, 'drizzle') });
+                console.log('TestEnv: Migrations complete.');
 
-            // create default users
-            const users = await usersService.getAll();
-            const hasAdmin = users.find(u => u.username === 'admin');
-            const hasCustomer = users.find(u => u.username === 'customer');
+                // create default users
+                const users = await usersService.getAll();
+                const usersArray = Array.isArray(users) ? users : [];
+                const hasAdmin = usersArray.find((u: any) => u.username === 'admin');
+                const hasCustomer = usersArray.find((u: any) => u.username === 'customer');
 
-            if (!hasAdmin) {
-                await usersService.create({
-                    username: 'admin',
-                    password: 'adminPassword',
-                    role: 'admin',
-                    printUser: 'print-admin',
-                    nexudusUser: 'nex-admin'
-                });
-            } else {
-                await usersService.update(hasAdmin.id, { password: 'adminPassword' });
+                if (!hasAdmin) {
+                    await usersService.create({
+                        username: 'admin',
+                        password: 'adminPassword',
+                        role: 'admin',
+                        printUser: 'print-admin',
+                        nexudusUser: 'nex-admin'
+                    });
+                } else {
+                    await usersService.update(hasAdmin.id, { password: 'adminPassword' });
+                }
+                
+                if (!hasCustomer) {
+                    await usersService.create({
+                        username: 'customer',
+                        password: 'customerPassword',
+                        role: 'customer',
+                        printUser: 'print-cust',
+                        nexudusUser: 'nex-cust'
+                    });
+                } else {
+                    await usersService.update(hasCustomer.id, { password: 'customerPassword' });
+                }
+
+                const adminResult = await authService.login(appInstance, 'admin', 'adminPassword');
+                const customerResult = await authService.login(appInstance, 'customer', 'customerPassword');
+                adminToken = adminResult?.accessToken || null;
+                customerToken = customerResult?.accessToken || null;
+                console.log('TestEnv: Initialization successful.');
+            } catch (error) {
+                console.error('TestEnv: Initialization failed!', error);
+                initPromise = null; // Allow retry
+                throw error;
             }
-            
-            if (!hasCustomer) {
-                await usersService.create({
-                    username: 'customer',
-                    password: 'customerPassword',
-                    role: 'customer',
-                    printUser: 'print-cust',
-                    nexudusUser: 'nex-cust'
-                });
-            } else {
-                await usersService.update(hasCustomer.id, { password: 'customerPassword' });
-            }
-
-            const adminResult = await authService.login(appInstance, 'admin', 'adminPassword');
-            const customerResult = await authService.login(appInstance, 'customer', 'customerPassword');
-            adminToken = adminResult?.accessToken || null;
-            customerToken = customerResult?.accessToken || null;
         })();
     }
 

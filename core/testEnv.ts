@@ -4,7 +4,7 @@ import { usersService } from './services/users/users.service';
 import { authService } from './services/auth/auth.service';
 import { db } from './db';
 import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
-import { join } from 'path';
+import { join } from 'path'
 
 let appInstance: FastifyInstance | null = null;
 let adminToken: string | null = null;
@@ -38,7 +38,7 @@ export const getTestEnv = async () => {
             } else {
                 await usersService.update(hasAdmin.id, { password: 'adminPassword' });
             }
-            
+
             if (!hasCustomer) {
                 await usersService.create({
                     username: 'customer',

@@ -1,6 +1,6 @@
-@{
+{
   "name": "magma-copy-manager",
-  "version": "1.5.0",
+  "version": "1.6.0",
   "description": "Magma Copy Manager - Infrastructure & Orchestration",
   "private": true,
   "scripts": {

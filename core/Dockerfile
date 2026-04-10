@@ -35,6 +35,13 @@ WORKDIR /home/node/app
 COPY --from=build /home/node/app/dist ./dist
 COPY --from=build /home/node/app/package*.json ./
 COPY --from=build /home/node/app/node_modules ./node_modules
+COPY --from=build /home/node/app/drizzle.config.ts ./
+COPY --from=build /home/node/app/db ./db
+COPY --from=build /home/node/app/config ./config
+COPY --from=build /home/node/app/drizzle ./drizzle
+COPY --from=build /home/node/app/entrypoint.sh ./
+
+RUN chmod +x entrypoint.sh
 
 # Install Playwright browsers and their system dependencies
 # We install only Firefox as it is the one used by our scraper to keep the image size optimized
@@ -48,4 +55,5 @@ EXPOSE 3000
 ENV NODE_ENV=production
 ENV PORT=3000
 
+ENTRYPOINT ["/home/node/app/entrypoint.sh"]
 CMD ["npm", "run", "start"]

@@ -2,17 +2,27 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { dashboardFacade } from './dashboard.facade';
 import { db } from '../../db';
 
-vi.mock('../../db', () => ({
-    db: {
-        select: vi.fn().mockReturnThis(),
-        from: vi.fn().mockReturnThis(),
-        where: vi.fn().mockReturnThis(),
-        groupBy: vi.fn().mockReturnThis(),
-        orderBy: vi.fn().mockReturnThis(),
-        limit: vi.fn().mockReturnThis(),
+const { mockDb } = vi.hoisted(() => {
+    const chain = {
+        select: vi.fn(() => chain),
+        from: vi.fn(() => chain),
+        where: vi.fn(() => chain),
+        groupBy: vi.fn(() => chain),
+        orderBy: vi.fn(() => chain),
+        limit: vi.fn(() => chain),
+        innerJoin: vi.fn(() => chain),
+        leftJoin: vi.fn(() => chain),
         get: vi.fn(),
-        all: vi.fn()
-    }
+        all: vi.fn(),
+        values: vi.fn(() => chain),
+        run: vi.fn(),
+        then: vi.fn(), // Handle direct await
+    };
+    return { mockDb: chain as any };
+});
+
+vi.mock('../../db', () => ({
+    db: mockDb
 }));
 
 describe('DashboardFacade', () => {
@@ -31,16 +41,11 @@ describe('DashboardFacade', () => {
         vi.mocked(db.get).mockResolvedValueOnce({ total: 350 }); // for ytdTotal
         
         // Mock YTD monthly usage
-        vi.mocked(db.select).mockReturnValue({
-            from: vi.fn().mockReturnThis(),
-            where: vi.fn().mockReturnThis(),
-            groupBy: vi.fn().mockReturnThis(),
-            orderBy: vi.fn().mockResolvedValue([
-                { month: '2024-01', total: 100 },
-                { month: '2024-02', total: 200 },
-                { month: '2024-03', total: 50 }
-            ])
-        } as any);
+        mockDb.orderBy.mockResolvedValueOnce([
+            { month: '2024-01', total: 100 },
+            { month: '2024-02', total: 200 },
+            { month: '2024-03', total: 50 }
+        ]);
 
         // Mock recent sessions
         vi.mocked(db.all).mockResolvedValue([]);
@@ -57,12 +62,8 @@ describe('DashboardFacade', () => {
 
     it('should handle missing consumption for customer', async () => {
         vi.mocked(db.get).mockResolvedValue(null);
-        vi.mocked(db.select).mockReturnValue({
-            from: vi.fn().mockReturnThis(),
-            where: vi.fn().mockReturnThis(),
-            groupBy: vi.fn().mockReturnThis(),
-            orderBy: vi.fn().mockResolvedValue([])
-        } as any);
+        // Mock YTD monthly usage empty
+        mockDb.orderBy.mockResolvedValueOnce([]);
         vi.mocked(db.all).mockResolvedValue([]);
 
         const result = await dashboardFacade.getCustomerDashboardData(userId);

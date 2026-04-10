@@ -57,6 +57,18 @@ export class AutoSyncService {
     }
 
     /**
+     * Resets the internal state of the service.
+     * Use only for testing purposes to clear the isRunning lock.
+     */
+    resetState() {
+        this.isRunning = false;
+        if (this.scheduledTask) {
+            this.scheduledTask.stop();
+            this.scheduledTask = null;
+        }
+    }
+
+    /**
      * Executes the printer synchronization process.
      */
     async runJob(requestingUser: { id: string; role: string }, triggerType: 'auto' | 'manual' = 'auto') {

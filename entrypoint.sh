@@ -2,7 +2,7 @@
 set -e
 
 # Default path if not set (matches server.config.ts)
-RAW_DB_URL=${DATABASE_URL:-storage/sqlite.db}
+RAW_DB_URL=${DATABASE_URL:-/home/node/app/data/sqlite.db}
 # Remove file: prefix if present to check for existence
 DB_PATH=$(echo $RAW_DB_URL | sed 's/^file://')
 

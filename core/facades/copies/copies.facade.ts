@@ -6,6 +6,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 
 import { logger } from '../../lib/logger';
+import { serverConfig } from '../../config/server.config';
 
 /**
  * Facade for Copies domain.
@@ -48,7 +49,7 @@ export const copiesFacade = {
         const tempPath = await printerScraperService.downloadMonthlyCopies();
         
         // Audit: Move to permanent storage
-        const auditDir = path.join(__dirname, '../../../storage/reports');
+        const auditDir = path.join(__dirname, serverConfig.reportStorageFolder);
         if (!fs.existsSync(auditDir)) fs.mkdirSync(auditDir, { recursive: true });
         const auditPath = path.join(auditDir, `report_${timestamp}.csv`);
         fs.copyFileSync(tempPath, auditPath);

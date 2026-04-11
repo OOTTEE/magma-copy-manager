@@ -5,6 +5,7 @@
 */**/build
 */**.db
 */**.env
-magma-prod/
 node_modules/
 storage/
+data
+core/data

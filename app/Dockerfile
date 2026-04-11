@@ -22,9 +22,8 @@ FROM nginx:alpine
 # Copy built assets from build stage
 COPY --from=build /home/node/app/dist /usr/share/nginx/html
 
-# Copy custom nginx configuration
-# Assuming the docker context is the project root
-COPY infra/nginx.conf /etc/nginx/conf.d/default.conf
+# Copy custom nginx configuration as a template for environment variable substitution
+COPY infra/nginx.conf /etc/nginx/templates/default.conf.template
 
 EXPOSE 80
 

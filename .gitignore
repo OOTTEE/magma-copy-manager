@@ -8,3 +8,4 @@
 magma-prod/
 node_modules/
 storage/
+*/**/*.log

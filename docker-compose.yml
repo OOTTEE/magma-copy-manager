@@ -26,6 +26,8 @@ services:
     restart: always
     environment:
       - VITE_SERVICE_URL=/
+      - CORE_HOST=${CORE_HOST:-magma-core}
+      - NGINX_ENVSUBST_FILTER=CORE_HOST
     ports:
       - "80:80"
     depends_on:

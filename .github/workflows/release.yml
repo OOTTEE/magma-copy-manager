@@ -1,5 +1,4 @@
 name: Release Automation
-
 on:
   push:
     branches:
@@ -12,7 +11,7 @@ jobs:
     runs-on: self-hosted
     permissions:
       contents: write
-    
+
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -38,8 +37,8 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '22'
-          cache: 'npm'
+          node-version: "22"
+          cache: "npm"
 
       - name: Configure Git
         run: |

@@ -10,7 +10,7 @@
     "start": "node dist/server.js",
     "db:generate": "drizzle-kit generate",
     "db:push": "drizzle-kit push",
-    "test": "npm run build && NODE_ENV=test NODE_OPTIONS=\"--import tsx\" vitest run",
+    "test": "NODE_ENV=test NODE_OPTIONS=\"--import tsx\" vitest run",
     "parse-report": "npx tsx scripts/parse-report.ts",
     "build:openapi": "npx tsx scripts/build-openapi.ts",
     "gen:nexudus": "npx swagger-typescript-api generate -p ./resources/nexudus-v1.json -o ./services/nexudus -n generated-api.ts --httpClient-type axios"

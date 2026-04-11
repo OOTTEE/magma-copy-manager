@@ -73,7 +73,12 @@ echo "🏗️  Paso 4: Realizando build completa (Back + Front + OpenAPI)..."
 npm run build
 
 # 5. Ejecutar tests
-echo "🧪 Paso 5: Corriendo tests..."
+echo "🧪 Paso 5: Preparando entorno de test y ejecutando tests..."
+# Asegurar directorio de datos
+mkdir -p core/data
+# Inicializar base de datos de test para que Vitest / Startup validation tengan esquema
+(cd core && DATABASE_URL=data/sqlite.test.db npm run db:push)
+
 npm run test
 
 # 6. Validar arranque de la aplicación

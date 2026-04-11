@@ -46,10 +46,20 @@ npm install --prefix app
 echo "🧹 Paso 1: Limpiando environment..."
 npm run clean
 
-# 2. Actualizar versión (minor por defecto)
+# 2. Actualizar versión
 echo "🔢 Paso 2: Actualizando versión..."
+
+# Get bump type from argument (default to minor)
+BUMP_TYPE=${1:-minor}
+# Map bugfix to patch (npm standard)
+if [ "$BUMP_TYPE" = "bugfix" ]; then
+  BUMP_TYPE="patch"
+fi
+
+echo "   - Tipo de incremento: $BUMP_TYPE"
+
 # Bumps root package.json
-npm version minor --no-git-tag-version
+npm version $BUMP_TYPE --no-git-tag-version
 
 NEW_VERSION=$(node -p "require('./package.json').version")
 echo "✅ Nueva versión detectada: $NEW_VERSION"

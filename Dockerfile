@@ -77,7 +77,6 @@ EXPOSE 80
 
 ENV NODE_ENV=production
 ENV PORT=80
-ENV DATABASE_URL=/home/node/app/data/sqlite.db
 
 ENTRYPOINT ["/home/node/app/entrypoint.sh"]
 CMD ["npm", "run", "start"]

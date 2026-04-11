@@ -57,7 +57,7 @@ export const automationFacade = {
             .offset(offset)
             .all();
 
-        return logs.map(log => ({
+        return logs.map((log: any) => ({
             ...log,
             details: log.details ? JSON.parse(log.details) : {}
         }));

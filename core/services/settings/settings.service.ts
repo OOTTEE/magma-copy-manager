@@ -91,7 +91,7 @@ export const settingsService = {
     
     // Merge DB settings with defaults to ensure all keys exist
     const merged = { ...settingsService.DEFAULTS };
-    dbSettings.forEach(s => {
+    dbSettings.forEach((s: any) => {
       // Mask sensitive fields
       if (SECRET_KEYS.includes(s.key) && s.value) {
         merged[s.key] = '********';

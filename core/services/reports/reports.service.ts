@@ -62,7 +62,7 @@ export const reportsService = {
 
     return {
       period: { from: fromStr, to: toStr },
-      data: results.map(r => reportsService.mapAccumulationResult(r))
+      data: results.map((r: any) => reportsService.mapAccumulationResult(r))
     };
   },
 

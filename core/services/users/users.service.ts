@@ -69,7 +69,7 @@ export const usersService = {
   },
 
   setDefaultNexudusAccount: async (userId: string, accountId: string) => {
-    db.transaction((tx) => {
+    db.transaction((tx: any) => {
       // 1. Reset all to non-default
       tx.update(userNexudusAccounts)
         .set({ isDefault: 0 })
@@ -91,7 +91,7 @@ export const usersService = {
   syncNexudusAccount: async (userId: string, nexudusUserId: string) => {
     if (!nexudusUserId) return;
 
-    db.transaction((tx) => {
+    db.transaction((tx: any) => {
       // 1. Check if it already exists
       const existing = tx.select()
         .from(userNexudusAccounts)

@@ -128,7 +128,7 @@ export const nexudusFacade = {
     // 1. Authorization Check
     if (requestingUser.role !== 'admin') {
       const linkedAccounts = await usersService.getNexudusAccounts(requestingUser.id);
-      const isOwner = linkedAccounts.some(acc => acc.nexudusUserId === id.toString());
+      const isOwner = linkedAccounts.some((acc: any) => acc.nexudusUserId === id.toString());
       
       if (!isOwner) {
         logger.warn({ userId: requestingUser.id, targetId: id }, 'Unauthorized access attempt to Nexudus coworker data');

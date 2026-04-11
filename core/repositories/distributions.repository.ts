@@ -17,7 +17,7 @@ export const distributionsRepository = {
     saveBatch: async (userId: string, month: string, distributions: any[]) => {
         // En better-sqlite3 las transacciones de Drizzle son síncronas.
         // El uso de async dentro del callback provoca el error "Transaction function cannot return a promise".
-        db.transaction((tx) => {
+        db.transaction((tx: any) => {
             // 1. Limpiar repartos anteriores para ese mes/usuario
             tx.delete(consumptionDistributions).where(and(
                 eq(consumptionDistributions.userId, userId),

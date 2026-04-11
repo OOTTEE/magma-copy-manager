@@ -79,7 +79,7 @@ export class AutoBillingService {
 
             // Phase 2: Local Processing
             const allUsers = await db.select().from(users).all();
-            const customers = allUsers.filter(u => u.role === 'customer');
+            const customers = allUsers.filter((u: any) => u.role === 'customer');
 
             for (const user of customers) {
                 const userResult = { 

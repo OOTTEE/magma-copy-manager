@@ -32,7 +32,7 @@ export const usersFacade = {
         }
 
         const users = await usersService.getAll();
-        return users.map(u => _mapUser(u));
+        return users.map((u: any) => _mapUser(u));
     },
 
     /**

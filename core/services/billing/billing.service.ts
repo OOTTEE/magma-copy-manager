@@ -236,7 +236,7 @@ export const billingService = {
 
     // 1. Obtener todas las cuentas del usuario
     const allAccounts = await db.select().from(userNexudusAccounts).where(eq(userNexudusAccounts.userId, userId));
-    const defaultAccount = allAccounts.find(a => a.isDefault === 1) || allAccounts[0];
+    const defaultAccount = allAccounts.find((a: any) => a.isDefault === 1) || allAccounts[0];
     
     if (!defaultAccount) {
       throw new Error(`User ${report.data.username} has no valid Nexudus account configured.`);
@@ -298,7 +298,7 @@ export const billingService = {
     try {
       // 5. Fase de Ejecución: Nexudus API
       for (const accountId in tasksPerAccount) {
-        const account = allAccounts.find(a => a.id === accountId);
+        const account = allAccounts.find((a: any) => a.id === accountId);
         if (!account) continue;
 
         for (const type in tasksPerAccount[accountId]) {
@@ -331,7 +331,7 @@ export const billingService = {
       }
 
       // 6. Fase de Compromiso: DB Local (Transacción Síncrona)
-      db.transaction((tx) => {
+      db.transaction((tx: any) => {
         // Guardar cada venta creada
         for (const sale of salesToPersist) {
           const localSaleId = randomUUID();
@@ -442,7 +442,7 @@ export const billingService = {
 
     // 2. Users pending sync (count users in current report with total > 0)
     const pendingReport = await reportsService.getMonthlyAccumulation();
-    const usersPendingSync = pendingReport.data.filter(u => u.total > 0).length;
+    const usersPendingSync = pendingReport.data.filter((u: any) => u.total > 0).length;
 
     return {
       totalSalesThisMonth: Number(salesVolume?.total || 0),
@@ -479,7 +479,7 @@ export const billingService = {
     }
 
     // 3. Local Transaccional Cleanup
-    db.transaction((tx) => {
+    db.transaction((tx: any) => {
       // Release individual copies
       tx.update(copies)
         .set({ nexudusSaleId: null })
@@ -499,7 +499,7 @@ export const billingService = {
    * Performs a collective rollback of multiple sales (a 'cobro' group).
    */
   rollbackSyncGroup: async (localIds: string[], force: boolean = false) => {
-    const results = [];
+    const results: any[] = [];
     for (const id of localIds) {
       const res = await billingService.rollbackSyncEvent(id, force);
       results.push(res);

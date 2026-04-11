@@ -4,7 +4,7 @@ import { copiesRepository } from '../../repositories/copies.repository';
 export const copiesService = {
     getUserCopies: async (userId: string, from?: string, to?: string) => {
         const records = await copiesRepository.findCopiesByUserId(userId, from, to);
-        return records.map(record => ({
+        return records.map((record: any) => ({
             datetime: record.datetime,
             count: {
                 a4Color: record.a4Color,

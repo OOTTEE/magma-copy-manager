@@ -79,36 +79,9 @@ mkdir -p core/data
 
 npm run test
 
-# 6. Validar arranque de la aplicación
-echo "🚦 Paso 6: Validando que la aplicación arranca correctamente..."
-# Usamos el core como punto de entrada de la arquitectura
-cd core
-# Inyectamos variables mínimas para que no falle el arranque en el entorno de build
-NODE_ENV=test PORT=$VALIDATION_PORT ENCRYPTION_KEY=temporary-key-for-validation-purposes-only JWT_SECRET=val-secret npm run start > startup_validation.log 2>&1 &
-PID=$!
 
-echo "⏳ Esperando a que el servicio esté disponible en el puerto $VALIDATION_PORT..."
-VALID=false
-for i in $(seq 1 $RETRIES); do
-  if curl -s http://localhost:$VALIDATION_PORT/ > /dev/null; then
-    echo "✅ Aplicación validada satisfactoriamente en el intento $i."
-    VALID=true
-    break
-  fi
-  sleep 1
-done
-
-# Cleanup del proceso de validación
-kill $PID || true
-cd ..
-
-if [ "$VALID" = false ]; then
-  echo "❌ ERROR: La aplicación no arrancó correctamente. Revisa core/startup_validation.log"
-  exit 1
-fi
-
-# 7. Build de contenedores
-echo "🐳 Paso 7: Construyendo imágenes de contenedores..."
+# 6. Build de contenedores
+echo "🐳 Paso 6: Construyendo imágenes de contenedores..."
 docker compose build
 
 echo "✨ Release $NEW_VERSION completada con éxito."

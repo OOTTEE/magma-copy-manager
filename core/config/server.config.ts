@@ -5,7 +5,7 @@ dotenv.config();
 
 export const serverConfig = {
     logLevel: process.env.LOG_LEVEL || 'info', // INFO, DEBUG, ERROR, WARN, TRACE
-    databaseUrl: process.env.DATABASE_URL || (process.env.NODE_ENV === 'test' ? 'data/sqlite.test.db' : 'data/sqlite.db'),
+    databaseUrl: process.env.DATABASE_URL || (process.env.NODE_ENV === 'test' ? ':memory:' : 'data/sqlite.db'),
     port: Number(process.env.PORT) || 3000,
     jwtSecret: process.env.JWT_SECRET || 'super-secret-key-1234567890',
     encryptionKey: process.env.ENCRYPTION_KEY || 'default-encryption-key-32-chars-long-!!',

@@ -11,15 +11,46 @@ echo "Database Initialization"
 echo "Target: $DB_PATH"
 echo "--------------------------------------------------"
 
-if [ ! -f "$DB_PATH" ]; then
-    echo "Database file not found. Initializing..."
-else
-    echo "Database file exists. Checking for changes..."
+# Extract version from package.json
+APP_VERSION=$(node -p "require('./package.json').version" 2>/dev/null || echo "0.0.0")
+VERSION_FILE="$(dirname "$DB_PATH")/.last_version"
+LAST_VERSION=""
+
+if [ -f "$VERSION_FILE" ]; then
+    LAST_VERSION=$(cat "$VERSION_FILE")
 fi
 
-# Run drizzle-kit push to ensure schema is up to date
-# This will create the file if it doesn't exist.
-npm run db:push
+echo "Current app version: $APP_VERSION"
+echo "Last deployed version: ${LAST_VERSION:-none}"
+
+# Run migrations ONLY if version changed OR DB doesn't exist
+if [ ! -f "$DB_PATH" ] || [ "$APP_VERSION" != "$LAST_VERSION" ]; then
+    echo "--------------------------------------------------"
+    echo "Version change detected or fresh install. Syncing DB..."
+    
+    if [ -f "$DB_PATH" ]; then
+        echo "Creating safety backup for version $LAST_VERSION..."
+        BKP_DIR="$(dirname "$DB_PATH")/bkp"
+        mkdir -p "$BKP_DIR"
+        BKP_FILE="$BKP_DIR/sqlite_v${LAST_VERSION}_$(date +%Y%m%d_%H%M%S).db"
+        cp "$DB_PATH" "$BKP_FILE"
+        echo "Backup created at: $BKP_FILE"
+    else
+        echo "New installation. Initializing database..."
+    fi
+
+    # Run drizzle-kit push to ensure schema is up to date
+    npm run db:push
+    
+    # Update version stamp after successful push
+    echo "$APP_VERSION" > "$VERSION_FILE"
+    echo "Database synchronized successfully."
+    echo "--------------------------------------------------"
+else
+    echo "--------------------------------------------------"
+    echo "Database already at version $APP_VERSION. Skipping migrations."
+    echo "--------------------------------------------------"
+fi
 
 echo "--------------------------------------------------"
 echo "Starting application..."

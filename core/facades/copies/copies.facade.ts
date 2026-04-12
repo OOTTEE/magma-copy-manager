@@ -97,8 +97,13 @@ export const copiesFacade = {
             }
         }
 
-        if (results.syncedCount === 0 && reports.length > 0) results.status = 'error';
-        else if (results.errors.length > 0) results.status = 'partial_success';
+        if (reports.length > 0 && results.errors.length === reports.length) {
+            results.status = 'error';
+        } else if (results.errors.length > 0) {
+            results.status = 'partial_success';
+        } else {
+            results.status = 'success';
+        }
 
         return results;
     }

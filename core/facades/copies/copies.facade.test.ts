@@ -94,6 +94,7 @@ describe('CopiesFacade', () => {
                 { userName: 'user1', a4Color: 10, a4Bw: 5, a3Color: 0, a3Bw: 0 }
             ]);
             vi.mocked(usersService.getByPrintUser).mockResolvedValue({ id: 'u1' } as any);
+            vi.mocked(copiesService.syncReportRecord).mockResolvedValue({ id: 'rec1' } as any);
             vi.mocked(fs.existsSync).mockReturnValue(true);
 
             const result = await copiesFacade.syncPrinterCopies(adminUser);
@@ -113,6 +114,7 @@ describe('CopiesFacade', () => {
             
             vi.mocked(usersService.getByPrintUser).mockResolvedValue(null);
             vi.mocked(usersService.create).mockResolvedValue({ id: 'new-u1' } as any);
+            vi.mocked(copiesService.syncReportRecord).mockResolvedValue({ id: 'new-rec1' } as any);
             vi.mocked(fs.existsSync).mockReturnValue(true);
 
             const result = await copiesFacade.syncPrinterCopies(adminUser);

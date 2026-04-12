@@ -81,14 +81,16 @@ export const copiesFacade = {
                 }
 
                 if (user) {
-                    await copiesService.syncReportRecord(user.id, {
+                    const savedRecord = await copiesService.syncReportRecord(user.id, {
                         a4Color: report.a4Color,
                         a4Bw: report.a4Bw,
                         a3Color: report.a3Color,
                         a3Bw: report.a3Bw
                     }, now);
 
-                    results.syncedCount++;
+                    if (savedRecord) {
+                        results.syncedCount++;
+                    }
                 }
             } catch (err: any) {
                 results.errors.push({ user: report.userName, message: err.message });

@@ -34,14 +34,24 @@ export const copiesService = {
             return currentTotal - lastTotal;
         };
 
+        const a4Color = calculateIncrement(reportData.a4Color, lastRecord?.a4ColorTotal || 0);
+        const a4Bw = calculateIncrement(reportData.a4Bw, lastRecord?.a4BwTotal || 0);
+        const a3Color = calculateIncrement(reportData.a3Color, lastRecord?.a3ColorTotal || 0);
+        const a3Bw = calculateIncrement(reportData.a3Bw, lastRecord?.a3BwTotal || 0);
+
+        // Optimization: Do not save if there is no consumption increment
+        if (a4Color === 0 && a4Bw === 0 && a3Color === 0 && a3Bw === 0) {
+            return null;
+        }
+
         const newRecord = {
             id: randomUUID(),
             userId,
             datetime,
-            a4Color: calculateIncrement(reportData.a4Color, lastRecord?.a4ColorTotal || 0),
-            a4Bw: calculateIncrement(reportData.a4Bw, lastRecord?.a4BwTotal || 0),
-            a3Color: calculateIncrement(reportData.a3Color, lastRecord?.a3ColorTotal || 0),
-            a3Bw: calculateIncrement(reportData.a3Bw, lastRecord?.a3BwTotal || 0),
+            a4Color,
+            a4Bw,
+            a3Color,
+            a3Bw,
             a4ColorTotal: reportData.a4Color,
             a4BwTotal: reportData.a4Bw,
             a3ColorTotal: reportData.a3Color,

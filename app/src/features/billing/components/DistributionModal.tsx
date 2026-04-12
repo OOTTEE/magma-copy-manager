@@ -57,6 +57,8 @@ export const DistributionModal: React.FC<DistributionModalProps> = ({
     const [isSaving, setIsSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
+    const defaultAccountId = useMemo(() => accounts.find(a => a.isDefault === 1)?.id, [accounts]);
+
     // Fetch account details and current distributions
     useEffect(() => {
         const loadData = async () => {
@@ -95,32 +97,71 @@ export const DistributionModal: React.FC<DistributionModalProps> = ({
     }, [distributions]);
 
     const handleUpdateQuantity = (accountId: string | undefined, type: string, delta: number) => {
-        if (!accountId) return;
-        const currentDist = distributions.find(d => d.nexudusAccountId === accountId && d.type === type);
-        const currentQty = currentDist?.quantity || 0;
-        const newQty = Math.max(0, currentQty + delta);
-
-        // Validation: Cannot exceed total consumption for that type
-        const totalForType = totalConsumption[type] || 0;
-        const otherAccountsQty = assignedTotals[type] - currentQty;
+        if (!accountId || !defaultAccountId) return;
         
-        if (otherAccountsQty + newQty > totalForType) {
-            // Cap at remaining
-            const cappedQty = totalForType - otherAccountsQty;
-            updateState(accountId, type, cappedQty);
-        } else {
-            updateState(accountId, type, newQty);
-        }
-    };
+        const isDefaultAccount = accountId === defaultAccountId;
+        const currentQty = distributions.find(d => d.nexudusAccountId === accountId && d.type === type)?.quantity || 0;
+        const totalForType = totalConsumption[type] || 0;
+        const diff = delta; // In this modal delta is already the diff (+1 or -1 or user input diff)
 
+        const newQty = Math.max(0, currentQty + diff);
+        if (newQty === currentQty) return;
 
-    const updateState = (accountId: string, type: string, quantity: number) => {
-        setDistributions((prev: Distribution[]) => {
-            const filtered = prev.filter(d => !(d.nexudusAccountId === accountId && d.type === type));
-            if (quantity === 0) return filtered;
-            return [...filtered, { nexudusAccountId: accountId, type, quantity }];
+        setDistributions(prev => {
+            const currentDistributions = [...prev];
+            
+            if (diff > 0) {
+                // INCREMENT LOGIC
+                if (isDefaultAccount) {
+                    const currentTotalAssigned = assignedTotals[type] || 0;
+                    const unassignedPool = Math.max(0, totalForType - currentTotalAssigned);
+                    if (unassignedPool <= 0) return prev;
+
+                    const actualIncrement = Math.min(diff, unassignedPool);
+                    let found = false;
+                    const nextDistributions = currentDistributions.map(d => {
+                        if (d.nexudusAccountId === accountId && d.type === type) {
+                            found = true;
+                            return { ...d, quantity: d.quantity + actualIncrement };
+                        }
+                        return d;
+                    });
+                    if (!found) nextDistributions.push({ nexudusAccountId: accountId, type, quantity: actualIncrement });
+                    return nextDistributions;
+                } else {
+                    const defaultDistIdx = currentDistributions.findIndex(d => d.nexudusAccountId === defaultAccountId && d.type === type);
+                    const defaultQty = defaultDistIdx >= 0 ? currentDistributions[defaultDistIdx].quantity : 0;
+                    if (defaultQty <= 0) return prev;
+
+                    const actualIncrement = Math.min(diff, defaultQty);
+                    let secondaryFound = false;
+                    const nextDistributions = currentDistributions.map(d => {
+                        if (d.nexudusAccountId === accountId && d.type === type) {
+                            secondaryFound = true;
+                            return { ...d, quantity: d.quantity + actualIncrement };
+                        }
+                        if (d.nexudusAccountId === defaultAccountId && d.type === type) {
+                            return { ...d, quantity: d.quantity - actualIncrement };
+                        }
+                        return d;
+                    }).filter(d => d.quantity > 0);
+
+                    if (!secondaryFound) nextDistributions.push({ nexudusAccountId: accountId, type, quantity: actualIncrement });
+                    return nextDistributions;
+                }
+            } else {
+                // DECREMENT LOGIC
+                return prev.map(d => {
+                    if (d.nexudusAccountId === accountId && d.type === type) {
+                        return { ...d, quantity: newQty };
+                    }
+                    return d;
+                }).filter(d => d.quantity > 0);
+            }
         });
     };
+
+
 
     const handleSave = async () => {
         setIsSaving(true);
@@ -240,7 +281,11 @@ export const DistributionModal: React.FC<DistributionModalProps> = ({
                                                     />
                                                     <button 
                                                         onClick={() => handleUpdateQuantity(account.id, type.key, 1)}
-                                                        className="p-1 hover:text-white text-slate-500"
+                                                        disabled={account.id === defaultAccountId 
+                                                            ? (assignedTotals[type.key] || 0) >= (totalConsumption[type.key] || 0)
+                                                            : (distributions.find(d => d.nexudusAccountId === defaultAccountId && d.type === type.key)?.quantity || 0) <= 0
+                                                         }
+                                                        className="p-1 hover:text-white disabled:opacity-20 disabled:hover:text-slate-500 text-slate-500 transition-colors"
                                                     ><Plus size={14} /></button>
                                                 </div>
                                             </div>

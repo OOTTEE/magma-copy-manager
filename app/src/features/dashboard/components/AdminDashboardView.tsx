@@ -10,7 +10,7 @@ import {
     TrendingUp
 } from 'lucide-react';
 import { useSystemStore } from '../../../store/systemStore';
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { NotificationCenter } from './widgets/NotificationCenter';
 import { 
@@ -45,6 +45,22 @@ export const AdminDashboardView = () => {
     useEffect(() => {
         fetchDashboardData();
     }, [fetchDashboardData]);
+
+    const chartData = useMemo(() => {
+        if (stats && stats.length > 0) return stats;
+        
+        // Generar últimos 6 meses a 0 como fallback estético
+        const months = [];
+        for (let i = 5; i >= 0; i--) {
+            const d = new Date();
+            d.setMonth(d.getMonth() - i);
+            months.push({
+                month: d.toLocaleString('es-ES', { month: 'short' }).toUpperCase(),
+                total: 0
+            });
+        }
+        return months;
+    }, [stats]);
 
     return (
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-1000">
@@ -156,7 +172,7 @@ export const AdminDashboardView = () => {
 
                     <div className="h-[350px] w-full">
                         <ResponsiveContainer width="100%" height="100%">
-                            <AreaChart data={stats}>
+                            <AreaChart data={chartData}>
                                 <defs>
                                     <linearGradient id="colorTotal" x1="0" y1="0" x2="0" y2="1">
                                         <stop offset="5%" stopColor="#6366f1" stopOpacity={0.4}/>
@@ -215,7 +231,7 @@ export const AdminDashboardView = () => {
                         <h3 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">Actividad Reciente</h3>
                     </div>
 
-                    <div className="space-y-6 overflow-y-auto max-h-[350px] pr-2 custom-scrollbar">
+                    <div className="space-y-6 overflow-y-auto max-h-[350px] px-4 pr-2 custom-scrollbar">
                         {activity.length === 0 ? (
                             <div className="flex flex-col items-center justify-center h-48 text-white/10">
                                 <Info size={40} className="mb-3 opacity-20" />
@@ -224,7 +240,7 @@ export const AdminDashboardView = () => {
                         ) : (
                             activity.map((event) => (
                                 <div key={event.id} className="relative pl-8 pb-4 border-l border-white/5 last:border-0 group">
-                                    <div className={`absolute left-[-9px] top-0 p-1.5 rounded-full z-10 transition-transform group-hover:scale-125 shadow-lg ${
+                                    <div className={`absolute left-[-16px] top-0 p-2.5 rounded-full z-10 transition-transform group-hover:scale-125 shadow-lg ${
                                         event.status === 'success' ? 'bg-emerald-500 shadow-emerald-500/20' : 
                                         event.status === 'failed' ? 'bg-red-500 shadow-red-500/20' : 'bg-amber-500 shadow-amber-500/20'
                                     }`}>

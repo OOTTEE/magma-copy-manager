@@ -56,6 +56,8 @@ export const DistributionDraftManager: React.FC<DistributionDraftManagerProps> =
     const [isSaving, setIsSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
+    const defaultAccountId = useMemo(() => accounts.find(a => a.isDefault === 1)?.id, [accounts]);
+
     // Load data
     useEffect(() => {
         const loadData = async () => {
@@ -107,21 +109,83 @@ export const DistributionDraftManager: React.FC<DistributionDraftManagerProps> =
     }, [totals.isAllBalanced, onBalanceChange]);
 
     const handleUpdateQuantity = (accountId: string, type: string, value: number) => {
+        const defaultAccount = accounts.find(a => a.isDefault === 1) || accounts[0];
+        if (!defaultAccount) return;
+
+        const isDefaultAccount = accountId === defaultAccount.id;
+        const currentQty = distributions.find(d => d.nexudusAccountId === accountId && d.type === type)?.quantity || 0;
         const newQty = Math.max(0, value);
-        
-        // Total reported consumption for this type
         const totalForType = consumption[type] || 0;
-        
-        // Quantity already distributed to OTHER accounts for this same type
-        const otherAccountsQty = (totals.assigned[type] || 0) - (distributions.find(d => d.nexudusAccountId === accountId && d.type === type)?.quantity || 0);
-        
-        // Cap to total consumption
-        const finalQty = (otherAccountsQty + newQty > totalForType) ? totalForType - otherAccountsQty : newQty;
+
+        // If no changes, do nothing
+        if (newQty === currentQty) return;
 
         setDistributions(prev => {
-            const filtered = prev.filter(d => !(d.nexudusAccountId === accountId && d.type === type));
-            if (finalQty === 0) return filtered;
-            return [...filtered, { nexudusAccountId: accountId, type, quantity: finalQty }];
+            const currentDistributions = [...prev];
+            const diff = newQty - currentQty;
+
+            if (diff > 0) {
+                // INCREMENT LOGIC
+                if (isDefaultAccount) {
+                    // Rule: "Si incrementamos la cuenta por defecto, y tenemos elementos sin asignar, deberemos permitir el incremento"
+                    const currentTotalAssigned = totals.assigned[type] || 0;
+                    const unassignedPool = Math.max(0, totalForType - currentTotalAssigned);
+                    
+                    if (unassignedPool <= 0) return prev;
+
+                    const actualIncrement = Math.min(diff, unassignedPool);
+                    
+                    let found = false;
+                    const nextDistributions = currentDistributions.map(d => {
+                        if (d.nexudusAccountId === accountId && d.type === type) {
+                            found = true;
+                            return { ...d, quantity: d.quantity + actualIncrement };
+                        }
+                        return d;
+                    });
+
+                    if (!found) {
+                        nextDistributions.push({ nexudusAccountId: accountId, type, quantity: actualIncrement });
+                    }
+                    return nextDistributions;
+                } else {
+                    // Rule: "Si incremento la cuenta B, la cuenta A quedará en X" (subtracting from A)
+                    const defaultDistIdx = currentDistributions.findIndex(d => d.nexudusAccountId === defaultAccount.id && d.type === type);
+                    const defaultQty = defaultDistIdx >= 0 ? currentDistributions[defaultDistIdx].quantity : 0;
+                    
+                    if (defaultQty <= 0) return prev; // Cannot increment secondary if A is empty
+
+                    const actualIncrement = Math.min(diff, defaultQty);
+                    
+                    // Update Secondary
+                    let secondaryFound = false;
+                    const nextDistributions = currentDistributions.map(d => {
+                        if (d.nexudusAccountId === accountId && d.type === type) {
+                            secondaryFound = true;
+                            return { ...d, quantity: d.quantity + actualIncrement };
+                        }
+                        if (d.nexudusAccountId === defaultAccount.id && d.type === type) {
+                            return { ...d, quantity: d.quantity - actualIncrement };
+                        }
+                        return d;
+                    }).filter(d => d.quantity > 0);
+
+                    if (!secondaryFound) {
+                        nextDistributions.push({ nexudusAccountId: accountId, type, quantity: actualIncrement });
+                    }
+                    
+                    return nextDistributions;
+                }
+            } else {
+                // DECREMENT LOGIC
+                // Rule: "Si quiero reducir de cualquiera, no se ajustará nada"
+                return prev.map(d => {
+                    if (d.nexudusAccountId === accountId && d.type === type) {
+                        return { ...d, quantity: newQty };
+                    }
+                    return d;
+                }).filter(d => d.quantity > 0);
+            }
         });
     };
 
@@ -265,7 +329,11 @@ export const DistributionDraftManager: React.FC<DistributionDraftManagerProps> =
                                                 />
                                                 <button 
                                                     onClick={() => handleUpdateQuantity(account.id, type.key, (distributions.find(d => d.nexudusAccountId === account.id && d.type === type.key)?.quantity || 0) + 1)}
-                                                    className="p-1 hover:text-indigo-500 text-slate-400 transition-colors"
+                                                    disabled={account.id === defaultAccountId 
+                                                        ? (totals.assigned[type.key] || 0) >= (consumption[type.key] || 0)
+                                                        : (distributions.find(d => d.nexudusAccountId === defaultAccountId && d.type === type.key)?.quantity || 0) <= 0
+                                                    }
+                                                    className="p-1 hover:text-indigo-500 disabled:opacity-20 disabled:hover:text-slate-400 text-slate-400 transition-colors"
                                                 ><Plus size={14} /></button>
                                             </div>
                                         </div>

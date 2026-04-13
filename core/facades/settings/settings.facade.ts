@@ -1,5 +1,6 @@
 import { settingsService } from '../../services/settings/settings.service';
 import { autoBillingService } from '../../services/automation/auto-billing.service';
+import { autoSyncService } from '../../services/automation/auto-sync.service';
 import { emailService } from '../../services/notifications/email.service';
 
 import { logger } from '../../lib/logger';
@@ -59,11 +60,17 @@ export const settingsFacade = {
             await settingsService.updateSetting(key, value.toString());
         }
 
-        // Business Rule: If any auto-billing setting changed, re-initialize the scheduler
-        const automationKeys = ['auto_billing_enabled', 'auto_billing_day', 'auto_billing_time'];
-        if (Object.keys(updates).some(k => automationKeys.includes(k))) {
+        // Business Rule: Re-initialize automation schedulers if relevant settings changed
+        const billingKeys = ['auto_billing_enabled', 'auto_billing_day', 'auto_billing_time'];
+        if (Object.keys(updates).some(k => billingKeys.includes(k))) {
             logger.info('AutoBilling: Settings changed, re-initializing scheduler...');
             await autoBillingService.init();
+        }
+
+        const syncKeys = ['auto_sync_enabled', 'auto_sync_frequency', 'auto_sync_day', 'auto_sync_time'];
+        if (Object.keys(updates).some(k => syncKeys.includes(k))) {
+            logger.info('AutoSync: Settings changed, re-initializing scheduler...');
+            await autoSyncService.init();
         }
     },
 

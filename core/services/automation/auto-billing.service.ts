@@ -7,6 +7,7 @@ import { syncLogs, users } from '../../db/schema';
 import { randomUUID } from 'crypto';
 import { logger } from '../../lib/logger';
 import { emailService } from '../notifications/email.service';
+import { serverConfig } from '../../config/server.config';
 
 /**
  * AutoBilling Service
@@ -40,6 +41,8 @@ export class AutoBillingService {
                 this.runJob({ id: 'system', role: 'admin' }).catch(err => {
                     logger.error(err, 'AutoBilling: Cron Job Failed');
                 });
+            }, {
+                timezone: serverConfig.timezone
             });
         } else {
             logger.info('AutoBilling: Scheduler disabled in settings.');

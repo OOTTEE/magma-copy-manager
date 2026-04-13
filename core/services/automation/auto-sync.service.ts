@@ -6,6 +6,7 @@ import { syncLogs } from '../../db/schema';
 import { randomUUID } from 'crypto';
 import { logger } from '../../lib/logger';
 import { emailService } from '../notifications/email.service';
+import { serverConfig } from '../../config/server.config';
 
 /**
  * AutoSync Service
@@ -50,6 +51,8 @@ export class AutoSyncService {
                 this.runJob({ id: 'system', role: 'admin' }).catch(err => {
                     logger.error(err, 'AutoSync: Cron Job Failed');
                 });
+            }, {
+                timezone: serverConfig.timezone
             });
         } else {
             logger.info('AutoSync: Scheduler disabled.');

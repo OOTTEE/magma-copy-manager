@@ -15,4 +15,5 @@ export const serverConfig = {
     browserSlowMo: Number(process.env.BROWSER_SLOW_MO) || 1000,
     publicFolder: process.env.PUBLIC_FOLDER || 'public',
     reportStorageFolder: process.env.REPORT_STORAGE_FOLDER || 'data/reports',
+    timezone: process.env.TIMEZONE || 'Europe/Madrid',
 };

@@ -119,7 +119,7 @@ class PrinterScraperService {
 
     private async step5_clickLogin(page: Page) {
         logger.info('Scraper: Step 5 - Clicking login button with password');
-        const submitBtn = await this.waitForElementInAnyFrame(page, 'form#LP1LOG input#LP1_OK:visible');
+        const submitBtn = await this.waitForElementInAnyFrame(page, 'form#LP1LOG input#LP1_OK:visible', 20000);
         await submitBtn.click({ force: true });
     }
 
@@ -178,7 +178,7 @@ class PrinterScraperService {
 
     private async step15_submitExport(page: Page) {
         logger.info('Scraper: Step 15 - Submit Export Form');
-        const form = await this.waitForElementInAnyFrame(page, 'form#AS_CNL_EXExport:visible', 5000);
+        const form = await this.waitForElementInAnyFrame(page, 'form#AS_CNL_EXExport:visible');
         await form.evaluate((f: any) => f.submit());
         await page.waitForTimeout(2000);
     }

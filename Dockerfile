@@ -14,7 +14,7 @@ COPY openapi.yaml /openapi.yaml
 COPY app/ .
 
 # Force VITE_SERVICE_URL to / for production container
-ENV VITE_SERVICE_URL=/
+ENV VITE_SERVICE_URL=
 
 # Build the application (generates /dist)
 RUN npm run build

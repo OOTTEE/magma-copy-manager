@@ -21,6 +21,7 @@ if [ -f /.dockerenv ]; then
 fi
 
 echo "🚀 Iniciando proceso de Release..."
+echo "🟢 Node version: $(node -v) (Modules: $(node -p 'process.versions.modules'))"
 
 # 0. Check for uncommitted changes (optional but recommended for releases)
 if [ -n "$(git status --porcelain)" ]; then

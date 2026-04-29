@@ -1,7 +1,7 @@
 {
   "name": "magma-copy-manager",
   "version": "0.7.0",
-  "description": "Magma Copy Manager - Infrastructure & Orchestration",
+  "description": "Magma Copy Manager",
   "private": true,
   "scripts": {
     "release": "bash scripts/release.sh",

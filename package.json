@@ -6,11 +6,11 @@
   "scripts": {
     "release": "bash scripts/release.sh",
     "release:docker": "docker build -t magma-release-agent -f infra/Dockerfile.release . && docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v \"$(pwd):/app\" magma-release-agent",
-    "clean": "pnpm -C core clean && pnpm -C app clean",
-    "gen:api": "pnpm -C core build:openapi && pnpm -C app gen:api",
-    "build": "pnpm gen:api && pnpm -C core build && pnpm -C app build",
-    "dev": "concurrently \"pnpm -C core dev\" \"pnpm -C app dev\"",
-    "test": "pnpm -C core test"
+    "clean": "npm run clean --prefix core && npm run clean --prefix app",
+    "gen:api": "npm run build:openapi --prefix core && npm run gen:api --prefix app",
+    "build": "npm run gen:api && npm run build --prefix core && npm run build --prefix app",
+    "dev": "concurrently \"npm run dev --prefix core\" \"npm run dev --prefix app\"",
+    "test": "npm run test --prefix core"
   },
   "devDependencies": {
     "concurrently": "^9.2.1"

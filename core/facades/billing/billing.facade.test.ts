@@ -41,7 +41,13 @@ describe('BillingFacade', () => {
             const result = await billingFacade.syncUserConsumption(adminUser, 'user-1', options);
             
             expect(result.salesCreated).toBe(1);
-            expect(billingService.syncUserConsumption).toHaveBeenCalledWith('user-1', options);
+            expect(billingService.syncUserConsumption).toHaveBeenCalledWith('user-1', {
+                from: options.from,
+                to: undefined,
+                includeAllPending: options.includeAllPending,
+                customNote: options.note,
+                nexudusAccountId: undefined
+            });
         });
 
         it('should allow sync if using custom options even if status is synced', async () => {

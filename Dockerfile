@@ -3,12 +3,12 @@ FROM node:24-alpine AS frontend-build
 
 WORKDIR /app
 
-# Copy workspace configuration
-COPY pnpm-workspace.yaml package.json ./
+# Copy dependency definitions
+COPY package.json package-lock.json ./
 COPY app/package.json ./app/
 
-# Install dependencies using workspace
-RUN corepack enable && corepack prepare pnpm@latest --activate && pnpm install --filter app...
+# Install dependencies
+RUN npm install
 
 # Copy openapi generator file from root (needed for gen:api script)
 COPY openapi.yaml /openapi.yaml
@@ -21,7 +21,7 @@ WORKDIR /app/app
 ENV VITE_SERVICE_URL=
 
 # Build the application (generates /dist)
-RUN pnpm build
+RUN npm run build
 
 # Stage 2: Builds the backend
 FROM node:24-slim AS backend-build
@@ -35,17 +35,17 @@ RUN apt-get update && apt-get install -y \
 
 WORKDIR /app
 
-# Copy workspace configuration
-COPY pnpm-workspace.yaml package.json ./
+# Copy dependency definitions
+COPY package.json package-lock.json ./
 COPY core/package.json ./core/
 
-# Install dependencies using workspace
-RUN corepack enable && corepack prepare pnpm@latest --activate && pnpm install --filter core...
+# Install dependencies
+RUN npm install
 
 COPY core/ ./core/
 WORKDIR /app/core
-RUN pnpm gen:nexudus \
-    && pnpm build
+RUN npm run gen:nexudus \
+    && npm run build
 
 # Stage 3: Production runtime
 FROM node:24-slim

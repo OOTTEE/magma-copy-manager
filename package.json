@@ -3,6 +3,10 @@
   "version": "0.7.0",
   "description": "Magma Copy Manager",
   "private": true,
+  "workspaces": [
+    "core",
+    "app"
+  ],
   "scripts": {
     "release": "bash scripts/release.sh",
     "release:docker": "docker build -t magma-release-agent -f infra/Dockerfile.release . && docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v \"$(pwd):/app\" magma-release-agent",

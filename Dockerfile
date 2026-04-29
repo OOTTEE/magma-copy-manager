@@ -3,19 +3,15 @@ FROM node:24-alpine AS frontend-build
 
 WORKDIR /app
 
-# Copy dependency definitions
-COPY package.json package-lock.json ./
-COPY app/package.json ./app/
-
-# Install dependencies
+# Copy package files
+COPY app/package*.json ./
 RUN npm install
 
 # Copy openapi generator file from root (needed for gen:api script)
 COPY openapi.yaml /openapi.yaml
 
 # Copy the rest of the application
-COPY app/ ./app/
-WORKDIR /app/app
+COPY app/ .
 
 # Force VITE_SERVICE_URL to / for production container
 ENV VITE_SERVICE_URL=
@@ -33,17 +29,12 @@ RUN apt-get update && apt-get install -y \
     g++ \
     && rm -rf /var/lib/apt/lists/*
 
-WORKDIR /app
+WORKDIR /home/node/app
 
-# Copy dependency definitions
-COPY package.json package-lock.json ./
-COPY core/package.json ./core/
-
-# Install dependencies
+COPY core/package*.json ./
 RUN npm install
 
-COPY core/ ./core/
-WORKDIR /app/core
+COPY core/ .
 RUN npm run gen:nexudus \
     && npm run build
 
@@ -60,16 +51,16 @@ RUN apt-get update && apt-get install -y \
 WORKDIR /home/node/app
 
 # Copy built backend files and production dependencies
-COPY --from=backend-build /app/core/dist ./dist
-COPY --from=backend-build /app/core/package.json ./
-COPY --from=backend-build /app/core/node_modules ./node_modules
-COPY --from=backend-build /app/core/drizzle.config.ts ./
-COPY --from=backend-build /app/core/db ./db
-COPY --from=backend-build /app/core/config ./config
-COPY --from=backend-build /app/core/drizzle ./drizzle
+COPY --from=backend-build /home/node/app/dist ./dist
+COPY --from=backend-build /home/node/app/package*.json ./
+COPY --from=backend-build /home/node/app/node_modules ./node_modules
+COPY --from=backend-build /home/node/app/drizzle.config.ts ./
+COPY --from=backend-build /home/node/app/db ./db
+COPY --from=backend-build /home/node/app/config ./config
+COPY --from=backend-build /home/node/app/drizzle ./drizzle
 
 # Copy frontend assets from build stage to backend's public folder
-COPY --from=frontend-build /app/app/dist ./dist/public
+COPY --from=frontend-build /app/dist ./dist/public
 
 COPY entrypoint.sh .
 
@@ -88,4 +79,4 @@ ENV NODE_ENV=production
 ENV PORT=80
 
 ENTRYPOINT ["/home/node/app/entrypoint.sh"]
-CMD ["node", "dist/server.js"]
+CMD ["npm", "run", "start"]

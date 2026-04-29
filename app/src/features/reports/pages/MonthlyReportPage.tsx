@@ -3,6 +3,7 @@ import { useReportStore } from '../../../store/reportStore';
 import { ReportTable } from '../components/ReportTable';
 import { ReportCard } from '../components/ReportCard';
 import { ChargeModal } from '../components/ChargeModal';
+import { BulkChargeModal } from '../components/BulkChargeModal';
 import { useUserEnrichment } from '../hooks/useUserEnrichment';
 import { api } from '../../../services/api';
 import {
@@ -13,7 +14,9 @@ import {
     Calendar,
     Table as TableIcon,
     LayoutGrid,
-    RefreshCw
+    RefreshCw,
+    Settings2,
+    Zap
 } from 'lucide-react';
 
 interface SimulationResult {
@@ -29,9 +32,18 @@ interface SimulationResult {
  * Main view for monitoring monthly copy consumption across all users.
  */
 export const MonthlyReportPage = () => {
-    const { monthlyReport: report, isLoading, isRefreshing, error, fetchMonthlyReport: fetchReport } = useReportStore();
+    const { 
+        monthlyReport: report, 
+        isLoading, 
+        isRefreshing, 
+        error, 
+        filters,
+        fetchMonthlyReport: fetchReport,
+        setFilters
+    } = useReportStore();
     const { enrichedUsers, enrichUsers } = useUserEnrichment();
     const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
+    const [showFilters, setShowFilters] = useState(false);
 
     // Charge modal state
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -40,6 +52,33 @@ export const MonthlyReportPage = () => {
     const [isLoadingSimulation, setIsLoadingSimulation] = useState(false);
     const [isCharging, setIsCharging] = useState(false);
     const [chargeError, setChargeError] = useState<string | null>(null);
+
+    // Global Charge Modal state
+    const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
+    const [isBulkSyncing, setIsBulkSyncing] = useState(false);
+    const [bulkResults, setBulkResults] = useState<any[] | null>(null);
+    const [bulkError, setBulkError] = useState<string | null>(null);
+
+    const handleBulkSyncConfirm = async () => {
+        setIsBulkSyncing(true);
+        setBulkError(null);
+        try {
+            const { data: result, error: apiError } = await api.POST("/api/v1/billing/sync/nexudus" as any, {
+                body: filters
+            });
+
+            if (apiError) throw apiError;
+            setBulkResults((result as any).results || []);
+            // Refresh the report to reflect updated sync status
+            fetchReport();
+        } catch (err: any) {
+            console.error("Bulk sync error:", err);
+            setBulkError(err.message || "Error during global synchronization");
+        } finally {
+            setIsBulkSyncing(false);
+        }
+    };
+
     useEffect(() => {
         fetchReport();
     }, [fetchReport]);
@@ -61,7 +100,14 @@ export const MonthlyReportPage = () => {
 
         try {
             const { data, error } = await api.GET('/api/v1/billing/simulations/users/{id}', {
-                params: { path: { id: userId } }
+                params: { 
+                    path: { id: userId },
+                    query: {
+                        from: filters.from,
+                        to: filters.to,
+                        includeAllPending: filters.includeAllPending
+                    }
+                }
             });
             if (error) throw new Error((error as any).message || 'Error al calcular el consumo.');
             setSimulationData(data as SimulationResult);
@@ -82,7 +128,10 @@ export const MonthlyReportPage = () => {
                 body: { 
                     userId: selectedUserId,
                     note,
-                    nexudusAccountId
+                    nexudusAccountId,
+                    from: filters.from,
+                    to: filters.to,
+                    includeAllPending: filters.includeAllPending
                 }
             });
             if (error) {
@@ -107,9 +156,9 @@ export const MonthlyReportPage = () => {
         setIsLoadingSimulation(false);
     };
 
-    const totalA4 = report?.data.reduce((acc, curr) => acc + curr.a4Bw + curr.a4Color, 0) || 0;
-    const totalA3 = report?.data.reduce((acc, curr) => acc + curr.a3Bw + curr.a3Color, 0) || 0;
-    const grandTotal = report?.data.reduce((acc, curr) => acc + curr.total, 0) || 0;
+    const totalA4 = report?.data.reduce((acc: number, curr: any) => acc + curr.a4Bw + curr.a4Color, 0) || 0;
+    const totalA3 = report?.data.reduce((acc: number, curr: any) => acc + curr.a3Bw + curr.a3Color, 0) || 0;
+    const grandTotal = report?.data.reduce((acc: number, curr: any) => acc + curr.total, 0) || 0;
 
     const formatDate = (dateStr: string | undefined) => {
         if (!dateStr) return '---';
@@ -131,7 +180,11 @@ export const MonthlyReportPage = () => {
                         <div className="flex items-center gap-4 text-sm font-bold uppercase tracking-[0.2em] mt-1 text-slate-400 dark:text-white/30">
                             <div className="flex items-center gap-2">
                                 <Calendar size={14} className="text-indigo-500" />
-                                Periodo: {formatDate(report?.period.from)} — {formatDate(report?.period.to)}
+                                {report?.period.allPending ? (
+                                    <span className="text-indigo-500">Todo lo pendiente</span>
+                                ) : (
+                                    <>Periodo: {formatDate(report?.period.from)} — {formatDate(report?.period.to)}</>
+                                )}
                             </div>
 
                             {isRefreshing && (
@@ -146,6 +199,13 @@ export const MonthlyReportPage = () => {
 
                 {/* Controls */}
                 <div className="flex items-center gap-2 p-1.5 bg-white dark:bg-white/5 rounded-3xl border border-slate-200 dark:border-white/5 shadow-sm">
+                    <button
+                        onClick={() => setShowFilters(!showFilters)}
+                        className={`p-3 rounded-2xl transition-all ${showFilters ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/30' : 'text-slate-400 dark:text-white/20 hover:text-indigo-500 hover:bg-slate-50 dark:hover:bg-white/5'}`}
+                    >
+                        <Settings2 size={20} />
+                    </button>
+                    <div className="w-px h-8 bg-slate-200 dark:bg-white/5 mx-1" />
                     <button
                         onClick={() => setViewMode('table')}
                         className={`p-3 rounded-2xl transition-all ${viewMode === 'table' ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/30' : 'text-slate-400 dark:text-white/20 hover:text-indigo-500'}`}
@@ -166,8 +226,71 @@ export const MonthlyReportPage = () => {
                     >
                         <RefreshCw size={20} className={isLoading ? 'animate-spin' : ''} />
                     </button>
+
+                    <button
+                        onClick={() => {
+                            setBulkResults(null);
+                            setBulkError(null);
+                            setIsBulkModalOpen(true);
+                        }}
+                        disabled={isLoading || !report || report.data.length === 0}
+                        className="flex items-center gap-2 px-5 py-3 rounded-2xl bg-[#f15a24] text-white font-black text-sm transition-all hover:brightness-110 active:scale-95 shadow-lg shadow-[#f15a24]/20 disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed"
+                    >
+                        <Zap size={16} />
+                        <span>Vincular Todo</span>
+                    </button>
                 </div>
             </div>
+
+            {/* Filter Panel */}
+            {showFilters && (
+                <div className="p-6 bg-white dark:bg-[#1a1818] rounded-[2rem] border border-slate-200 dark:border-white/5 shadow-xl animate-in slide-in-from-top-4 duration-300">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-end">
+                        <div className="space-y-3">
+                            <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-white/20 ml-1">
+                                Rango de Fechas
+                            </label>
+                            <div className="flex items-center gap-2">
+                                <input 
+                                    type="date"
+                                    value={filters.from || ''}
+                                    onChange={(e) => setFilters({ from: e.target.value })}
+                                    className="w-full bg-slate-50 dark:bg-white/5 border-none rounded-2xl px-4 py-3 text-sm font-bold focus:ring-2 focus:ring-indigo-500/50 transition-all"
+                                />
+                                <span className="text-slate-300 dark:text-white/10">—</span>
+                                <input 
+                                    type="date"
+                                    value={filters.to || ''}
+                                    onChange={(e) => setFilters({ to: e.target.value })}
+                                    className="w-full bg-slate-50 dark:bg-white/5 border-none rounded-2xl px-4 py-3 text-sm font-bold focus:ring-2 focus:ring-indigo-500/50 transition-all"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-white/5 rounded-[1.5rem] h-[52px]">
+                            <div className="flex flex-col">
+                                <span className="text-xs font-black dark:text-white uppercase tracking-tighter">Incluir Pendientes</span>
+                                <span className="text-[9px] font-bold text-slate-400 dark:text-white/20">Abarca todos los meses anteriores</span>
+                            </div>
+                            <button
+                                onClick={() => setFilters({ includeAllPending: !filters.includeAllPending })}
+                                className={`w-12 h-6 rounded-full p-1 transition-all ${filters.includeAllPending ? 'bg-indigo-500' : 'bg-slate-200 dark:bg-white/10'}`}
+                            >
+                                <div className={`w-4 h-4 bg-white rounded-full transition-all ${filters.includeAllPending ? 'translate-x-6' : 'translate-x-0'}`} />
+                            </button>
+                        </div>
+
+                        <div className="flex gap-2">
+                            <button 
+                                onClick={() => setFilters({ from: undefined, to: undefined, includeAllPending: false })}
+                                className="flex-1 py-3 px-6 bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 text-slate-500 dark:text-white/40 font-black text-xs uppercase tracking-widest rounded-2xl transition-all"
+                            >
+                                Limpiar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* General Stats Highlights */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -254,6 +377,16 @@ export const MonthlyReportPage = () => {
                 isLoadingData={isLoadingSimulation}
                 isCharging={isCharging}
                 error={chargeError}
+            />
+
+            <BulkChargeModal
+                isOpen={isBulkModalOpen}
+                onClose={() => setIsBulkModalOpen(false)}
+                onConfirm={handleBulkSyncConfirm}
+                filters={filters}
+                results={bulkResults}
+                isSyncing={isBulkSyncing}
+                error={bulkError}
             />
         </div>
     );

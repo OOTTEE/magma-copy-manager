@@ -9,13 +9,13 @@ export const reportsFacade = {
      * Retrieves the monthly accumulation report for all users.
      * Business Rule: Only administrators can view the global monthly report.
      */
-    getMonthlyAccumulation: async (requestingUser: { id: string; role: string }) => {
+    getMonthlyAccumulation: async (requestingUser: { id: string; role: string }, options: { from?: string; to?: string; includeAllPending?: boolean } = {}) => {
         if (requestingUser.role !== 'admin') {
             const error = new Error('Unauthorized access to global reports.');
             (error as any).statusCode = 403;
             throw error;
         }
 
-        return await reportsService.getMonthlyAccumulation();
+        return await reportsService.getMonthlyAccumulation(options);
     }
 };

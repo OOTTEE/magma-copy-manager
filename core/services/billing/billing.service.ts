@@ -43,8 +43,8 @@ export const billingService = {
    * Simulates an invoice for a specific user based on current consumption.
    * Business Rule: No persistence, pure calculation.
    */
-  simulateInvoice: async (userId: string) => {
-    const report = await reportsService.getMonthlyAccumulationForUser(userId);
+  simulateInvoice: async (userId: string, options: { from?: string; to?: string; includeAllPending?: boolean } = {}) => {
+    const report = await reportsService.getMonthlyAccumulationForUser(userId, options);
     if (!report || report.data.total === 0) {
       const error = new Error('No consumption data found for this user in the current period.');
       (error as any).statusCode = 400;
@@ -218,8 +218,10 @@ export const billingService = {
   /**
    * Synchronizes consumption to Nexudus for a single user, supporting multi-account distribution.
    */
-  syncUserConsumption: async (userId: string, customNote?: string, nexudusAccountId?: string) => {
-    const report = await reportsService.getMonthlyAccumulationForUser(userId);
+  syncUserConsumption: async (userId: string, options: { from?: string; to?: string; includeAllPending?: boolean; customNote?: string; nexudusAccountId?: string } = {}) => {
+    const { from, to, includeAllPending = false, customNote, nexudusAccountId } = options;
+    
+    const report = await reportsService.getMonthlyAccumulationForUser(userId, { from, to, includeAllPending });
     if (!report) throw new Error('No report data found for user');
 
     const monthStr = report.period.from.slice(0, 7);
@@ -246,7 +248,6 @@ export const billingService = {
     const savedDistributions = await distributionsRepository.findByUserAndMonth(userId, monthStr);
     
     // 3. Organizar tareas de cobro por cuenta y tipo
-    // Estructura: AccountID -> { type -> { quantity, productId } }
     const tasksPerAccount: Record<string, Record<string, { quantity: number; productId: string }>> = {};
 
     const registerTask = (accountId: string, type: string, quantity: number) => {
@@ -266,7 +267,7 @@ export const billingService = {
       totalDistributedByType[dist.type] = (totalDistributedByType[dist.type] || 0) + dist.quantity;
     }
 
-    // B. Calcular remanente para la cuenta por defecto (o cuenta específica si se pasó por parámetro)
+    // B. Calcular remanente
     const targetRemainderAccountId = nexudusAccountId || defaultAccount.id;
     for (const type of copyTypes) {
       const totalRequested = report.data[type as keyof typeof report.data] as number || 0;
@@ -289,7 +290,12 @@ export const billingService = {
 
     const inicioPeriodo = latestSync ? latestSync.saleDate : report.period.from;
     const fechaActual = new Date().toISOString();
-    const periodNote = `Periodo: ${billingService.formatDate(inicioPeriodo)} - ${billingService.formatDate(fechaActual)}`;
+    
+    let periodNoteStr = `Periodo: ${billingService.formatDate(inicioPeriodo)} - ${billingService.formatDate(fechaActual)}`;
+    if (includeAllPending) {
+        periodNoteStr = `Todas las copias pendientes hasta ${billingService.formatDate(fechaActual)}`;
+    }
+
     const saleDate = fechaActual;
 
     const createdNexudusIds: number[] = [];
@@ -310,7 +316,7 @@ export const billingService = {
             ProductId: parseInt(task.productId),
             Quantity: task.quantity,
             SaleDate: saleDate,
-            Notes: customNote || periodNote,
+            Notes: customNote || periodNoteStr,
             InvoiceThisCoworker: false
           });
 
@@ -330,9 +336,8 @@ export const billingService = {
         }
       }
 
-      // 6. Fase de Compromiso: DB Local (Transacción Síncrona)
+      // 6. Fase de Compromiso: DB Local
       db.transaction((tx: any) => {
-        // Guardar cada venta creada
         for (const sale of salesToPersist) {
           const localSaleId = randomUUID();
           
@@ -349,7 +354,6 @@ export const billingService = {
             createdOn: new Date().toISOString()
           }).run();
 
-          // Vincular registros de copias originales
           const getPhysicalColumn = (type: string) => {
             if (type === 'sra3Color') return copies.a3Color;
             if (type === 'sra3Bw') return copies.a3Bw;
@@ -358,18 +362,26 @@ export const billingService = {
 
           const column = getPhysicalColumn(sale.type);
 
+          // Update copies - respecting the range if provided
+          let updateWhere = and(
+            eq(copies.userId, userId),
+            sql`${column} > 0`,
+            isNull(copies.nexudusSaleId)
+          );
+
+          if (!includeAllPending) {
+            updateWhere = and(
+              updateWhere,
+              sql`${copies.datetime} >= ${report.period.from}`,
+              sql`${copies.datetime} <= ${report.period.to}`
+            );
+          }
+
           tx.update(copies)
             .set({ nexudusSaleId: localSaleId })
-            .where(and(
-              eq(copies.userId, userId),
-              sql`${copies.datetime} >= ${report.period.from}`,
-              sql`${copies.datetime} <= ${report.period.to}`,
-              sql`${column} > 0`,
-              isNull(copies.nexudusSaleId)
-            )).run();
+            .where(updateWhere).run();
         }
 
-        // Limpiar repartos procesados
         tx.delete(consumptionDistributions).where(and(
           eq(consumptionDistributions.userId, userId),
           eq(consumptionDistributions.month, monthStr)
@@ -377,7 +389,7 @@ export const billingService = {
       });
 
     } catch (error: any) {
-      // 7. Rollback Compensatorio en Nexudus
+      // 7. Rollback Compensatorio
       if (createdNexudusIds.length > 0) {
         logger.warn({ userId, count: createdNexudusIds.length }, `[ROLLBACK] Removing orphan sales from Nexudus due to failure.`);
         for (const remoteId of createdNexudusIds) {
@@ -397,13 +409,13 @@ export const billingService = {
   /**
    * Global synchronization job.
    */
-  syncMonthlyConsumption: async () => {
-    const report = await reportsService.getMonthlyAccumulation();
+  syncMonthlyConsumption: async (options: { from?: string; to?: string; includeAllPending?: boolean } = {}) => {
+    const report = await reportsService.getMonthlyAccumulation(options);
     const results: any[] = [];
     
     for (const userData of report.data) {
       try {
-        const result = await billingService.syncUserConsumption(userData.id);
+        const result = await billingService.syncUserConsumption(userData.id, options);
         results.push({ ...result, username: userData.username, status: 'success' });
       } catch (e: any) {
         results.push({ userId: userData.id, username: userData.username, status: 'failed', error: e.message });

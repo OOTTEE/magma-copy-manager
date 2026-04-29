@@ -18,11 +18,12 @@ describe('BillingFacade', () => {
     });
 
     describe('simulateInvoice', () => {
-        it('should allow admin to simulate invoice', async () => {
+        it('should allow admin to simulate invoice with options', async () => {
             vi.mocked(billingService.simulateInvoice).mockResolvedValue({ lines: [] } as any);
-            const result = await billingFacade.simulateInvoice(adminUser, 'user-1');
+            const options = { from: '2024-01-01', to: '2024-01-10', includeAllPending: true };
+            const result = await billingFacade.simulateInvoice(adminUser, 'user-1', options);
             expect(result.lines).toBeInstanceOf(Array);
-            expect(billingService.simulateInvoice).toHaveBeenCalledWith('user-1');
+            expect(billingService.simulateInvoice).toHaveBeenCalledWith('user-1', options);
         });
 
         it('should deny customer to simulate invoice', async () => {
@@ -32,32 +33,37 @@ describe('BillingFacade', () => {
     });
 
     describe('syncUserConsumption', () => {
-        it('should allow admin to trigger sync for a user', async () => {
+        it('should allow admin to trigger sync with options', async () => {
             vi.mocked(billingService.getSyncStatus).mockResolvedValue({ synced: false } as any);
             vi.mocked(billingService.syncUserConsumption).mockResolvedValue({ userId: 'u1', salesCreated: 1 } as any);
 
-            const result = await billingFacade.syncUserConsumption(adminUser, 'user-1');
+            const options = { from: '2024-01-01', includeAllPending: true, note: 'Test note' };
+            const result = await billingFacade.syncUserConsumption(adminUser, 'user-1', options);
             
             expect(result.salesCreated).toBe(1);
-            expect(billingService.syncUserConsumption).toHaveBeenCalledWith('user-1', undefined, undefined);
+            expect(billingService.syncUserConsumption).toHaveBeenCalledWith('user-1', options);
         });
 
-        it('should throw error if already synced', async () => {
-            vi.mocked(billingService.getSyncStatus).mockResolvedValue({ synced: true } as any);
+        it('should allow sync if using custom options even if status is synced', async () => {
+             // In current implementation, we allow sync if options are provided (to allow catch-up)
+             vi.mocked(billingService.getSyncStatus).mockResolvedValue({ synced: true } as any);
+             vi.mocked(billingService.syncUserConsumption).mockResolvedValue({ userId: 'u1', salesCreated: 1 } as any);
 
-            await expect(billingFacade.syncUserConsumption(adminUser, 'user-1'))
-                .rejects.toThrow('Consumption already synchronized');
+             const options = { includeAllPending: true };
+             const result = await billingFacade.syncUserConsumption(adminUser, 'user-1', options);
+             expect(result.salesCreated).toBe(1);
         });
     });
 
     describe('syncWithNexudus', () => {
-        it('should allow admin to trigger global sync', async () => {
+        it('should allow admin to trigger global sync with options', async () => {
             vi.mocked(billingService.syncMonthlyConsumption).mockResolvedValue({ results: [] } as any);
             
-            const result = await billingFacade.syncWithNexudus(adminUser);
+            const options = { from: '2024-01-01', to: '2024-01-31' };
+            const result = await billingFacade.syncWithNexudus(adminUser, options);
             
             expect(result.results).toBeInstanceOf(Array);
-            expect(billingService.syncMonthlyConsumption).toHaveBeenCalled();
+            expect(billingService.syncMonthlyConsumption).toHaveBeenCalledWith(options);
         });
     });
 });

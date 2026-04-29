@@ -4,8 +4,16 @@ import { reportsFacade } from '../../../../facades/reports/reports.facade';
 const reportsRoute: FastifyPluginAsync = async (fastify) => {
   fastify.get('/monthly', {
     schema: {
-      description: 'Get accumulated copy counts for the current monthly period (27th to 27th).',
+      description: 'Get accumulated copy counts for a given period or all pending.',
       tags: ['Reports'],
+      querystring: {
+        type: 'object',
+        properties: {
+          from: { type: 'string' },
+          to: { type: 'string' },
+          includeAllPending: { type: 'boolean' }
+        }
+      },
       response: {
         200: {
           type: 'object',
@@ -14,7 +22,8 @@ const reportsRoute: FastifyPluginAsync = async (fastify) => {
               type: 'object',
               properties: {
                 from: { type: 'string' },
-                to: { type: 'string' }
+                to: { type: 'string' },
+                allPending: { type: 'boolean' }
               }
             },
             data: {
@@ -45,7 +54,16 @@ const reportsRoute: FastifyPluginAsync = async (fastify) => {
     preValidation: [fastify.authenticate]
   }, async (request, reply) => {
     const user = request.user as { id: string; role: string };
-    const report = await reportsFacade.getMonthlyAccumulation(user);
+    const query = request.query as { from?: string; to?: string; includeAllPending?: boolean | string };
+    
+    // Fastify might pass boolean as string if not using type coercion properly
+    const includeAllPending = query.includeAllPending === true || query.includeAllPending === 'true';
+
+    const report = await reportsFacade.getMonthlyAccumulation(user, {
+        from: query.from,
+        to: query.to,
+        includeAllPending
+    });
     return reply.send(report);
   });
 };

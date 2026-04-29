@@ -6,14 +6,14 @@ import { reportsService } from '../../services/reports/reports.service';
  * Coordinates invoice simulation and financial data visualization.
  */
 export const billingFacade = {
-  simulateInvoice: async (requestingUser: { id: string; role: string }, userId: string) => {
+  simulateInvoice: async (requestingUser: { id: string; role: string }, userId: string, options: { from?: string; to?: string; includeAllPending?: boolean } = {}) => {
     if (requestingUser.role !== 'admin') {
       const error = new Error('Unauthorized access to billing simulation.');
       (error as any).statusCode = 403;
       throw error;
     }
 
-    return await billingService.simulateInvoice(userId);
+    return await billingService.simulateInvoice(userId, options);
   },
 
   /**
@@ -55,21 +55,23 @@ export const billingFacade = {
     return await billingService.getSyncStatus(userId, monthStr);
   },
 
-  syncUserConsumption: async (requestingUser: { id: string; role: string }, userId: string, customNote?: string, nexudusAccountId?: string) => {
+  syncUserConsumption: async (requestingUser: { id: string; role: string }, userId: string, options: { from?: string; to?: string; includeAllPending?: boolean; note?: string; nexudusAccountId?: string } = {}) => {
     if (requestingUser.role !== 'admin') {
       const error = new Error('Only admins can trigger synchronization.');
       (error as any).statusCode = 403;
       throw error;
     }
 
-    const status = await billingFacade.getSyncStatus(userId);
-    if (status.synced) {
-      const error = new Error('Consumption already synchronized for this user in the current month.');
-      (error as any).statusCode = 400;
-      throw error;
-    }
-
-    return await billingService.syncUserConsumption(userId, customNote, nexudusAccountId);
+    // We allow multiple syncs if the user wants to sync different periods or "all pending"
+    // So we might want to relax the getSyncStatus check or make it more specific
+    
+    return await billingService.syncUserConsumption(userId, {
+        from: options.from,
+        to: options.to,
+        includeAllPending: options.includeAllPending,
+        customNote: options.note,
+        nexudusAccountId: options.nexudusAccountId
+    });
   },
 
   getSyncDetails: async (requestingUser: { id: string; role: string }, id: string) => {
@@ -109,14 +111,14 @@ export const billingFacade = {
   /**
    * Triggers the monthly consumption synchronization with Nexudus.
    */
-  syncWithNexudus: async (requestingUser: { id: string; role: string }) => {
+  syncWithNexudus: async (requestingUser: { id: string; role: string }, options: { from?: string; to?: string; includeAllPending?: boolean } = {}) => {
     if (requestingUser.role !== 'admin') {
       const error = new Error('Only admins can trigger Nexudus synchronization.');
       (error as any).statusCode = 403;
       throw error;
     }
 
-    return await billingService.syncMonthlyConsumption();
+    return await billingService.syncMonthlyConsumption(options);
   },
 
   /**

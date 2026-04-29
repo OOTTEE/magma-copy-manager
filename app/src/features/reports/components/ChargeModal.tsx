@@ -61,11 +61,15 @@ export const ChargeModal: React.FC<ChargeModalProps> = ({
   };
 
   const getDefaultNote = (
-    period: { from: string; to: string } | undefined,
+    period: { from: string; to: string; allPending?: boolean } | undefined,
     lastSyncDate?: string | null
   ) => {
     if (!period) return '';
     
+    if (period.allPending) {
+        return 'Vínculación de todas las copias pendientes (periodos anteriores)';
+    }
+
     // El inicio es la última vinculación o el inicio del ciclo
     const startDate = lastSyncDate || period.from;
     const endDate = new Date().toISOString();
@@ -116,6 +120,8 @@ export const ChargeModal: React.FC<ChargeModalProps> = ({
     new Date(dateStr).toLocaleDateString('es-ES', { day: '2-digit', month: 'long', year: 'numeric' });
 
   const totalQuantity = data?.lines.reduce((acc, l) => acc + l.quantity, 0) ?? 0;
+
+  const isAllPending = (data?.period as any)?.allPending;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -175,7 +181,11 @@ export const ChargeModal: React.FC<ChargeModalProps> = ({
                 <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-white/30">
                   <span>Periodo:</span>
                   <span className="text-indigo-500">
-                    {formatDate(data.period.from)} — {formatDate(data.period.to)}
+                    {isAllPending ? (
+                        'TODOS LOS PENDIENTES'
+                    ) : (
+                        <>{formatDate(data.period.from)} — {formatDate(data.period.to)}</>
+                    )}
                   </span>
                 </div>
 

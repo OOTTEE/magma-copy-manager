@@ -32,13 +32,31 @@ export const reportsService = {
   },
 
   /**
-   * Calculates the accumulated copy counts for the current billing period (27th to 27th).
+   * Calculates the accumulated copy counts for a given period or all pending.
    */
-  getMonthlyAccumulation: async () => {
-    const { fromStr, toStr } = await reportsService.getPeriodDates();
+  getMonthlyAccumulation: async (options: { from?: string; to?: string; includeAllPending?: boolean } = {}) => {
+    const { includeAllPending = false } = options;
+    let { fromStr, toStr } = await reportsService.getPeriodDates();
+    
+    // Override with options if provided
+    if (options.from) fromStr = options.from;
+    if (options.to) toStr = options.to;
+
+    // Filter construction for copies
+    let copyFilters = and(
+      eq(users.id, copies.userId),
+      isNull(copies.nexudusSaleId)
+    );
+
+    if (!includeAllPending) {
+      copyFilters = and(
+        copyFilters,
+        gte(copies.datetime, fromStr), 
+        lte(copies.datetime, toStr)
+      );
+    }
 
     // Aggregation Query: Summing increments grouped by user
-    // We move copy filters to the JOIN ON condition to keep all users (count zero)
     const results = await db
       .select({
         id: users.id,
@@ -52,16 +70,11 @@ export const reportsService = {
         a3NoPaperMode: users.a3NoPaperMode,
       })
       .from(users)
-      .leftJoin(copies, and(
-        eq(users.id, copies.userId),
-        gte(copies.datetime, fromStr), 
-        lte(copies.datetime, toStr),
-        isNull(copies.nexudusSaleId)
-      ))
+      .leftJoin(copies, copyFilters)
       .groupBy(users.id, users.a3NoPaperMode, users.nexudusUser);
 
     return {
-      period: { from: fromStr, to: toStr },
+      period: { from: fromStr, to: toStr, allPending: includeAllPending },
       data: results.map((r: any) => reportsService.mapAccumulationResult(r))
     };
   },
@@ -69,8 +82,27 @@ export const reportsService = {
   /**
    * Calculates accumulation for a single user.
    */
-  getMonthlyAccumulationForUser: async (userId: string) => {
-    const { fromStr, toStr } = await reportsService.getPeriodDates();
+  getMonthlyAccumulationForUser: async (userId: string, options: { from?: string; to?: string; includeAllPending?: boolean } = {}) => {
+    const { includeAllPending = false } = options;
+    let { fromStr, toStr } = await reportsService.getPeriodDates();
+    
+    // Override with options if provided
+    if (options.from) fromStr = options.from;
+    if (options.to) toStr = options.to;
+
+    // Filter construction for copies
+    let copyFilters = and(
+      eq(users.id, copies.userId),
+      isNull(copies.nexudusSaleId)
+    );
+
+    if (!includeAllPending) {
+      copyFilters = and(
+        copyFilters,
+        gte(copies.datetime, fromStr), 
+        lte(copies.datetime, toStr)
+      );
+    }
 
     const result = await db
       .select({
@@ -85,12 +117,7 @@ export const reportsService = {
         a3NoPaperMode: users.a3NoPaperMode,
       })
       .from(users)
-      .leftJoin(copies, and(
-        eq(users.id, copies.userId),
-        gte(copies.datetime, fromStr), 
-        lte(copies.datetime, toStr),
-        isNull(copies.nexudusSaleId)
-      ))
+      .leftJoin(copies, copyFilters)
       .where(eq(users.id, userId))
       .groupBy(users.id, users.a3NoPaperMode, users.nexudusUser)
       .get();
@@ -109,7 +136,7 @@ export const reportsService = {
       .get();
 
     return {
-      period: { from: fromStr, to: toStr },
+      period: { from: fromStr, to: toStr, allPending: includeAllPending },
       lastSyncDate: latestSync?.saleDate || null,
       data: reportsService.mapAccumulationResult(result)
     };

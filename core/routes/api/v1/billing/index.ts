@@ -16,6 +16,14 @@ const billingRoute: FastifyPluginAsync = async (fastify) => {
         },
         required: ['id']
       },
+      querystring: {
+        type: 'object',
+        properties: {
+          from: { type: 'string' },
+          to: { type: 'string' },
+          includeAllPending: { type: 'boolean' }
+        }
+      },
       response: {
         200: {
           type: 'object',
@@ -26,7 +34,8 @@ const billingRoute: FastifyPluginAsync = async (fastify) => {
               type: 'object',
               properties: {
                 from: { type: 'string' },
-                to: { type: 'string' }
+                to: { type: 'string' },
+                allPending: { type: 'boolean' }
               }
             },
             lines: {
@@ -54,9 +63,16 @@ const billingRoute: FastifyPluginAsync = async (fastify) => {
   }, async (request, reply) => {
     const requestingUser = request.user as { id: string; role: string };
     const { id } = request.params as { id: string };
+    const query = request.query as { from?: string; to?: string; includeAllPending?: boolean | string };
+
+    const includeAllPending = query.includeAllPending === true || query.includeAllPending === 'true';
 
     try {
-      const simulation = await billingFacade.simulateInvoice(requestingUser, id);
+      const simulation = await billingFacade.simulateInvoice(requestingUser, id, {
+          from: query.from,
+          to: query.to,
+          includeAllPending
+      });
       return reply.send(simulation);
     } catch (err: any) {
       if (err.statusCode) return reply.code(err.statusCode).send({ message: err.message });
@@ -181,13 +197,17 @@ const billingRoute: FastifyPluginAsync = async (fastify) => {
    */
   fastify.post('/sync', {
     schema: {
-      description: 'Synchronizes current month consumption for a user to Nexudus.',
+      description: 'Synchronizes consumption for a user to Nexudus.',
       tags: ['Billing'],
       body: {
         type: 'object',
         properties: { 
           userId: { type: 'string' },
-          note: { type: 'string' }
+          note: { type: 'string' },
+          from: { type: 'string' },
+          to: { type: 'string' },
+          includeAllPending: { type: 'boolean' },
+          nexudusAccountId: { type: 'string' }
         },
         required: ['userId']
       }
@@ -195,10 +215,23 @@ const billingRoute: FastifyPluginAsync = async (fastify) => {
     preValidation: [fastify.authenticate]
   }, async (request, reply) => {
     const requestingUser = request.user as { id: string; role: string };
-    const { userId, note } = request.body as { userId: string; note?: string };
+    const body = request.body as { 
+        userId: string; 
+        note?: string; 
+        from?: string; 
+        to?: string; 
+        includeAllPending?: boolean;
+        nexudusAccountId?: string;
+    };
 
     try {
-      const result = await billingFacade.syncUserConsumption(requestingUser, userId, note);
+      const result = await billingFacade.syncUserConsumption(requestingUser, body.userId, {
+          from: body.from,
+          to: body.to,
+          includeAllPending: body.includeAllPending,
+          note: body.note,
+          nexudusAccountId: body.nexudusAccountId
+      });
       return reply.code(201).send(result);
     } catch (err: any) {
       if (err.statusCode) return reply.code(err.statusCode).send({ message: err.message });
@@ -240,11 +273,26 @@ const billingRoute: FastifyPluginAsync = async (fastify) => {
     schema: {
       description: 'Synchronizes monthly consumption with Nexudus. Admin only.',
       tags: ['Billing'],
+      body: {
+        type: 'object',
+        properties: {
+          from: { type: 'string' },
+          to: { type: 'string' },
+          includeAllPending: { type: 'boolean' }
+        }
+      },
       response: {
         200: {
           type: 'object',
           properties: {
-            month: { type: 'string' },
+            period: {
+              type: 'object',
+              properties: {
+                from: { type: 'string' },
+                to: { type: 'string' },
+                allPending: { type: 'boolean' }
+              }
+            },
             results: {
               type: 'array',
               items: {
@@ -254,7 +302,8 @@ const billingRoute: FastifyPluginAsync = async (fastify) => {
                   username: { type: 'string' },
                   salesCreated: { type: 'integer' },
                   skipped: { type: 'integer' },
-                  errors: { type: 'integer' }
+                  errors: { type: 'integer' },
+                  status: { type: 'string' }
                 }
               }
             }
@@ -268,9 +317,10 @@ const billingRoute: FastifyPluginAsync = async (fastify) => {
     preValidation: [fastify.authenticate]
   }, async (request, reply) => {
     const requestingUser = request.user as { id: string; role: string };
+    const body = (request.body || {}) as { from?: string; to?: string; includeAllPending?: boolean };
 
     try {
-      const result = await billingFacade.syncWithNexudus(requestingUser);
+      const result = await billingFacade.syncWithNexudus(requestingUser, body);
       return reply.send(result);
     } catch (err: any) {
       if (err.statusCode) return reply.code(err.statusCode).send({ message: err.message });

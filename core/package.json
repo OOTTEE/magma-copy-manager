@@ -5,15 +5,15 @@
   "main": "index.js",
   "scripts": {
     "dev": "NODE_ENV=development tsx watch --include . --clear-screen=false server.ts",
-    "build": "npm run clean && tsc -p tsconfig.build.json",
+    "build": "pnpm clean && tsc -p tsconfig.build.json",
     "clean": "rm -rf dist",
     "start": "node dist/server.js",
     "db:generate": "drizzle-kit generate",
     "db:push": "drizzle-kit push",
     "test": "NODE_ENV=test NODE_OPTIONS=\"--import tsx\" vitest run",
-    "parse-report": "npx tsx scripts/parse-report.ts",
-    "build:openapi": "npx tsx scripts/build-openapi.ts",
-    "gen:nexudus": "npx swagger-typescript-api generate -p ./resources/nexudus-v1.json -o ./services/nexudus -n generated-api.ts --httpClient-type axios"
+    "parse-report": "tsx scripts/parse-report.ts",
+    "build:openapi": "tsx scripts/build-openapi.ts",
+    "gen:nexudus": "swagger-typescript-api generate -p ./resources/nexudus-v1.json -o ./services/nexudus -n generated-api.ts --httpClient-type axios"
   },
   "keywords": [],
   "author": "",

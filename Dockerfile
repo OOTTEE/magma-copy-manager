@@ -3,15 +3,19 @@ FROM node:24-alpine AS frontend-build
 
 WORKDIR /app
 
-# Copy package files
-COPY app/package.json ./
-RUN corepack enable && corepack prepare pnpm@latest --activate && pnpm install
+# Copy workspace configuration
+COPY pnpm-workspace.yaml package.json ./
+COPY app/package.json ./app/
+
+# Install dependencies using workspace
+RUN corepack enable && corepack prepare pnpm@latest --activate && pnpm install --filter app...
 
 # Copy openapi generator file from root (needed for gen:api script)
 COPY openapi.yaml /openapi.yaml
 
 # Copy the rest of the application
-COPY app/ .
+COPY app/ ./app/
+WORKDIR /app/app
 
 # Force VITE_SERVICE_URL to / for production container
 ENV VITE_SERVICE_URL=
@@ -29,12 +33,17 @@ RUN apt-get update && apt-get install -y \
     g++ \
     && rm -rf /var/lib/apt/lists/*
 
-WORKDIR /home/node/app
+WORKDIR /app
 
-COPY core/package.json ./
-RUN corepack enable && corepack prepare pnpm@latest --activate && pnpm install
+# Copy workspace configuration
+COPY pnpm-workspace.yaml package.json ./
+COPY core/package.json ./core/
 
-COPY core/ .
+# Install dependencies using workspace
+RUN corepack enable && corepack prepare pnpm@latest --activate && pnpm install --filter core...
+
+COPY core/ ./core/
+WORKDIR /app/core
 RUN pnpm gen:nexudus \
     && pnpm build
 
@@ -51,16 +60,16 @@ RUN apt-get update && apt-get install -y \
 WORKDIR /home/node/app
 
 # Copy built backend files and production dependencies
-COPY --from=backend-build /home/node/app/dist ./dist
-COPY --from=backend-build /home/node/app/package.json ./
-COPY --from=backend-build /home/node/app/node_modules ./node_modules
-COPY --from=backend-build /home/node/app/drizzle.config.ts ./
-COPY --from=backend-build /home/node/app/db ./db
-COPY --from=backend-build /home/node/app/config ./config
-COPY --from=backend-build /home/node/app/drizzle ./drizzle
+COPY --from=backend-build /app/core/dist ./dist
+COPY --from=backend-build /app/core/package.json ./
+COPY --from=backend-build /app/core/node_modules ./node_modules
+COPY --from=backend-build /app/core/drizzle.config.ts ./
+COPY --from=backend-build /app/core/db ./db
+COPY --from=backend-build /app/core/config ./config
+COPY --from=backend-build /app/core/drizzle ./drizzle
 
 # Copy frontend assets from build stage to backend's public folder
-COPY --from=frontend-build /app/dist ./dist/public
+COPY --from=frontend-build /app/app/dist ./dist/public
 
 COPY entrypoint.sh .
 

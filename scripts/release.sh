@@ -21,7 +21,6 @@ if [ -f /.dockerenv ]; then
 fi
 
 echo "🚀 Iniciando proceso de Release..."
-echo "🟢 Node version: $(node -v) (Modules: $(node -p 'process.versions.modules'))"
 
 # 0. Check for uncommitted changes (optional but recommended for releases)
 if [ -n "$(git status --porcelain)" ]; then
@@ -40,6 +39,8 @@ fi
 # 0.5. Asegurar dependencias (necesario si corremos en un contenedor limpio)
 echo "📦 Paso 0.5: Asegurando dependencias..."
 npm install
+npm install --prefix core
+npm install --prefix app
 
 # 1. Limpiar el environment
 echo "🧹 Paso 1: Limpiando environment..."
@@ -66,7 +67,6 @@ echo "✅ Nueva versión detectada: $NEW_VERSION"
 # 3. Sincronizar versiones a sub-proyectos
 echo "🔄 Paso 3: Sincronizando versiones a core/ y app/..."
 node -e "const fs = require('fs'); ['core', 'app'].forEach(dir => { const p = dir + '/package.json'; if (fs.existsSync(p)) { const pkg = JSON.parse(fs.readFileSync(p)); pkg.version = '$NEW_VERSION'; fs.writeFileSync(p, JSON.stringify(pkg, null, 2) + '\n'); console.log('   - ' + p + ' actualizado a ' + pkg.version); } })"
-npm install --package-lock-only
 
 # 4. Build completa
 echo "🏗️  Paso 4: Realizando build completa (Back + Front + OpenAPI)..."
@@ -76,7 +76,8 @@ npm run build
 echo "🧪 Paso 5: Ejecutando tests..."
 # Asegurar directorio de datos por si otros servicios lo requieren
 mkdir -p core/data
-npm test
+
+npm run test
 
 
 # 6. Build de contenedores

@@ -1,6 +1,5 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { X, Zap, AlertTriangle, Loader2, CheckCircle2, AlertCircle, Info } from 'lucide-react';
-import { api } from '../../../services/api';
 
 interface SyncResult {
     userId: string;

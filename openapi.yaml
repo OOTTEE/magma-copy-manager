@@ -191,6 +191,21 @@ paths:
       parameters:
         - schema:
             type: string
+          in: query
+          name: from
+          required: false
+        - schema:
+            type: string
+          in: query
+          name: to
+          required: false
+        - schema:
+            type: boolean
+          in: query
+          name: includeAllPending
+          required: false
+        - schema:
+            type: string
           in: path
           name: id
           required: true
@@ -213,6 +228,8 @@ paths:
                         type: string
                       to:
                         type: string
+                      allPending:
+                        type: boolean
                   lines:
                     type: array
                     items:
@@ -337,6 +354,10 @@ paths:
                                 type: integer
                               nexudusSaleId:
                                 type: string
+                              nexudusCoworkerId:
+                                type:
+                                  - "null"
+                                  - string
                         nexudusCoworkerId:
                           type:
                             - "null"
@@ -357,7 +378,7 @@ paths:
     post:
       tags:
         - Billing
-      description: Synchronizes current month consumption for a user to Nexudus.
+      description: Synchronizes consumption for a user to Nexudus.
       requestBody:
         required: true
         content:
@@ -368,6 +389,14 @@ paths:
                 userId:
                   type: string
                 note:
+                  type: string
+                from:
+                  type: string
+                to:
+                  type: string
+                includeAllPending:
+                  type: boolean
+                nexudusAccountId:
                   type: string
               required:
                 - userId
@@ -474,6 +503,19 @@ paths:
       tags:
         - Billing
       description: Synchronizes monthly consumption with Nexudus. Admin only.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                from:
+                  type: string
+                to:
+                  type: string
+                includeAllPending:
+                  type: boolean
       responses:
         "200":
           description: Default Response
@@ -482,8 +524,15 @@ paths:
               schema:
                 type: object
                 properties:
-                  month:
-                    type: string
+                  period:
+                    type: object
+                    properties:
+                      from:
+                        type: string
+                      to:
+                        type: string
+                      allPending:
+                        type: boolean
                   results:
                     type: array
                     items:
@@ -499,6 +548,8 @@ paths:
                           type: integer
                         errors:
                           type: integer
+                        status:
+                          type: string
         "401":
           description: Default Response
           content:
@@ -1176,8 +1227,23 @@ paths:
     get:
       tags:
         - Reports
-      description: Get accumulated copy counts for the current monthly period (27th to
-        27th).
+      description: Get accumulated copy counts for a given period or all pending.
+      parameters:
+        - schema:
+            type: string
+          in: query
+          name: from
+          required: false
+        - schema:
+            type: string
+          in: query
+          name: to
+          required: false
+        - schema:
+            type: boolean
+          in: query
+          name: includeAllPending
+          required: false
       responses:
         "200":
           description: Default Response
@@ -1193,6 +1259,8 @@ paths:
                         type: string
                       to:
                         type: string
+                      allPending:
+                        type: boolean
                   data:
                     type: array
                     items:

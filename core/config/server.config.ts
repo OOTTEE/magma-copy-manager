@@ -5,6 +5,7 @@ dotenv.config();
 
 export const serverConfig = {
     logLevel: process.env.LOG_LEVEL || 'info', // INFO, DEBUG, ERROR, WARN, TRACE
+    disableRequestLogging: Boolean(process.env.DISABLE_REQUEST_LOGGING) || true,
     databaseUrl: process.env.DATABASE_URL || (process.env.NODE_ENV === 'test' ? ':memory:' : 'data/sqlite.db'),
     port: Number(process.env.PORT) || 3000,
     jwtSecret: process.env.JWT_SECRET || 'super-secret-key-1234567890',

@@ -7,7 +7,8 @@ import { autoBillingService } from './services/automation/auto-billing.service';
 import { autoSyncService } from './services/automation/auto-sync.service';
 
 const server = buildApp({
-    loggerInstance: logger
+    loggerInstance: logger,
+    disableRequestLogging: serverConfig.disableRequestLogging,
 });
 
 const start = async () => {

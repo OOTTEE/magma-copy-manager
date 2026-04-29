@@ -1,11 +1,11 @@
 # Stage 1: Builds the frontend application
-FROM node:22-alpine AS frontend-build
+FROM node:24-alpine AS frontend-build
 
 WORKDIR /app
 
 # Copy package files
-COPY app/package*.json ./
-RUN npm install
+COPY app/package.json ./
+RUN corepack enable && corepack prepare pnpm@latest --activate && pnpm install
 
 # Copy openapi generator file from root (needed for gen:api script)
 COPY openapi.yaml /openapi.yaml
@@ -17,10 +17,10 @@ COPY app/ .
 ENV VITE_SERVICE_URL=
 
 # Build the application (generates /dist)
-RUN npm run build
+RUN pnpm build
 
 # Stage 2: Builds the backend
-FROM node:22-slim AS backend-build
+FROM node:24-slim AS backend-build
 
 # Install native dependencies for better-sqlite3
 RUN apt-get update && apt-get install -y \
@@ -31,15 +31,15 @@ RUN apt-get update && apt-get install -y \
 
 WORKDIR /home/node/app
 
-COPY core/package*.json ./
-RUN npm install
+COPY core/package.json ./
+RUN corepack enable && corepack prepare pnpm@latest --activate && pnpm install
 
 COPY core/ .
-RUN npm run gen:nexudus \
-    && npm run build
+RUN pnpm gen:nexudus \
+    && pnpm build
 
 # Stage 3: Production runtime
-FROM node:22-slim
+FROM node:24-slim
 
 # Install system dependencies for better-sqlite3 and Playwright
 RUN apt-get update && apt-get install -y \
@@ -52,7 +52,7 @@ WORKDIR /home/node/app
 
 # Copy built backend files and production dependencies
 COPY --from=backend-build /home/node/app/dist ./dist
-COPY --from=backend-build /home/node/app/package*.json ./
+COPY --from=backend-build /home/node/app/package.json ./
 COPY --from=backend-build /home/node/app/node_modules ./node_modules
 COPY --from=backend-build /home/node/app/drizzle.config.ts ./
 COPY --from=backend-build /home/node/app/db ./db
@@ -79,4 +79,4 @@ ENV NODE_ENV=production
 ENV PORT=80
 
 ENTRYPOINT ["/home/node/app/entrypoint.sh"]
-CMD ["npm", "run", "start"]
+CMD ["node", "dist/server.js"]

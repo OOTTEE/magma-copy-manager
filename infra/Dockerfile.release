@@ -1,4 +1,4 @@
-FROM node:22-slim
+FROM node:24-slim
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
@@ -8,6 +8,9 @@ RUN apt-get update && apt-get install -y \
     git \
     procps \
     && rm -rf /var/lib/apt/lists/*
+
+# Enable corepack and prepare pnpm
+RUN corepack enable && corepack prepare pnpm@latest --activate
 
 # Install Docker CLI (client only) to talk with the host daemon
 RUN install -m 0755 -d /etc/apt/keyrings && \

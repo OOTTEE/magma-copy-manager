@@ -38,13 +38,17 @@ fi
 
 # 0.5. Asegurar dependencias (necesario si corremos en un contenedor limpio)
 echo "📦 Paso 0.5: Asegurando dependencias..."
-npm install
-npm install --prefix core
-npm install --prefix app
+# Ensure pnpm is available (useful if running in environments without pre-installed pnpm)
+if ! command -v pnpm &> /dev/null; then
+  echo "   - pnpm no encontrado, intentando habilitar via corepack..."
+  corepack enable && corepack prepare pnpm@latest --activate
+fi
+
+pnpm install
 
 # 1. Limpiar el environment
 echo "🧹 Paso 1: Limpiando environment..."
-npm run clean
+pnpm clean
 
 # 2. Actualizar versión
 echo "🔢 Paso 2: Actualizando versión..."
@@ -59,6 +63,8 @@ fi
 echo "   - Tipo de incremento: $BUMP_TYPE"
 
 # Bumps root package.json
+# Note: Using npm version is still fine for bumping package.json, 
+# but we could also use 'pnpm version' if desired.
 npm version $BUMP_TYPE --no-git-tag-version
 
 NEW_VERSION=$(node -p "require('./package.json').version")
@@ -70,14 +76,13 @@ node -e "const fs = require('fs'); ['core', 'app'].forEach(dir => { const p = di
 
 # 4. Build completa
 echo "🏗️  Paso 4: Realizando build completa (Back + Front + OpenAPI)..."
-npm run build
+pnpm build
 
 # 5. Ejecutar tests
 echo "🧪 Paso 5: Ejecutando tests..."
 # Asegurar directorio de datos por si otros servicios lo requieren
 mkdir -p core/data
-
-npm run test
+pnpm test
 
 
 # 6. Build de contenedores

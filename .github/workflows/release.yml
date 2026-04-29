@@ -44,6 +44,16 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
+      - name: Install Build Tools
+        run: |
+          if [ -f /etc/debian_version ]; then
+            sudo apt-get update
+            sudo apt-get install -y build-essential python3
+          elif [ -f /etc/redhat-release ]; then
+            sudo yum groupinstall -y "Development Tools"
+            sudo yum install -y python3
+          fi
+
       - name: Run Release Script (Version Bump & Build)
         env:
           SKIP_GIT_CHECK: "true"

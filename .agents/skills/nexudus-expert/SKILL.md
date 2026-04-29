@@ -1,3 +1,8 @@
+---
+name: nexudus-expert
+description: Expert in Nexudus API, Workspace Management, and technical integration between Coworking spaces and Magma.
+---
+
 # Skill: Nexudus Expert Agent
 
 Expert in Nexudus API, Workspace Management, and technical integration between Coworking spaces and Magma.

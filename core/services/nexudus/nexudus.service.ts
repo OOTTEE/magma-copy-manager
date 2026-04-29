@@ -17,7 +17,8 @@ export class NexudusService {
    */
   private async executeRequest<T>(
     requestFn: (api: Api<string>['api'], params: any) => Promise<{ data: T }>,
-    errorMessage: string
+    errorMessage: string,
+    isRetry = false
   ): Promise<T> {
     await this.init();
 
@@ -28,7 +29,7 @@ export class NexudusService {
     });
 
     const params = getRequestParams();
-    logger.trace({ operation: errorMessage }, 'Nexudus: Executing request...');
+    logger.trace({ operation: errorMessage, isRetry }, 'Nexudus: Executing request...');
 
     try {
       const response = await requestFn(this.api!.api, params);
@@ -36,14 +37,10 @@ export class NexudusService {
       return response.data;
     } catch (error: any) {
       // Handle unauthorized (401) with auto-retry login
-      if (error.status === 401) {
+      if (error.status === 401 && !isRetry) {
         logger.warn('Nexudus: Token expired or invalid, attempting to refresh...');
         await this.login();
-        
-        const retryParams = getRequestParams();
-        logger.trace({ operation: errorMessage }, 'Nexudus: Retrying request after login...');
-        const retryResponse = await requestFn(this.api!.api, retryParams);
-        return retryResponse.data;
+        return this.executeRequest(requestFn, errorMessage, true);
       }
       
       const details = error.error || error.message;
@@ -52,11 +49,12 @@ export class NexudusService {
       logger.trace({ 
         operation: errorMessage,
         status: error.status,
+        isRetry,
         response: error.error,
         message: error.message
       }, 'Nexudus: Request failed details');
 
-      logger.error({ error: details }, `Nexudus: ${errorMessage}`);
+      logger.error({ error: details, isRetry }, `Nexudus: ${errorMessage}`);
       
       // Provide more helpful error message
       const specificError = typeof details === 'object' ? (details.Message || details.message) : details;
@@ -161,30 +159,29 @@ export class NexudusService {
       throw new Error('Nexudus email or password not configured.');
     }
 
-    // Always ensure API client is initialized correctly
-    const url = baseUrl || 'https://spaces.nexudus.com/api';
-    if (!this.api) {
-      this.api = this.createApiClient(url);
+    // IMPORTANT: Clear old security data to ensure login request doesn't send expired Bearer token
+    if (this.api) {
+      this.api.setSecurityData(null);
     }
 
     try {
-      const response = await this.api.api.tokenCreate({
+      const response = await this.api!.api.tokenCreate({
         grant_type: "password",
         username: finalEmail,
         password: finalPassword,
-      });
+      }, { secure: false } as any); // Explicitly non-secure
 
-      // Map the response data. Since tokenCreate is mark as void in generated-api,
-      // it might return the raw response if format is not specified.
+      // Map the response data. The generated client might return the response object itself
+      // or a partially parsed body depending on the generator's state.
       let data = response.data as any;
       
-      // If data is the response object itself (due to missing format) or null, we try to parse the body
-      if (!data || (data.status && typeof data.json === 'function')) {
+      // If response.data is null or is the HttpResponse object, try to parse JSON manually
+      if (!data || (typeof response.json === 'function')) {
          try {
-           const cloned = response.clone();
-           data = await cloned.json();
+           const cloned = typeof response.clone === 'function' ? response.clone() : response;
+           data = typeof cloned.json === 'function' ? await cloned.json() : cloned;
          } catch (e) {
-           logger.error({ error: e }, 'Nexudus: Failed to parse OAuth2 response body');
+           logger.trace({ error: e }, 'Nexudus: Manually parsing login response body failed, using raw data');
          }
       }
 

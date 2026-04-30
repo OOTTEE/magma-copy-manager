@@ -1,6 +1,32 @@
 import { Api, ContentType, NexudusCoworkingCoreQueryDtosBillingCoworkerProductDto, NexudusCoworkingCoreActionConfirmation } from './generated-api';
 import { settingsService } from '../settings/settings.service';
 import { logger } from '../../lib/logger';
+import Bottleneck from 'bottleneck';
+
+// Límite de GET: 10 peticiones cada 100 milisegundos
+const readLimiter = new Bottleneck({
+  reservoir: 10,
+  reservoirRefreshAmount: 10,
+  reservoirRefreshInterval: 100,
+  maxConcurrent: 10
+});
+
+// Límite de Escritura (Minuto): 60 peticiones por minuto
+const writeLimiterMinute = new Bottleneck({
+  reservoir: 60,
+  reservoirRefreshAmount: 60,
+  reservoirRefreshInterval: 60 * 1000, 
+  maxConcurrent: 10
+});
+
+// Límite de Escritura (Diario): 2500 peticiones por día
+const writeLimiterDay = new Bottleneck({
+  reservoir: 2500,
+  reservoirRefreshAmount: 2500,
+  reservoirRefreshInterval: 24 * 60 * 60 * 1000,
+});
+
+writeLimiterMinute.chain(writeLimiterDay);
 
 /**
  * Nexudus Service
@@ -78,7 +104,7 @@ export class NexudusService {
       },
       customFetch: async (input, init) => {
         const url = input.toString();
-        const method = init?.method || 'GET';
+        const method = (init?.method || 'GET').toUpperCase();
         
         logger.trace({ 
           url, 
@@ -91,34 +117,39 @@ export class NexudusService {
           logger.trace({ body: init.body }, 'Nexudus API Request Body');
         }
 
-        try {
-          const response = await fetch(input, init);
-          
-          // Clone the response to read the body without consuming it
-          const clonedResponse = response.clone();
-          let responseBody: any;
+        const isWrite = ['PUT', 'POST', 'DELETE', 'PATCH'].includes(method);
+        const limiter = isWrite ? writeLimiterMinute : readLimiter;
+
+        return limiter.schedule(async () => {
           try {
-            const text = await clonedResponse.text();
+            const response = await fetch(input, init);
+            
+            // Clone the response to read the body without consuming it
+            const clonedResponse = response.clone();
+            let responseBody: any;
             try {
-              responseBody = JSON.parse(text);
-            } catch {
-              responseBody = text;
+              const text = await clonedResponse.text();
+              try {
+                responseBody = JSON.parse(text);
+              } catch {
+                responseBody = text;
+              }
+            } catch (e: any) {
+              responseBody = `[Error reading response body: ${e.message}]`;
             }
-          } catch (e: any) {
-            responseBody = `[Error reading response body: ${e.message}]`;
+
+            logger.trace({ 
+              url, 
+              status: response.status, 
+              body: responseBody 
+            }, 'Nexudus API Response');
+
+            return response;
+          } catch (error: any) {
+            logger.debug({ url, error: error.message }, 'Nexudus API Request Failed');
+            throw error;
           }
-
-          logger.trace({ 
-            url, 
-            status: response.status, 
-            body: responseBody 
-          }, 'Nexudus API Response');
-
-          return response;
-        } catch (error: any) {
-          logger.debug({ url, error: error.message }, 'Nexudus API Request Failed');
-          throw error;
-        }
+        });
       }
     });
   }

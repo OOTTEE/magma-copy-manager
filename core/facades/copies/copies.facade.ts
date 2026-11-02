@@ -59,7 +59,7 @@ export const copiesFacade = {
         const results = {
             status: 'success' as 'success' | 'partial_success' | 'error',
             syncedCount: 0,
-            errors: [] as { userId?: string; username: string; printUser?: string; error: string }[],
+            errors: [] as { userId?: string; username: string; user?: string; printUser?: string; error: string; message?: string }[],
             changed: [] as {
                 userId: string;
                 username: string;

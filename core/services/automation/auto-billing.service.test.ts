@@ -47,10 +47,13 @@ describe('AutoBillingService', () => {
         vi.mocked(copiesFacade.syncPrinterCopies).mockRejectedValue(new Error('Printer Offline'));
         mockAll.mockResolvedValue([]);
 
-        // Mock setTimeout to speed up test
-        vi.spyOn(global, 'setTimeout').mockImplementation((fn: any) => {
-            if (typeof fn === 'function') fn();
-            return {} as any;
+        // Mock setTimeout for 5000ms retry to 0ms to speed up test without breaking stream workers
+        const originalSetTimeout = global.setTimeout;
+        vi.spyOn(global, 'setTimeout').mockImplementation((fn: any, ms?: number, ...args: any[]) => {
+            if (ms === 5000) {
+                return originalSetTimeout(fn, 0, ...args);
+            }
+            return originalSetTimeout(fn, ms, ...args);
         });
 
         const result = await autoBillingService.runJob(adminUser);

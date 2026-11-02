@@ -81,8 +81,10 @@ mkdir -p core/data
 npm run test
 
 
-# 6. Build de contenedores
-echo "🐳 Paso 6: Construyendo imágenes de contenedores..."
-docker compose build
+# 6. Build de contenedores (omitir en CI; GitHub Actions realiza el build/push con docker/build-push-action)
+if [ "$CI" != "true" ]; then
+  echo "🐳 Paso 6: Construyendo imágenes de contenedores..."
+  docker compose build
+fi
 
 echo "✨ Release $NEW_VERSION completada con éxito."

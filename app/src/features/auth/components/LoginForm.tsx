@@ -6,7 +6,7 @@ import { LogIn, User, Lock, Loader2 } from "lucide-react";
 
 /**
  * LoginForm Component
- * 
+ *
  * Features:
  * - Glassmorphism UI with Tailwind v4
  * - Real-time error handling
@@ -41,7 +41,8 @@ export const LoginForm = () => {
             if (data && 'accessToken' in data && 'refreshToken' in data && 'role' in data) {
                 const finalUsername = (data as any).username || username;
                 login(data.accessToken as string, data.refreshToken as string, finalUsername, data.role as string);
-                navigate("/dashboard");
+                const destination = data.role === 'admin' ? "/reports" : "/dashboard";
+                navigate(destination);
             }
         } catch (err) {
             setError("Ocurrió un error al intentar iniciar sesión. Revisa tu conexión.");

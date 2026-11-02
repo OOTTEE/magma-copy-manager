@@ -1,11 +1,11 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { 
-    Save, 
-    Loader2, 
-    AlertCircle, 
-    Plus, 
-    Minus, 
-    CheckCircle2, 
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import {
+    Save,
+    Loader2,
+    AlertCircle,
+    Plus,
+    Minus,
+    CheckCircle2,
     Info,
     LayoutGrid,
     Share2,
@@ -21,8 +21,17 @@ const ALL_COPY_TYPES = [
     { key: 'a3Bw', label: 'A3 B/N', color: 'slate' },
     { key: 'a3Color', label: 'A3 Color', color: 'orange' },
     { key: 'sra3Bw', label: 'SRA3 B/N', color: 'emerald' },
-    { key: 'sra3Color', label: 'SRA3 Color', color: 'teal' }, // Teal to contrast with SRA3 BW
+    { key: 'sra3Color', label: 'SRA3 Color', color: 'teal' },
 ];
+
+export interface CopyConsumption {
+    a4Bw?: number;
+    a4Color?: number;
+    a3Bw?: number;
+    a3Color?: number;
+    sra3Bw?: number;
+    sra3Color?: number;
+}
 
 interface Distribution {
     nexudusAccountId: string;
@@ -39,13 +48,13 @@ interface NexudusAccount {
 
 interface DistributionDraftManagerProps {
     userId: string;
-    consumption: Record<string, any>;
+    consumption: CopyConsumption;
     onBalanceChange?: (isBalanced: boolean) => void;
     onSaveSuccess?: () => void;
 }
 
-export const DistributionDraftManager: React.FC<DistributionDraftManagerProps> = ({ 
-    userId, 
+export const DistributionDraftManager: React.FC<DistributionDraftManagerProps> = ({
+    userId,
     consumption,
     onBalanceChange,
     onSaveSuccess
@@ -58,6 +67,11 @@ export const DistributionDraftManager: React.FC<DistributionDraftManagerProps> =
 
     const defaultAccountId = useMemo(() => accounts.find(a => a.isDefault === 1)?.id, [accounts]);
 
+    const getConsumptionValue = useCallback((key: string): number => {
+        const val = (consumption as Record<string, unknown>)[key];
+        return typeof val === 'number' ? val : 0;
+    }, [consumption]);
+
     // Load data
     useEffect(() => {
         const loadData = async () => {
@@ -67,10 +81,10 @@ export const DistributionDraftManager: React.FC<DistributionDraftManagerProps> =
                     api.GET('/api/v1/users/{id}/nexudus-accounts', { params: { path: { id: userId } } }),
                     api.GET("/api/v1/billing/distributions", { params: { query: { userId } } })
                 ]);
-                
-                setAccounts((accountsRes.data as any) || []);
-                setDistributions((distRes.data as any) || []);
-            } catch (err) {
+
+                setAccounts((accountsRes.data as unknown as NexudusAccount[]) || []);
+                setDistributions((distRes.data as unknown as Distribution[]) || []);
+            } catch {
                 setError("Error al cargar datos de reparto.");
             } finally {
                 setIsLoading(false);
@@ -87,10 +101,10 @@ export const DistributionDraftManager: React.FC<DistributionDraftManagerProps> =
         });
 
         // Check if balanced for all types with consumption > 0
-        const relevantTypes = ALL_COPY_TYPES.filter(t => (consumption[t.key] || 0) > 0);
+        const relevantTypes = ALL_COPY_TYPES.filter(t => getConsumptionValue(t.key) > 0);
         let isAllBalanced = true;
         relevantTypes.forEach(type => {
-            if (assigned[type.key] !== (consumption[type.key] || 0)) {
+            if (assigned[type.key] !== getConsumptionValue(type.key)) {
                 isAllBalanced = false;
             }
         });
@@ -101,7 +115,7 @@ export const DistributionDraftManager: React.FC<DistributionDraftManagerProps> =
         }
 
         return { assigned, isAllBalanced };
-    }, [distributions, consumption, accounts]);
+    }, [distributions, accounts, getConsumptionValue]);
 
     // Notify parent about balance status
     useEffect(() => {
@@ -115,7 +129,7 @@ export const DistributionDraftManager: React.FC<DistributionDraftManagerProps> =
         const isDefaultAccount = accountId === defaultAccount.id;
         const currentQty = distributions.find(d => d.nexudusAccountId === accountId && d.type === type)?.quantity || 0;
         const newQty = Math.max(0, value);
-        const totalForType = consumption[type] || 0;
+        const totalForType = getConsumptionValue(type);
 
         // If no changes, do nothing
         if (newQty === currentQty) return;
@@ -130,11 +144,11 @@ export const DistributionDraftManager: React.FC<DistributionDraftManagerProps> =
                     // Rule: "Si incrementamos la cuenta por defecto, y tenemos elementos sin asignar, deberemos permitir el incremento"
                     const currentTotalAssigned = totals.assigned[type] || 0;
                     const unassignedPool = Math.max(0, totalForType - currentTotalAssigned);
-                    
+
                     if (unassignedPool <= 0) return prev;
 
                     const actualIncrement = Math.min(diff, unassignedPool);
-                    
+
                     let found = false;
                     const nextDistributions = currentDistributions.map(d => {
                         if (d.nexudusAccountId === accountId && d.type === type) {
@@ -152,11 +166,11 @@ export const DistributionDraftManager: React.FC<DistributionDraftManagerProps> =
                     // Rule: "Si incremento la cuenta B, la cuenta A quedará en X" (subtracting from A)
                     const defaultDistIdx = currentDistributions.findIndex(d => d.nexudusAccountId === defaultAccount.id && d.type === type);
                     const defaultQty = defaultDistIdx >= 0 ? currentDistributions[defaultDistIdx].quantity : 0;
-                    
+
                     if (defaultQty <= 0) return prev; // Cannot increment secondary if A is empty
 
                     const actualIncrement = Math.min(diff, defaultQty);
-                    
+
                     // Update Secondary
                     let secondaryFound = false;
                     const nextDistributions = currentDistributions.map(d => {
@@ -173,7 +187,7 @@ export const DistributionDraftManager: React.FC<DistributionDraftManagerProps> =
                     if (!secondaryFound) {
                         nextDistributions.push({ nexudusAccountId: accountId, type, quantity: actualIncrement });
                     }
-                    
+
                     return nextDistributions;
                 }
             } else {
@@ -199,8 +213,9 @@ export const DistributionDraftManager: React.FC<DistributionDraftManagerProps> =
             if (apiError) throw apiError;
             onSaveSuccess?.();
             setError(null);
-        } catch (err: any) {
-            setError(err.message || "Error al guardar el reparto.");
+        } catch (err: unknown) {
+            const msg = err instanceof Error ? err.message : "Error al guardar el reparto.";
+            setError(msg);
         } finally {
             setIsSaving(false);
         }
@@ -212,11 +227,12 @@ export const DistributionDraftManager: React.FC<DistributionDraftManagerProps> =
 
         const newDistributions: Distribution[] = [];
         ALL_COPY_TYPES.forEach(type => {
-            if (consumption[type.key] > 0) {
+            const val = getConsumptionValue(type.key);
+            if (val > 0) {
                 newDistributions.push({
                     nexudusAccountId: defaultAcc.id,
                     type: type.key,
-                    quantity: consumption[type.key]
+                    quantity: val
                 });
             }
         });
@@ -237,8 +253,9 @@ export const DistributionDraftManager: React.FC<DistributionDraftManagerProps> =
             {/* Header / Summary */}
             <div className="flex flex-col md:flex-row gap-6 items-stretch">
                 <div className="flex-1 grid grid-cols-2 lg:grid-cols-6 gap-3">
-                    {ALL_COPY_TYPES.filter(t => (consumption[t.key] || 0) > 0).map(type => {
-                        const isBalanced = (totals.assigned[type.key] || 0) === (consumption[type.key] || 0);
+                    {ALL_COPY_TYPES.filter(t => getConsumptionValue(t.key) > 0).map(type => {
+                        const consumptionVal = getConsumptionValue(type.key);
+                        const isBalanced = (totals.assigned[type.key] || 0) === consumptionVal;
                         return (
                             <div key={type.key} className={`p-4 rounded-2xl border transition-all ${isBalanced ? 'bg-emerald-500/5 border-emerald-500/10' : 'bg-amber-500/5 border-amber-500/10'}`}>
                                 <p className="text-[8px] font-black uppercase tracking-widest text-slate-400 mb-1">{type.label}</p>
@@ -246,13 +263,13 @@ export const DistributionDraftManager: React.FC<DistributionDraftManagerProps> =
                                     <span className={`text-lg font-black ${isBalanced ? 'text-emerald-500' : 'text-amber-500'}`}>
                                         {totals.assigned[type.key] || 0}
                                     </span>
-                                    <span className="text-[10px] font-bold text-slate-400">/ {consumption[type.key]}</span>
+                                    <span className="text-[10px] font-bold text-slate-400">/ {consumptionVal}</span>
                                 </div>
                             </div>
                         );
                     })}
                 </div>
-                
+
                 <div className={`shrink-0 md:w-64 p-6 rounded-3xl border flex flex-col justify-center items-center text-center gap-2 transition-all ${totals.isAllBalanced ? 'bg-emerald-600 shadow-xl shadow-emerald-500/20 border-emerald-500' : 'bg-amber-500 shadow-xl shadow-amber-500/20 border-amber-400'}`}>
                     {totals.isAllBalanced ? (
                         <>
@@ -281,7 +298,7 @@ export const DistributionDraftManager: React.FC<DistributionDraftManagerProps> =
                         <LayoutGrid size={18} className="text-indigo-500" />
                         <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-white/20">Distribución por Cuenta Nexudus</h3>
                     </div>
-                    <button 
+                    <button
                         onClick={handleAutoFill}
                         className="text-[9px] font-black uppercase tracking-widest text-indigo-500 hover:text-white flex items-center gap-2 px-3 py-1.5 bg-indigo-500/5 hover:bg-indigo-500 rounded-xl border border-indigo-500/10 transition-all hover:scale-105 active:scale-95"
                     >
@@ -307,30 +324,30 @@ export const DistributionDraftManager: React.FC<DistributionDraftManagerProps> =
                                 </div>
 
                                 <div className="flex-1 grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-6">
-                                    {ALL_COPY_TYPES.filter(type => (consumption[type.key] || 0) > 0).map(type => (
+                                    {ALL_COPY_TYPES.filter(type => getConsumptionValue(type.key) > 0).map(type => (
                                         <div key={type.key} className="flex flex-col gap-1.5">
                                             <div className="flex items-center justify-between px-1">
                                                 <label className="text-[8px] font-black text-slate-400 uppercase">{type.label}</label>
-                                                {totals.assigned[type.key] > consumption[type.key] && (
+                                                {totals.assigned[type.key] > getConsumptionValue(type.key) && (
                                                     <AlertCircle size={10} className="text-red-500" />
                                                 )}
                                             </div>
                                             <div className="flex items-center bg-slate-100 dark:bg-black/40 rounded-xl p-1 border border-slate-200 dark:border-white/5 shadow-inner">
-                                                <button 
+                                                <button
                                                     onClick={() => handleUpdateQuantity(account.id, type.key, (distributions.find(d => d.nexudusAccountId === account.id && d.type === type.key)?.quantity || 0) - 1)}
                                                     className="p-1 hover:text-indigo-500 text-slate-400 transition-colors"
                                                 ><Minus size={14} /></button>
-                                                <input 
+                                                <input
                                                     type="number"
                                                     value={distributions.find(d => d.nexudusAccountId === account.id && d.type === type.key)?.quantity ?? ''}
                                                     onChange={(e) => handleUpdateQuantity(account.id, type.key, parseInt(e.target.value || '0'))}
                                                     placeholder="0"
                                                     className="w-full bg-transparent border-none text-center text-xs font-black text-slate-700 dark:text-white outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                                 />
-                                                <button 
+                                                <button
                                                     onClick={() => handleUpdateQuantity(account.id, type.key, (distributions.find(d => d.nexudusAccountId === account.id && d.type === type.key)?.quantity || 0) + 1)}
-                                                    disabled={account.id === defaultAccountId 
-                                                        ? (totals.assigned[type.key] || 0) >= (consumption[type.key] || 0)
+                                                    disabled={account.id === defaultAccountId
+                                                        ? (totals.assigned[type.key] || 0) >= getConsumptionValue(type.key)
                                                         : (distributions.find(d => d.nexudusAccountId === defaultAccountId && d.type === type.key)?.quantity || 0) <= 0
                                                     }
                                                     className="p-1 hover:text-indigo-500 disabled:opacity-20 disabled:hover:text-slate-400 text-slate-400 transition-colors"
@@ -349,8 +366,8 @@ export const DistributionDraftManager: React.FC<DistributionDraftManagerProps> =
             <div className="flex flex-col md:flex-row items-center justify-between gap-6 pt-6 border-t border-slate-200 dark:border-white/5">
                 <div className="flex items-start gap-3">
                     <Info className="text-indigo-400 shrink-0 mt-0.5" size={16} />
-                    <p className="text-[10px] text-slate-400 dark:text-white/20 font-bold leading-relaxed max-w-lg">
-                        Cualquier copia sin repartir aquí será facturada a la <strong className="text-indigo-500 uppercase">Cuenta Principal</strong> automáticamente si el saldo es cero. Utiliza este editor para <strong className="text-slate-600 dark:text-white/40">planificar repartos específicos</strong> antes de sincronizar.
+                    <p className="text-[10px] text-slate-400 dark:text-white/40 font-bold leading-relaxed max-w-lg">
+                        Las copias asignadas a cuentas se registrarán como <strong className="text-indigo-500 uppercase">Vinculadas</strong> listas para subir a Nexudus. Las copias no asignadas se mantendrán como <strong className="text-amber-500 uppercase">Pendientes</strong> sin bloquear la sincronización del mes.
                     </p>
                 </div>
 
@@ -360,7 +377,7 @@ export const DistributionDraftManager: React.FC<DistributionDraftManagerProps> =
                             <AlertCircle size={14} /> {error}
                         </div>
                     )}
-                    <button 
+                    <button
                         onClick={handleSave}
                         disabled={isSaving}
                         className="flex items-center gap-3 px-10 py-4 bg-slate-800 dark:bg-white text-white dark:text-slate-900 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] shadow-xl hover:brightness-110 active:scale-95 transition-all disabled:opacity-50"

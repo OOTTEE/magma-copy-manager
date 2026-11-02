@@ -50,23 +50,34 @@ describe('CopiesFacade', () => {
         it('should allow admin to see any user copies', async () => {
             const adminUser = { id: 'admin-id', role: 'admin' };
             const targetUserId = 'customer-id';
-            
+
             vi.mocked(copiesService.getUserCopies).mockResolvedValue([] as any);
 
             await copiesFacade.getUserCopies(adminUser, targetUserId);
 
-            expect(copiesService.getUserCopies).toHaveBeenCalledWith(targetUserId, undefined, undefined);
+            expect(copiesService.getUserCopies).toHaveBeenCalledWith(targetUserId, undefined, undefined, undefined);
         });
 
         it('should allow customer to see their own copies', async () => {
             const customerUser = { id: 'customer-id', role: 'customer' };
             const targetUserId = 'customer-id';
-            
+
             vi.mocked(copiesService.getUserCopies).mockResolvedValue([] as any);
 
             await copiesFacade.getUserCopies(customerUser, targetUserId);
 
-            expect(copiesService.getUserCopies).toHaveBeenCalledWith(targetUserId, undefined, undefined);
+            expect(copiesService.getUserCopies).toHaveBeenCalledWith(targetUserId, undefined, undefined, undefined);
+        });
+
+        it('should pass period parameter to copiesService', async () => {
+            const adminUser = { id: 'admin-id', role: 'admin' };
+            const targetUserId = 'customer-id';
+
+            vi.mocked(copiesService.getUserCopies).mockResolvedValue([] as any);
+
+            await copiesFacade.getUserCopies(adminUser, targetUserId, undefined, undefined, '2026-11');
+
+            expect(copiesService.getUserCopies).toHaveBeenCalledWith(targetUserId, undefined, undefined, '2026-11');
         });
 
         it('should forbid customer from seeing other user copies', async () => {
@@ -75,7 +86,7 @@ describe('CopiesFacade', () => {
 
             await expect(copiesFacade.getUserCopies(customerUser, targetUserId))
                 .rejects.toThrow('Unauthorized access to resource.');
-            
+
             expect(copiesService.getUserCopies).not.toHaveBeenCalled();
         });
     });
@@ -88,7 +99,7 @@ describe('CopiesFacade', () => {
 
         it('should orchestrate sync successfully', async () => {
             const adminUser = { id: 'admin-id', role: 'admin' };
-            
+
             vi.mocked(printerScraperService.downloadMonthlyCopies).mockResolvedValue('/tmp/report.csv');
             vi.mocked(reportScrapperService.parseReport).mockResolvedValue([
                 { userName: 'user1', a4Color: 10, a4Bw: 5, a3Color: 0, a3Bw: 0 }
@@ -106,12 +117,12 @@ describe('CopiesFacade', () => {
 
         it('should auto-create users when not found in local DB', async () => {
             const adminUser = { id: 'admin-id', role: 'admin' };
-            
+
             vi.mocked(printerScraperService.downloadMonthlyCopies).mockResolvedValue('/tmp/report.csv');
             vi.mocked(reportScrapperService.parseReport).mockResolvedValue([
                 { userName: 'new-user', a4Color: 10, a4Bw: 5, a3Color: 0, a3Bw: 0 }
             ]);
-            
+
             vi.mocked(usersService.getByPrintUser).mockResolvedValue(null);
             vi.mocked(usersService.create).mockResolvedValue({ id: 'new-u1' } as any);
             vi.mocked(copiesService.syncReportRecord).mockResolvedValue({ id: 'new-rec1' } as any);
@@ -130,12 +141,12 @@ describe('CopiesFacade', () => {
 
         it('should handle errors when auto-creation fails', async () => {
             const adminUser = { id: 'admin-id', role: 'admin' };
-            
+
             vi.mocked(printerScraperService.downloadMonthlyCopies).mockResolvedValue('/tmp/report.csv');
             vi.mocked(reportScrapperService.parseReport).mockResolvedValue([
                 { userName: 'failed-user', a4Color: 10, a4Bw: 5, a3Color: 0, a3Bw: 0 }
             ]);
-            
+
             vi.mocked(usersService.getByPrintUser).mockResolvedValue(null);
             vi.mocked(usersService.create).mockRejectedValue(new Error('DB Error'));
 

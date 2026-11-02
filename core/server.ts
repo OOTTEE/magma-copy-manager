@@ -14,6 +14,7 @@ const server = buildApp({
 const start = async () => {
     try {
         logger.info(`Environment: ${process.env.NODE_ENV || 'development'}`);
+        logger.info(`DB: ${process.env.DATABASE_URL || 'null'}`);
         await initializeDbService.initialize();
         await autoBillingService.init();
         await autoSyncService.init();

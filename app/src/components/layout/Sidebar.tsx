@@ -2,30 +2,35 @@ import { NavLink } from "react-router-dom";
 import { useUIStore } from "../../store/uiStore";
 import { useAuthStore } from "../../store/authStore";
 import { BrandLogo } from "../BrandLogo";
-import { 
-  BarChart, 
-  Users, 
-  Settings, 
-  LogOut, 
+import {
+  BarChart,
+  Users,
+  Settings,
+  LogOut,
   ChevronLeft,
   ChevronRight,
-  LayoutDashboard,
-  Zap,
-  History,
+  Activity,
 } from "lucide-react";
 
-const NAV_ITEMS = [
-  { path: "/dashboard", label: "Inicio", icon: LayoutDashboard },
+interface NavItem {
+  path: string;
+  label: string;
+  icon: any;
+  adminOnly?: boolean;
+  customerOnly?: boolean;
+}
+
+const NAV_ITEMS: NavItem[] = [
   { path: "/reports", label: "Reporte Mensual", icon: BarChart, adminOnly: true },
-  { path: "/sync-history", label: "Copias Vinculadas", icon: Zap, adminOnly: true },
-  { path: "/master-history", label: "Historial Maestro", icon: History, adminOnly: true },
+  { path: "/diagnostics", label: "Automatismos", icon: Activity, adminOnly: true },
   { path: "/users", label: "Usuarios", icon: Users, adminOnly: true },
-  { path: "/settings", label: "Ajustes", icon: Settings, adminOnly: true }
+  { path: "/settings", label: "Ajustes", icon: Settings, adminOnly: true },
+  { path: "/dashboard", label: "Mis Consumos", icon: BarChart, customerOnly: true }
 ];
 
 /**
  * Sidebar Component
- * 
+ *
  * Always dark (#221f1f) with orange Magma accents (#f15a24).
  * Collapsible state managed via useUIStore.
  */
@@ -33,7 +38,11 @@ export const Sidebar = () => {
   const { isSidebarCollapsed, toggleSidebar, version } = useUIStore();
   const { logout, user, role } = useAuthStore();
 
-  const filteredNavItems = NAV_ITEMS.filter(item => !item.adminOnly || role === 'admin');
+  const filteredNavItems = NAV_ITEMS.filter(item => {
+    if (item.adminOnly && role !== 'admin') return false;
+    if (item.customerOnly && role === 'admin') return false;
+    return true;
+  });
 
   return (
     <aside
@@ -61,18 +70,18 @@ export const Sidebar = () => {
             to={item.path}
             className={({ isActive }) => `
               group flex items-center gap-3 px-4 py-3.5 rounded-2xl transition-all duration-200
-              ${isActive 
-                ? "bg-[#f15a24] text-white shadow-lg shadow-[#f15a24]/20" 
+              ${isActive
+                ? "bg-[#f15a24] text-white shadow-lg shadow-[#f15a24]/20"
                 : "text-white/60 hover:bg-white/5 hover:text-white"
               }
             `}
           >
             {({ isActive }) => (
               <>
-                <item.icon 
-                  size={22} 
-                  strokeWidth={1.5} 
-                  className={isActive ? "text-white" : "text-white/40 group-hover:text-[#f15a24] transition-colors"} 
+                <item.icon
+                  size={22}
+                  strokeWidth={1.5}
+                  className={isActive ? "text-white" : "text-white/40 group-hover:text-[#f15a24] transition-colors"}
                 />
                 {!isSidebarCollapsed && (
                   <span className="font-semibold text-sm tracking-wide">{item.label}</span>

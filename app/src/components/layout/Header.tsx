@@ -7,7 +7,7 @@ import { Sun, Moon, Bell, X, AlertCircle } from "lucide-react";
 
 /**
  * Header Component
- * 
+ *
  * Top navigation bar with dynamic title and dark mode toggle.
  */
 export const Header = () => {
@@ -24,9 +24,10 @@ export const Header = () => {
     // Map path to section title
     const getPageTitle = (pathname: string) => {
         switch (pathname) {
-            case "/dashboard": return "Inicio";
+            case "/dashboard": return "Mis Consumos";
             case "/users": return "Gestión de Usuarios";
             case "/reports": return "Reporte Mensual";
+            case "/diagnostics": return "Centro de Automatismos";
             case "/settings": return "Ajustes del Sistema";
             default: return "Magma Espacio";
         }
@@ -51,11 +52,11 @@ export const Header = () => {
             <div className="flex items-center gap-4">
                 {/* Notifications Wrapper */}
                 <div className="relative">
-                    <button 
+                    <button
                         onClick={() => setShowNotifications(!showNotifications)}
                         className={`relative p-2.5 rounded-xl transition-all shadow-lg active:scale-95 ${
-                            hasError 
-                            ? "text-red-500 bg-red-500/10 border border-red-500/20 hover:bg-red-500/20" 
+                            hasError
+                            ? "text-red-500 bg-red-500/10 border border-red-500/20 hover:bg-red-500/20"
                             : "text-slate-400 hover:text-slate-600 dark:text-white/20 dark:hover:text-white bg-slate-100 dark:bg-white/5 border border-transparent hover:border-slate-200 dark:hover:border-white/10"
                         }`}
                         title="Notificaciones"
@@ -69,16 +70,16 @@ export const Header = () => {
                     {/* Notifications Dropdown (UX Improvement) */}
                     {showNotifications && (
                         <>
-                            <div 
-                                className="fixed inset-0 z-40" 
-                                onClick={() => setShowNotifications(false)} 
+                            <div
+                                className="fixed inset-0 z-40"
+                                onClick={() => setShowNotifications(false)}
                             />
                             <div className="absolute top-full right-0 mt-4 w-80 bg-white/80 dark:bg-[#1a1818]/90 backdrop-blur-2xl border border-slate-200 dark:border-white/10 rounded-[2rem] shadow-2xl shadow-black/20 dark:shadow-indigo-500/10 z-50 p-6 animate-in fade-in slide-in-from-top-4 duration-300">
                                 <div className="flex items-center justify-between mb-6">
                                     <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-white/30">
                                         Notificaciones
                                     </span>
-                                    <button 
+                                    <button
                                         onClick={() => setShowNotifications(false)}
                                         className="p-1 hover:bg-slate-100 dark:hover:bg-white/5 rounded-lg text-slate-400"
                                     >
@@ -98,7 +99,7 @@ export const Header = () => {
                                                     <p className="text-[11px] text-slate-500 dark:text-white/40 mt-1">
                                                         Nexudus no pudo sincronizar las facturas.
                                                     </p>
-                                                    <button 
+                                                    <button
                                                         onClick={() => {
                                                             setShowNotifications(false);
                                                             navigate('/settings');

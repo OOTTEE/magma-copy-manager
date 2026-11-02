@@ -25,6 +25,12 @@ vi.mock('../../db', () => ({
     db: mockDb
 }));
 
+vi.mock('../../services/reports/reports.service', () => ({
+    reportsService: {
+        getMonthlyAccumulationForUser: vi.fn().mockResolvedValue(null)
+    }
+}));
+
 describe('DashboardFacade', () => {
     const userId = 'user-123';
 
@@ -39,7 +45,7 @@ describe('DashboardFacade', () => {
         // Mock current month usage
         vi.mocked(db.get).mockResolvedValueOnce({ count: 30 }); // for currentMonthUsage
         vi.mocked(db.get).mockResolvedValueOnce({ total: 350 }); // for ytdTotal
-        
+
         // Mock YTD monthly usage
         mockDb.orderBy.mockResolvedValueOnce([
             { month: '2024-01', total: 100 },
@@ -56,7 +62,7 @@ describe('DashboardFacade', () => {
         expect(result.currentMonthUsage.count).toBe(30);
         expect(result.ytdTotal).toBe(350);
         expect(result.ytdMonthlyExpenses).toHaveLength(3);
-        
+
         vi.useRealTimers();
     });
 

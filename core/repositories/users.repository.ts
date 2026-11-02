@@ -20,6 +20,12 @@ export const usersRepository = {
     findAll: async () => {
         return await db.select().from(users);
     },
+    findAllActive: async (includeIgnored: boolean = false) => {
+        if (includeIgnored) {
+            return await db.select().from(users);
+        }
+        return await db.select().from(users).where(eq(users.isIgnored, 0));
+    },
     findById: async (id: string) => {
         const result = await db.select().from(users).where(eq(users.id, id));
         return result.length > 0 ? result[0] : null;

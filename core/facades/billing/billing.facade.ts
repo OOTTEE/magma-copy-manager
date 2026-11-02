@@ -22,10 +22,10 @@ export const billingFacade = {
   getDistributions: async (requestingUser: { id: string; role: string }, userId?: string) => {
     // Determine target user
     const targetUserId = (requestingUser.role === 'admin' && userId) ? userId : requestingUser.id;
-    
+
     const { fromStr } = await reportsService.getPeriodDates();
     const monthStr = fromStr.slice(0, 7);
-    
+
     return await billingService.getDistributions(targetUserId, monthStr);
   },
 
@@ -35,7 +35,7 @@ export const billingFacade = {
   saveDistributions: async (requestingUser: { id: string; role: string }, userId: string | undefined, distributions: any[]) => {
     // If not admin, the user can only save distributions for themselves
     const targetUserId = (requestingUser.role === 'admin' && userId) ? userId : requestingUser.id;
-    
+
     // Safety check: Users can only distribution their OWN consumption
     if (requestingUser.role !== 'admin' && userId && userId !== requestingUser.id) {
        const error = new Error('Unauthorized distribution attempt.');
@@ -45,7 +45,7 @@ export const billingFacade = {
 
     const { fromStr } = await reportsService.getPeriodDates();
     const monthStr = fromStr.slice(0, 7);
-    
+
     return await billingService.saveDistributions(targetUserId, monthStr, distributions);
   },
 
@@ -55,22 +55,21 @@ export const billingFacade = {
     return await billingService.getSyncStatus(userId, monthStr);
   },
 
-  syncUserConsumption: async (requestingUser: { id: string; role: string }, userId: string, options: { from?: string; to?: string; includeAllPending?: boolean; note?: string; nexudusAccountId?: string } = {}) => {
+  syncUserConsumption: async (requestingUser: { id: string; role: string }, userId: string, options: { from?: string; to?: string; includeAllPending?: boolean; note?: string; nexudusAccountId?: string; period?: string; partial?: boolean } = {}) => {
     if (requestingUser.role !== 'admin') {
       const error = new Error('Only admins can trigger synchronization.');
       (error as any).statusCode = 403;
       throw error;
     }
 
-    // We allow multiple syncs if the user wants to sync different periods or "all pending"
-    // So we might want to relax the getSyncStatus check or make it more specific
-    
     return await billingService.syncUserConsumption(userId, {
         from: options.from,
         to: options.to,
         includeAllPending: options.includeAllPending,
         customNote: options.note,
-        nexudusAccountId: options.nexudusAccountId
+        nexudusAccountId: options.nexudusAccountId,
+        period: options.period,
+        partial: options.partial
     });
   },
 
@@ -96,7 +95,7 @@ export const billingFacade = {
    * Returns a paginated and filtered list of all synchronization events.
    */
   listSyncHistory: async (
-    requestingUser: { id: string; role: string }, 
+    requestingUser: { id: string; role: string },
     params: { page: number; limit: number; userIds?: string[]; months?: string[] }
   ) => {
     if (requestingUser.role !== 'admin') {
@@ -111,7 +110,7 @@ export const billingFacade = {
   /**
    * Triggers the monthly consumption synchronization with Nexudus.
    */
-  syncWithNexudus: async (requestingUser: { id: string; role: string }, options: { from?: string; to?: string; includeAllPending?: boolean } = {}) => {
+  syncWithNexudus: async (requestingUser: { id: string; role: string }, options: { from?: string; to?: string; includeAllPending?: boolean; period?: string; partial?: boolean } = {}) => {
     if (requestingUser.role !== 'admin') {
       const error = new Error('Only admins can trigger Nexudus synchronization.');
       (error as any).statusCode = 403;

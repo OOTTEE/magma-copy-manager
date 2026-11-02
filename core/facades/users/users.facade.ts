@@ -10,9 +10,10 @@ const _mapUser = (user: any) => ({
     nexudusUser: user.nexudusUser,
     role: user.role,
     a3NoPaperMode: user.a3NoPaperMode,
-    _links: { 
-        self: `/api/v1/users/${user.id}`, 
-        copies: `/api/v1/users/${user.id}/copies` 
+    isIgnored: user.isIgnored ?? 0,
+    _links: {
+        self: `/api/v1/users/${user.id}`,
+        copies: `/api/v1/users/${user.id}/copies`
     }
 });
 

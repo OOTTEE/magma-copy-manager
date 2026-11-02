@@ -25,9 +25,11 @@ export const copiesCountSchema = {
 export const copySchema = {
     type: 'object',
     properties: {
+        id: { type: 'string' },
         datetime: { type: 'string', format: 'date-time' },
         count: copiesCountSchema,
         total: copiesCountSchema,
+        isSynced: { type: 'boolean' },
         _links: {
             type: 'object',
             properties: {
@@ -46,6 +48,8 @@ export const userSchema = {
         role: { type: 'string', enum: ['admin', 'customer'] },
         printUser: { type: 'string' },
         nexudusUser: { type: 'string' },
+        a3NoPaperMode: { type: 'number' },
+        isIgnored: { type: 'number' },
         _links: {
             type: 'object',
             properties: {

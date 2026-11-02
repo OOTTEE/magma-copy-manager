@@ -7,9 +7,9 @@ import { errorSchema, copySchema } from '../../../../../schemas';
 
 const copiesRoute: FastifyPluginAsync = async (fastify) => {
 
-  fastify.get<{ Params: { userId: string }, Querystring: { from?: string, to?: string } }>('/', {
+  fastify.get<{ Params: { userId: string }, Querystring: { from?: string, to?: string, period?: string } }>('/', {
     schema: {
-      description: 'Get all copies for a user, the from and to are optional.',
+      description: 'Get all copies for a user, the from, to, and period are optional.',
       tags: ['Copies'],
       params: {
         type: 'object',
@@ -19,8 +19,9 @@ const copiesRoute: FastifyPluginAsync = async (fastify) => {
       querystring: {
         type: 'object',
         properties: {
-          from: { type: 'string', format: 'date' },
-          to: { type: 'string', format: 'date' }
+          from: { type: 'string' },
+          to: { type: 'string' },
+          period: { type: 'string', pattern: '^\\d{4}-\\d{2}$' }
         }
       },
       response: {
@@ -32,11 +33,11 @@ const copiesRoute: FastifyPluginAsync = async (fastify) => {
     preValidation: [fastify.authenticate]
   }, async (request, reply) => {
     const { userId } = request.params;
-    const { from, to } = request.query;
+    const { from, to, period } = request.query;
     const user = request.user as { id: string, role: string };
-    
+
     try {
-      const result = await copiesFacade.getUserCopies(user, userId, from, to);
+      const result = await copiesFacade.getUserCopies(user, userId, from, to, period);
       return reply.send(result);
     } catch (error: any) {
       return reply.status(error.statusCode || 500).send({

@@ -11,7 +11,8 @@ export const copiesRepository = {
         return await db
             .select()
             .from(copies)
-            .where(and(...conditions));
+            .where(and(...conditions))
+            .orderBy(desc(copies.datetime));
     },
     findAll: async () => {
         return await db

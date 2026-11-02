@@ -39,7 +39,7 @@ describe('BillingFacade', () => {
 
             const options = { from: '2024-01-01', includeAllPending: true, note: 'Test note' };
             const result = await billingFacade.syncUserConsumption(adminUser, 'user-1', options);
-            
+
             expect(result.salesCreated).toBe(1);
             expect(billingService.syncUserConsumption).toHaveBeenCalledWith('user-1', {
                 from: options.from,
@@ -64,12 +64,38 @@ describe('BillingFacade', () => {
     describe('syncWithNexudus', () => {
         it('should allow admin to trigger global sync with options', async () => {
             vi.mocked(billingService.syncMonthlyConsumption).mockResolvedValue({ results: [] } as any);
-            
+
             const options = { from: '2024-01-01', to: '2024-01-31' };
             const result = await billingFacade.syncWithNexudus(adminUser, options);
-            
+
             expect(result.results).toBeInstanceOf(Array);
             expect(billingService.syncMonthlyConsumption).toHaveBeenCalledWith(options);
+        });
+    });
+
+    describe('rollbackSyncEvent and rollbackSyncGroup', () => {
+        it('should allow admin to rollback a sync event', async () => {
+            vi.mocked(billingService.rollbackSyncEvent).mockResolvedValue({ localId: 's1', remoteId: 123, status: 'rolled_back' } as any);
+            const result = await billingFacade.rollbackSyncEvent('s1', adminUser);
+            expect(result.status).toBe('rolled_back');
+            expect(billingService.rollbackSyncEvent).toHaveBeenCalledWith('s1', false);
+        });
+
+        it('should deny customer to rollback a sync event', async () => {
+            await expect(billingFacade.rollbackSyncEvent('s1', customerUser))
+                .rejects.toThrow('Access denied. Only administrators can perform rollbacks.');
+        });
+
+        it('should allow admin to rollback a sync group', async () => {
+            vi.mocked(billingService.rollbackSyncGroup).mockResolvedValue([{ localId: 's1', remoteId: 123, status: 'rolled_back' }] as any);
+            const result = await billingFacade.rollbackSyncGroup(['s1'], adminUser, true);
+            expect(result).toHaveLength(1);
+            expect(billingService.rollbackSyncGroup).toHaveBeenCalledWith(['s1'], true);
+        });
+
+        it('should deny customer to rollback a sync group', async () => {
+            await expect(billingFacade.rollbackSyncGroup(['s1'], customerUser))
+                .rejects.toThrow('Access denied. Only administrators can perform rollbacks.');
         });
     });
 });

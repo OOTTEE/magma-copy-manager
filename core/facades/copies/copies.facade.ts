@@ -21,7 +21,8 @@ export const copiesFacade = {
         requestingUser: { id: string; role: string },
         targetUserId: string,
         from?: string,
-        to?: string
+        to?: string,
+        period?: string
     ) => {
         // Business Rule: A user can only see their own copies unless they are an admin.
         if (requestingUser.role !== 'admin' && requestingUser.id !== targetUserId) {
@@ -30,7 +31,7 @@ export const copiesFacade = {
             throw error;
         }
 
-        return await copiesService.getUserCopies(targetUserId, from, to);
+        return await copiesService.getUserCopies(targetUserId, from, to, period);
     },
 
 
@@ -47,7 +48,7 @@ export const copiesFacade = {
 
         const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
         const tempPath = await printerScraperService.downloadMonthlyCopies();
-        
+
         // Audit: Move to permanent storage
         const auditDir = path.join(__dirname, serverConfig.reportStorageFolder);
         if (!fs.existsSync(auditDir)) fs.mkdirSync(auditDir, { recursive: true });
@@ -58,16 +59,25 @@ export const copiesFacade = {
         const results = {
             status: 'success' as 'success' | 'partial_success' | 'error',
             syncedCount: 0,
-            errors: [] as { user: string, message: string }[],
+            errors: [] as { userId?: string; username: string; printUser?: string; error: string }[],
+            changed: [] as {
+                userId: string;
+                username: string;
+                printUser: string;
+                delta: { a4Bw: number; a4Color: number; a3Bw: number; a3Color: number; total: number };
+            }[],
+            unchangedCount: 0,
             reportPath: auditPath
         };
 
         const now = new Date().toISOString();
 
         for (const report of reports) {
+            let currentUserId: string | undefined;
+            let currentUsername = report.userName;
             try {
                 let user = await usersService.getByPrintUser(report.userName);
-                
+
                 // NEW: Auto-create user if not found
                 if (!user) {
                     logger.info({ printUser: report.userName }, 'Copies: User not found during sync. Auto-creating...');
@@ -81,6 +91,8 @@ export const copiesFacade = {
                 }
 
                 if (user) {
+                    currentUserId = user.id;
+                    currentUsername = user.username;
                     const savedRecord = await copiesService.syncReportRecord(user.id, {
                         a4Color: report.a4Color,
                         a4Bw: report.a4Bw,
@@ -90,10 +102,31 @@ export const copiesFacade = {
 
                     if (savedRecord) {
                         results.syncedCount++;
+                        results.changed.push({
+                            userId: user.id,
+                            username: user.username,
+                            printUser: user.printUser,
+                            delta: {
+                                a4Bw: savedRecord.a4Bw,
+                                a4Color: savedRecord.a4Color,
+                                a3Bw: savedRecord.a3Bw,
+                                a3Color: savedRecord.a3Color,
+                                total: savedRecord.a4Bw + savedRecord.a4Color + savedRecord.a3Bw + savedRecord.a3Color
+                            }
+                        });
+                    } else {
+                        results.unchangedCount++;
                     }
                 }
             } catch (err: any) {
-                results.errors.push({ user: report.userName, message: err.message });
+                results.errors.push({
+                    userId: currentUserId,
+                    username: currentUsername,
+                    user: report.userName,
+                    printUser: report.userName,
+                    message: err.message,
+                    error: err.message
+                });
             }
         }
 

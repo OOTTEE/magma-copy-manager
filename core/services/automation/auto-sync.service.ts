@@ -10,7 +10,7 @@ import { serverConfig } from '../../config/server.config';
 
 /**
  * AutoSync Service
- * 
+ *
  * Orchestrates the automated printer copy synchronization.
  * Handles recurring schedules (daily/weekly) and error notifications.
  */
@@ -33,7 +33,7 @@ export class AutoSyncService {
 
         if (enabled) {
             const [hour, minute] = time.split(':').map(s => parseInt(s, 10));
-            
+
             let cronExpr = '';
             if (frequency === 'daily') {
                 // minute hour * * *
@@ -45,7 +45,7 @@ export class AutoSyncService {
                 const cronDay = dayOfWeek === 7 ? 0 : dayOfWeek;
                 cronExpr = `${minute || 0} ${hour || 2} * * ${cronDay}`;
             }
-            
+
             logger.info(`AutoSync: Scheduling job (${frequency}): ${cronExpr}`);
             this.scheduledTask = cron.schedule(cronExpr, () => {
                 this.runJob({ id: 'system', role: 'admin' }).catch(err => {
@@ -82,10 +82,12 @@ export class AutoSyncService {
 
         this.isRunning = true;
         const logId = randomUUID();
+        const startMs = Date.now();
         const startTime = new Date().toISOString();
-        let status: 'success' | 'failed' = 'success';
+        let status: 'success' | 'failed' | 'partial' = 'success';
         let summary = '';
         let errorDetails = '';
+        let syncResult: any = null;
 
         logger.info({ logId, startTime }, 'AutoSync: Starting job');
 
@@ -94,9 +96,21 @@ export class AutoSyncService {
             for (let attempt = 1; attempt <= 3; attempt++) {
                 try {
                     logger.info({ attempt }, 'AutoSync: Syncing printer...');
-                    const result = await copiesFacade.syncPrinterCopies(requestingUser);
-                    summary = `Sincronización completada. ${result.syncedCount || 0} usuarios actualizados.`;
-                    break; 
+                    syncResult = await copiesFacade.syncPrinterCopies(requestingUser);
+                    summary = `Sincronización completada. ${syncResult.syncedCount || 0} usuarios actualizados.`;
+
+                    if (syncResult.errors && syncResult.errors.length > 0) {
+                        if (syncResult.syncedCount > 0) {
+                            status = 'partial';
+                            summary = `Sincronización parcial: ${syncResult.syncedCount} actualizados, ${syncResult.errors.length} incidencias.`;
+                        } else {
+                            status = 'failed';
+                            summary = `Sincronización fallida: ${syncResult.errors.length} incidencias.`;
+                        }
+                    } else {
+                        status = 'success';
+                    }
+                    break;
                 } catch (err: any) {
                     logger.warn({ attempt, error: err.message }, 'AutoSync: Attempt failed');
                     if (attempt === 3) throw err;
@@ -104,14 +118,17 @@ export class AutoSyncService {
                 }
             }
 
-            // If we are here, success! Clear last error
-            await settingsService.updateSetting('auto_sync_last_error', '');
+            // If we are here, clear last error if success/partial
+            if (status !== 'failed') {
+                await settingsService.updateSetting('auto_sync_last_error', '');
+            }
 
         } catch (err: any) {
             logger.error(err, 'AutoSync: Job Error');
             status = 'failed';
-            summary = `Error en sincronización: ${err.message}`;
-            errorDetails = err.message;
+            const firstLine = (err.message || '').split('\n')[0].trim();
+            summary = `Error en sincronización: ${firstLine}`;
+            errorDetails = err.stack || err.message;
 
             // Persist last error for proactive notification
             await settingsService.updateSetting('auto_sync_last_error', err.message);
@@ -125,14 +142,24 @@ export class AutoSyncService {
                 details: err.message
             });
         } finally {
+            const durationMs = Date.now() - startMs;
+            const logDetails = {
+                durationMs,
+                trace: errorDetails || undefined,
+                errors: syncResult?.errors || (errorDetails ? [{ username: 'Sistema', error: errorDetails }] : []),
+                changed: syncResult?.changed || [],
+                unchangedCount: syncResult?.unchangedCount || 0
+            };
+
             // Save Log
             await db.insert(syncLogs).values({
                 id: logId,
                 datetime: startTime,
                 status,
                 triggerType,
+                processType: 'sync',
                 summary,
-                details: JSON.stringify({ error: errorDetails })
+                details: JSON.stringify(logDetails)
             }).run();
 
             this.isRunning = false;

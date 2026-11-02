@@ -56,12 +56,54 @@ Magma nace para eliminar la fricción operativa en la gestión de costes de impr
 | 2026-04-08 | UX / User Identity | Interactive User Linking | Transformar el estado "Pendiente de Nexudus" de un indicador pasivo a una acción directa (botón -> modal). Esto refuerza el rol de Magma como puente manual guiado cuando la automatización no es posible. |
 | 2026-04-09 | Multi-account Sync UX | Expandable Row Drill-down | Para evitar la fatiga visual en usuarios con múltiples cuentas, se adopta un modelo de "Resumen + Expansión". Esto mantiene la tabla limpia para el 90% de los usuarios mientras aporta detalle total para casos complejos. |
 | 2026-04-09 | Pre-Billing Allocation | Draft Distribution (Report) | Permitir al administrador pre-asignar consumos a diferentes cuentas *antes* de la sincronización. Esto desplaza la complejidad del post-cobro a una fase de planificación controlada, asegurando que la suma de copias sea correcta visualmente mediante indicadores de balance. |
+| 2026-10-29 | Monthly Report UX | Period Accordion Cards | Agrupación visual en tarjetas verticales desplegables por mes. Permite auditar y controlar el estado contable de múltiples períodos sin mezclar consumos en una lista plana. |
+| 2026-10-29 | User Lifecycle / Billing | Ignored / Silent Orphan Policy | Los usuarios sin Nexudus se ocultan por defecto en reportes. Posibilidad de marcar cuentas como 'Ignoradas' (staff, mantenimiento) para que nunca generen avisos ni aparezcan en el flujo de cobro. |
+| 2026-10-29 | Billing Flexibility | Partial Copy Sync Support | En el reporte mensual se desglosan Copias Vinculadas vs Pendientes. Se autoriza la sincronización parcial a Nexudus de consumos asignados sin bloquear el flujo por copias pendientes de reparto. |
+| 2026-11-02 | Automation Diagnostics | Master-Detail Split Screen | Extracción del historial de ejecuciones de Ajustes a un Centro de Diagnóstico propio para Administradores. Patrón de 2 columnas (lista cronológica + inspección profunda), filtrado por ciclo contable y segregación de usuarios con error/cambio vs inactivos para eliminar ruido visual. |
+| 2026-11-02 | Granular Audit / Master History | Inline Nested Ledger & Screen Absorption | Absorber el Historial Maestro dentro del Reporte Mensual mediante filas expandibles por usuario y período. Eliminar la pantalla plana del Historial Maestro para simplificar la navegación y centralizar la auditoría contextual en el cierre mensual. |
+| 2026-11-02 | User Lifecycle | Holistic Ignored User Management (Enfoque B) | Habilitar la edición bidireccional del estado 'Ignorado' en el editor de usuario con toggle contextual. Incorporar badges semánticos de estado (Facturable vs Ignorado) y filtros de auditoría en la lista principal de usuarios. |
+| 2026-11-02 | Admin Navigation | Direct Landing on Monthly Report (Camino A) | Retirada de la pantalla de 'Inicio' para el rol Administrador para eliminar pantallas de vanidad pasivas. Los administradores aterrizan directamente en el 'Reporte Mensual' al autenticarse, optimizando el tiempo hacia la acción operativa. Los clientes mantienen su vista personal de consumos. |
+| 2026-11-02 | Synced Copies / Rollback Policy | Inline Rollback & Time-Bound Reversion (Visión A) | Supresión de la pantalla plana 'Copias Vinculadas' del menú. Integración de la auditoría de ventas y acción de reversión (rollback) directamente en el detalle de usuario del Reporte Mensual. Blindaje temporal: la reversión solo está permitida mientras el período contable esté vigente (no caducado). |
 
-### 3. Reporte Mensual: La Pre-Auditoría (Drafting)
-El reporte mensual evoluciona de una vista estática a una herramienta de **Planificación de Cobro**:
+### 3. Reporte Mensual: La Pre-Auditoría (Drafting) y Cierre Periódico
+El reporte mensual evoluciona de una vista estática a un **Centro de Cierre y Planificación Contable**:
+- **Estructura de Tarjetas Verticales Desplegables**: Cada período/mes se presenta en una tarjeta colapsable independiente con métricas de salud (Copias Facturadas, Copias Pendientes, Estado del Mes).
+- **Higienización del Flujo (Cero Falsas Alarmas)**: Los usuarios de impresora sin vincular a Nexudus quedan ocultos por defecto del reporte mensual. Se habilita un estado "Ignorado" para cuentas que nunca deben facturarse (mantenimiento, personal interno).
+- **Desglose Binario por Usuario (Vinculadas vs Pendientes)**: Cada coworker muestra de un vistazo sus copias con destino asignado vs copias pendientes de asignación.
+- **Sincronización Parcial Permitida**: El administrador puede empujar a Nexudus las copias vinculadas y listas, sin que las copias pendientes de reparto bloqueen el cobro del período.
 - **Inline Distribution Editor**: Panel expandible para repartir manualmente las copias entre cuentas nexudus vinculadas.
-- **Balance Check 1:1**: Indicador visual dinámico que valida que la suma de copias asignadas coincide exactamente con el total capturado de la impresora. No se permite la sincronización si el balance no es verde.
+- **Balance Check 1:1**: Indicador visual dinámico que valida que la suma de copias asignadas coincide exactamente con el total capturado de la impresora.
 - **Remainder Auto-Fill**: Botón inteligente para asignar todo el remanente a la cuenta por defecto en un solo clic.
+- **Auditoría Granular Integrada (Inline Nested Ledger)**: Cada coworker dispone de un desplegable contextual que muestra las capturas individuales de la impresora realizadas dentro del ciclo (fecha/hora, desglose A4/A3 Color/BN y delta sumado).
+- **Consolidación de Arquitectura de Vistas (Cero Duplicidades)**: La pantalla aislada de 'Historial Maestro' se retira del menú de navegación. Toda auditoría de lecturas se unifica dentro del contexto mensual donde aporta valor operativo directo.
+
+### 4. Centro de Diagnóstico de Automatismos (Master-Detail)
+Extracción de la auditoría de automatismos de la pantalla de Ajustes hacia un espacio exclusivo de observabilidad para el Administrador:
+- **Layout en Dos Columnas (Master-Detail)**: Columna izquierda estrecha con el listado cronológico de ejecuciones (recientes primero con indicador semántico de resultado); columna derecha ancha con la inspección profunda del evento seleccionado.
+- **Barra de Filtros Multifactorial**: Selector de ciclo de facturación (período contable), filtro por estado (Todos, Solo Fallidos, Exitosos) y por tipo de proceso (Sincronización de Impresora vs Facturación en Nexudus).
+- **Aislamiento del Ruido (Signal over Noise)**: En cada evento, los usuarios con incidencias o cambios de consumo se priorizan en bloques visibles destacados; los usuarios inactivos o sin cambios se agrupan en una sección colapsada.
+- **Preservación Integral de la Traza**: Registro técnico accesible en un visor monoespaciado sin recortes y con acción de un clic para copiar al portapapeles.
+
+### 5. Gestión Integral de Cuentas Ignoradas (Ciclo de Vida de Usuario)
+Control bidireccional y visibilidad panorámica para excluir o reincorporar cuentas en los procesos de facturación automática:
+- **Control Semántico en Editor**: Selector interactivo tipo interruptor dentro del formulario de usuario con micro-copy contextual que aclara el alcance de la exclusión (se omiten de reportes y de Nexudus sin perder la traza técnica física).
+- **Visibilidad en Lista y Tabla (Badges)**: Distinción visual clara entre cuentas facturables y cuentas ignoradas (personal de limpieza, soporte de impresoras, mantenimiento).
+- **Filtro Rápido de Auditoría**: Píldoras o selector en la cabecera de la lista de usuarios para filtrar rápidamente entre *Todos*, *Facturables* o *Ignorados*.
+
+### 6. Simplificación Radical de Navegación (Entrada Directa a Reporte Mensual)
+Eliminación de la pantalla pasiva de Inicio para el Administrador en favor de un flujo centrado en la acción inmediata:
+- **Cero Grasa Cognitiva**: Se suprime la pantalla de Inicio genérica para el Administrador. Al autenticarse o entrar a la aplicación, aterriza directamente en el **Reporte Mensual** con el período activo en curso.
+- **Navegación Enfocada**: La barra lateral para el Administrador se compacta en los 4 módulos esenciales: *Reporte Mensual*, *Centro de Automatismos*, *Usuarios* y *Ajustes*.
+- **Preservación del Espacio del Cliente**: Los usuarios con rol de cliente mantienen su experiencia personal (*Mis Consumos*), accediendo a su propio desglose de copias y previsión de factura sin verse afectados.
+
+### 7. Auditoría de Ventas Contextual y Reversión Temporalmente Acotada
+Unificación del ciclo de vida contable dentro del Reporte Mensual y blindaje de la integridad histórica:
+- **Supresión de la Pantalla Aislada**: Se elimina la ruta y el acceso de "Copias Vinculadas" del menú lateral.
+- **Acción 'Deshacer Sincronización' Integrada en Detalle de Usuario**: Dentro del modal o drawer de detalle de copias de cada coworker en un período específico, se visualizan las ventas generadas y se permite disparar la reversión (devolviendo el consumo a estado pendiente y anulando la venta en la pasarela externa).
+- **Regla de Cierre Temporal Inmutable (Ventana Operativa hasta Fin de Mes Natural)**:
+  - **Dinámica Operativa**: El corte de lectura de copias del ciclo finaliza un par de días antes del cierre de mes, pero la **facturación real y efectiva se ejecuta el último día del mes**.
+  - **Ventana de Gracia**: La posibilidad de rectificar y deshacer una sincronización permanece activa durante todo el mes natural correspondiente al ciclo (hasta el último segundo del último día de ese mes).
+  - **Bloqueo Definitivo**: Llegado el primer día del mes siguiente (ej. 1 de diciembre para el ciclo de noviembre), la facturación ya es un hecho consumado e irrevocable en el sistema contable. A partir de ese momento, la opción de «Deshacer sincronización» queda terminantemente bloqueada en Magma para impedir descuadres fiscales y dobles facturaciones.
 
 ## Decisiones Estéticas (UX Premium)
 

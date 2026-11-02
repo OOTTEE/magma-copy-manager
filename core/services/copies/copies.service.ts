@@ -1,10 +1,21 @@
 import { randomUUID } from 'crypto';
 import { copiesRepository } from '../../repositories/copies.repository';
+import { reportsService } from '../reports/reports.service';
 
 export const copiesService = {
-    getUserCopies: async (userId: string, from?: string, to?: string) => {
-        const records = await copiesRepository.findCopiesByUserId(userId, from, to);
+    getUserCopies: async (userId: string, from?: string, to?: string, period?: string) => {
+        let fromDate = from;
+        let toDate = to;
+
+        if (period && !from && !to) {
+            const periodDates = await reportsService.getPeriodDates(period);
+            fromDate = periodDates.fromStr;
+            toDate = periodDates.toStr;
+        }
+
+        const records = await copiesRepository.findCopiesByUserId(userId, fromDate, toDate);
         return records.map((record: any) => ({
+            id: record.id,
             datetime: record.datetime,
             count: {
                 a4Color: record.a4Color,
@@ -18,6 +29,7 @@ export const copiesService = {
                 a3Color: record.a3ColorTotal,
                 a3Bw: record.a3BwTotal
             },
+            isSynced: Boolean(record.nexudusSaleId),
             _links: {
                 self: `/api/v1/users/${userId}/copies`,
                 user: `/api/v1/users/${userId}`
@@ -26,7 +38,7 @@ export const copiesService = {
     },
     syncReportRecord: async (userId: string, reportData: { a4Color: number, a4Bw: number, a3Color: number, a3Bw: number }, datetime: string) => {
         const lastRecord = await copiesRepository.findLatestByUserId(userId);
-        
+
         const calculateIncrement = (currentTotal: number, lastTotal: number) => {
             if (!lastRecord || currentTotal < lastTotal) {
                 return currentTotal; // Reset or first record

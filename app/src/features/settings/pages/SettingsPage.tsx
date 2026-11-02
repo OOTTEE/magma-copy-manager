@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
 import { api } from '../../../services/api';
-import { 
-    Settings, 
-    Globe, 
-    Calendar, 
-    Save, 
-    Loader2, 
-    CheckCircle2, 
+import {
+    Settings,
+    Globe,
+    Calendar,
+    Save,
+    Loader2,
+    CheckCircle2,
     AlertCircle,
     Info,
     ShieldCheck,
@@ -18,17 +18,16 @@ import {
     Database,
     ChevronDown
 } from 'lucide-react';
-import { AutoBillingLogs } from '../components/AutoBillingLogs';
 
 /**
  * SettingsPage Component
- * 
+ *
  * Centralized system configuration for Magma admins.
  * Manages printer infrastructure, billing cycle parameters and copy pricing.
  */
 export const SettingsPage = () => {
-    const [settings, setSettings] = useState<{ 
-        printer_url: string; 
+    const [settings, setSettings] = useState<{
+        printer_url: string;
         billing_cycle_day: string;
         auto_billing_enabled: boolean;
         auto_billing_day: string;
@@ -150,7 +149,7 @@ export const SettingsPage = () => {
         if (isNaN(day) || day < 1 || day > 28) {
             return "El día del ciclo de facturación debe estar entre 1 y 28.";
         }
-        
+
         if (settings.auto_billing_time && !/^([01]\d|2[0-3]):([0-5]\d)$/.test(settings.auto_billing_time)) {
             return "La hora de facturación automática debe tener el formato HH:mm (24h).";
         }
@@ -158,7 +157,7 @@ export const SettingsPage = () => {
         if (settings.auto_sync_time && !/^([01]\d|2[0-3]):([0-5]\d)$/.test(settings.auto_sync_time)) {
             return "La hora de sincronización automática debe tener el formato HH:mm (24h).";
         }
-        
+
         return null;
     };
 
@@ -177,7 +176,7 @@ export const SettingsPage = () => {
                 body: settings as any
             });
             if (apiError) throw apiError;
-            
+
             setOriginalSettings(settings);
             setStatus({ type: 'success', message: "Configuración guardada correctamente." });
             setTimeout(() => setStatus(null), 3000);
@@ -200,7 +199,7 @@ export const SettingsPage = () => {
             });
 
             if (error) throw error;
-            
+
             if (data?.wasSuccessful) {
                 setTestStatus({ type: 'success', message: data.message || "Conexión exitosa" });
             } else {
@@ -280,7 +279,7 @@ export const SettingsPage = () => {
             {/* Main Form */}
             <form onSubmit={handleSave} className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
                 <div className="bg-white dark:bg-[#1a1818] rounded-[2.5rem] p-10 border border-slate-200 dark:border-white/5 shadow-2xl shadow-indigo-500/10">
-                    
+
                     <div className="grid grid-cols-1 gap-12">
                         {/* Printer URL Section */}
                         <div className="space-y-6">
@@ -290,10 +289,10 @@ export const SettingsPage = () => {
                                 </div>
                                 <h3 className="text-lg font-black text-slate-800 dark:text-white tracking-tight">Infraestructura de Impresión</h3>
                             </div>
-                            
+
                             <div className="space-y-2">
                                 <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-white/20 ml-2">URL del Servidor de Impresión</label>
-                                <input 
+                                <input
                                     type="text"
                                     value={settings.printer_url}
                                     onChange={(e) => setSettings({...settings, printer_url: e.target.value})}
@@ -318,11 +317,11 @@ export const SettingsPage = () => {
                                 </div>
                                 <h3 className="text-lg font-black text-slate-800 dark:text-white tracking-tight">Credenciales de Nexudus</h3>
                             </div>
-                            
+
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div className="space-y-2">
                                     <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-white/20 ml-2">Email Administrador</label>
-                                    <input 
+                                    <input
                                         type="email"
                                         value={settings.nexudus_email}
                                         onChange={(e) => setSettings({...settings, nexudus_email: e.target.value})}
@@ -332,7 +331,7 @@ export const SettingsPage = () => {
                                 </div>
                                 <div className="space-y-2">
                                     <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-white/20 ml-2">Contraseña</label>
-                                    <input 
+                                    <input
                                         type="password"
                                         value={settings.nexudus_password}
                                         onChange={(e) => setSettings({...settings, nexudus_password: e.target.value})}
@@ -363,8 +362,8 @@ export const SettingsPage = () => {
 
                                 {testStatus && (
                                     <div className={`flex items-center gap-2 p-4 rounded-xl text-[11px] font-bold animate-in fade-in slide-in-from-left-2 ${
-                                        testStatus.type === 'success' 
-                                        ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20' 
+                                        testStatus.type === 'success'
+                                        ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20'
                                         : 'bg-red-500/10 text-red-500 border border-red-500/20'
                                     }`}>
                                         {testStatus.type === 'success' ? <CheckCircle2 size={14} /> : <AlertCircle size={14} />}
@@ -379,7 +378,7 @@ export const SettingsPage = () => {
                                     <div className="space-y-4">
                                         <div className="flex items-center justify-between px-2">
                                             <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-white/20">ID Negocio (Business)</label>
-                                            <button 
+                                            <button
                                                 type="button"
                                                 onClick={() => handleFetchMetadata('businesses')}
                                                 disabled={isFetchingMetadata.businesses || !settings.nexudus_email}
@@ -393,7 +392,7 @@ export const SettingsPage = () => {
                                             <div className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors">
                                                 <Database size={18} />
                                             </div>
-                                            <select 
+                                            <select
                                                 value={settings.nexudus_business_id}
                                                 onChange={(e) => setSettings({...settings, nexudus_business_id: e.target.value})}
                                                 className="w-full h-16 pl-14 pr-12 rounded-2xl bg-white dark:bg-black/20 border border-slate-100 dark:border-white/5 text-slate-700 dark:text-white font-bold focus:ring-2 focus:ring-indigo-500/20 outline-none appearance-none transition-all cursor-pointer"
@@ -415,7 +414,7 @@ export const SettingsPage = () => {
                                     <div className="space-y-4">
                                         <div className="flex items-center justify-between px-2">
                                             <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-white/20">ID Moneda (Currency)</label>
-                                            <button 
+                                            <button
                                                 type="button"
                                                 onClick={() => handleFetchMetadata('currencies')}
                                                 disabled={isFetchingMetadata.currencies || !settings.nexudus_email}
@@ -429,7 +428,7 @@ export const SettingsPage = () => {
                                             <div className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors">
                                                 <Globe size={18} />
                                             </div>
-                                            <select 
+                                            <select
                                                 value={settings.nexudus_currency_id}
                                                 onChange={(e) => setSettings({...settings, nexudus_currency_id: e.target.value})}
                                                 className="w-full h-16 pl-14 pr-12 rounded-2xl bg-white dark:bg-black/20 border border-slate-100 dark:border-white/5 text-slate-700 dark:text-white font-bold focus:ring-2 focus:ring-indigo-500/20 outline-none appearance-none transition-all cursor-pointer"
@@ -467,7 +466,7 @@ export const SettingsPage = () => {
                                     </div>
                                     <h3 className="text-lg font-black text-slate-800 dark:text-white tracking-tight">Mapeo de Productos Nexudus</h3>
                                 </div>
-                                <button 
+                                <button
                                     type="button"
                                     onClick={() => handleFetchMetadata('products')}
                                     disabled={isFetchingMetadata.products || !settings.nexudus_email}
@@ -487,7 +486,7 @@ export const SettingsPage = () => {
                                     </p>
                                     <div className="space-y-4">
                                         <div className="relative group">
-                                            <select 
+                                            <select
                                                 value={settings.nexudus_product_id_a4bw}
                                                 onChange={(e) => setSettings({...settings, nexudus_product_id_a4bw: e.target.value})}
                                                 className="w-full h-14 pl-6 pr-10 rounded-2xl bg-emerald-500/5 dark:bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-bold focus:ring-2 focus:ring-emerald-500/20 outline-none appearance-none cursor-pointer"
@@ -506,7 +505,7 @@ export const SettingsPage = () => {
                                             <span className="absolute left-6 -top-2 px-2 bg-white dark:bg-[#1a1818] text-[8px] font-black uppercase tracking-widest text-emerald-500">ID B/N</span>
                                         </div>
                                         <div className="relative group">
-                                            <select 
+                                            <select
                                                 value={settings.nexudus_product_id_a4color}
                                                 onChange={(e) => setSettings({...settings, nexudus_product_id_a4color: e.target.value})}
                                                 className="w-full h-14 pl-6 pr-10 rounded-2xl bg-indigo-500/5 dark:bg-indigo-500/10 border border-indigo-500/20 text-indigo-600 dark:text-indigo-400 font-bold focus:ring-2 focus:ring-indigo-500/20 outline-none appearance-none cursor-pointer"
@@ -534,7 +533,7 @@ export const SettingsPage = () => {
                                     </p>
                                     <div className="space-y-4">
                                         <div className="relative group">
-                                            <select 
+                                            <select
                                                 value={settings.nexudus_product_id_a3bw}
                                                 onChange={(e) => setSettings({...settings, nexudus_product_id_a3bw: e.target.value})}
                                                 className="w-full h-14 pl-6 pr-10 rounded-2xl bg-emerald-500/5 dark:bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-bold focus:ring-2 focus:ring-emerald-500/20 outline-none appearance-none cursor-pointer"
@@ -553,7 +552,7 @@ export const SettingsPage = () => {
                                             <span className="absolute left-6 -top-2 px-2 bg-white dark:bg-[#1a1818] text-[8px] font-black uppercase tracking-widest text-emerald-500">ID B/N</span>
                                         </div>
                                         <div className="relative group">
-                                            <select 
+                                            <select
                                                 value={settings.nexudus_product_id_a3color}
                                                 onChange={(e) => setSettings({...settings, nexudus_product_id_a3color: e.target.value})}
                                                 className="w-full h-14 pl-6 pr-10 rounded-2xl bg-indigo-500/5 dark:bg-indigo-500/10 border border-indigo-500/20 text-indigo-600 dark:text-indigo-400 font-bold focus:ring-2 focus:ring-indigo-500/20 outline-none appearance-none cursor-pointer"
@@ -581,7 +580,7 @@ export const SettingsPage = () => {
                                     </p>
                                     <div className="space-y-4">
                                         <div className="relative group">
-                                            <select 
+                                            <select
                                                 value={settings.nexudus_product_id_sra3bw}
                                                 onChange={(e) => setSettings({...settings, nexudus_product_id_sra3bw: e.target.value})}
                                                 className="w-full h-14 pl-6 pr-10 rounded-2xl bg-emerald-500/5 dark:bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-bold focus:ring-2 focus:ring-emerald-500/20 outline-none appearance-none cursor-pointer"
@@ -600,7 +599,7 @@ export const SettingsPage = () => {
                                             <span className="absolute left-6 -top-2 px-2 bg-white dark:bg-[#1a1818] text-[8px] font-black uppercase tracking-widest text-emerald-500">ID B/N</span>
                                         </div>
                                         <div className="relative group">
-                                            <select 
+                                            <select
                                                 value={settings.nexudus_product_id_sra3color}
                                                 onChange={(e) => setSettings({...settings, nexudus_product_id_sra3color: e.target.value})}
                                                 className="w-full h-14 pl-6 pr-10 rounded-2xl bg-indigo-500/5 dark:bg-indigo-500/10 border border-indigo-500/20 text-indigo-600 dark:text-indigo-400 font-bold focus:ring-2 focus:ring-indigo-500/20 outline-none appearance-none cursor-pointer"
@@ -639,7 +638,7 @@ export const SettingsPage = () => {
                             <div className="space-y-2 max-w-xs">
                                 <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-white/20 ml-2">Día de Corte de Ciclo</label>
                                 <div className="relative">
-                                    <input 
+                                    <input
                                         type="number"
                                         min="1"
                                         max="28"
@@ -668,13 +667,13 @@ export const SettingsPage = () => {
                                     </div>
                                     <h3 className="text-lg font-black text-slate-800 dark:text-white tracking-tight">Auto Facturación Mensual</h3>
                                 </div>
-                                
-                                <button 
+
+                                <button
                                     type="button"
                                     onClick={() => setSettings({...settings, auto_billing_enabled: !settings.auto_billing_enabled})}
                                     className={`flex items-center gap-2 px-4 py-2 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all ${
-                                        settings.auto_billing_enabled 
-                                        ? "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20" 
+                                        settings.auto_billing_enabled
+                                        ? "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20"
                                         : "bg-slate-100 dark:bg-white/5 text-slate-400 border border-transparent"
                                     }`}
                                 >
@@ -686,7 +685,7 @@ export const SettingsPage = () => {
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                                 <div className="space-y-2">
                                     <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-white/20 ml-2">Día de Ejecución</label>
-                                    <select 
+                                    <select
                                         value={settings.auto_billing_day}
                                         onChange={(e) => setSettings({...settings, auto_billing_day: e.target.value})}
                                         className="w-full h-16 px-6 rounded-2xl bg-slate-50 dark:bg-black/20 border border-slate-100 dark:border-white/5 text-slate-700 dark:text-white font-bold focus:ring-2 focus:ring-indigo-500/20 outline-none appearance-none"
@@ -698,7 +697,7 @@ export const SettingsPage = () => {
                                 </div>
                                 <div className="space-y-2">
                                     <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-white/20 ml-2">Hora de Ejecución (24h)</label>
-                                    <input 
+                                    <input
                                         type="time"
                                         value={settings.auto_billing_time}
                                         onChange={(e) => setSettings({...settings, auto_billing_time: e.target.value})}
@@ -706,14 +705,14 @@ export const SettingsPage = () => {
                                     />
                                 </div>
                             </div>
-                            
+
                             <div className="p-6 rounded-[2rem] bg-indigo-500/5 border border-indigo-500/10">
                                 <div className="flex gap-4">
                                     <div className="mt-1 text-indigo-500"><Info size={20} /></div>
                                     <div className="space-y-1">
                                         <p className="text-sm font-bold text-slate-700 dark:text-white/80">Lógica de Automatización</p>
                                         <p className="text-xs text-slate-500 dark:text-white/40 leading-relaxed italic">
-                                            Cuando el servicio está activo, Magma sincronizará automáticamente los contadores de la impresora, 
+                                            Cuando el servicio está activo, Magma sincronizará automáticamente los contadores de la impresora,
                                             generará las facturas locales y publicará los borradores en Nexudus el día y hora indicados.
                                         </p>
                                     </div>
@@ -736,13 +735,13 @@ export const SettingsPage = () => {
                                     </div>
                                     <h3 className="text-lg font-black text-slate-800 dark:text-white tracking-tight">Notificaciones por Email</h3>
                                 </div>
-                                
-                                <button 
+
+                                <button
                                     type="button"
                                     onClick={() => setSettings({...settings, email_notifications_enabled: !settings.email_notifications_enabled})}
                                     className={`flex items-center gap-2 px-4 py-2 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all ${
-                                        settings.email_notifications_enabled 
-                                        ? "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20" 
+                                        settings.email_notifications_enabled
+                                        ? "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20"
                                         : "bg-slate-100 dark:bg-white/5 text-slate-400 border border-transparent"
                                     }`}
                                 >
@@ -754,7 +753,7 @@ export const SettingsPage = () => {
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                                 <div className="space-y-4 md:col-span-2">
                                     <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-white/20 ml-2">Email del Destinatario (Administrador)</label>
-                                    <input 
+                                    <input
                                         type="email"
                                         value={settings.email_recipient}
                                         onChange={(e) => setSettings({...settings, email_recipient: e.target.value})}
@@ -765,7 +764,7 @@ export const SettingsPage = () => {
 
                                 <div className="space-y-4">
                                     <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-white/20 ml-2">Servidor SMTP (Host)</label>
-                                    <input 
+                                    <input
                                         type="text"
                                         value={settings.smtp_host}
                                         onChange={(e) => setSettings({...settings, smtp_host: e.target.value})}
@@ -776,7 +775,7 @@ export const SettingsPage = () => {
 
                                 <div className="space-y-4">
                                     <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-white/20 ml-2">Puerto SMTP</label>
-                                    <input 
+                                    <input
                                         type="number"
                                         value={settings.smtp_port}
                                         onChange={(e) => setSettings({...settings, smtp_port: e.target.value})}
@@ -787,7 +786,7 @@ export const SettingsPage = () => {
 
                                 <div className="space-y-4">
                                     <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-white/20 ml-2">Usuario SMTP</label>
-                                    <input 
+                                    <input
                                         type="text"
                                         value={settings.smtp_user}
                                         onChange={(e) => setSettings({...settings, smtp_user: e.target.value})}
@@ -798,7 +797,7 @@ export const SettingsPage = () => {
 
                                 <div className="space-y-4">
                                     <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-white/20 ml-2">Contraseña SMTP</label>
-                                    <input 
+                                    <input
                                         type="password"
                                         value={settings.smtp_password}
                                         onChange={(e) => setSettings({...settings, smtp_password: e.target.value})}
@@ -829,8 +828,8 @@ export const SettingsPage = () => {
 
                                 {emailTestStatus && (
                                     <div className={`flex items-center gap-2 p-4 rounded-xl text-[11px] font-bold animate-in fade-in slide-in-from-left-2 ${
-                                        emailTestStatus.type === 'success' 
-                                        ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20' 
+                                        emailTestStatus.type === 'success'
+                                        ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20'
                                         : 'bg-red-500/10 text-red-500 border border-red-500/20'
                                     }`}>
                                         {emailTestStatus.type === 'success' ? <CheckCircle2 size={14} /> : <AlertCircle size={14} />}
@@ -852,13 +851,13 @@ export const SettingsPage = () => {
                                     </div>
                                     <h3 className="text-lg font-black text-slate-800 dark:text-white tracking-tight">Sincronización de Contadores</h3>
                                 </div>
-                                
-                                <button 
+
+                                <button
                                     type="button"
                                     onClick={() => setSettings({...settings, auto_sync_enabled: !settings.auto_sync_enabled})}
                                     className={`flex items-center gap-2 px-4 py-2 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all ${
-                                        settings.auto_sync_enabled 
-                                        ? "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20" 
+                                        settings.auto_sync_enabled
+                                        ? "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20"
                                         : "bg-slate-100 dark:bg-white/5 text-slate-400 border border-transparent"
                                     }`}
                                 >
@@ -870,7 +869,7 @@ export const SettingsPage = () => {
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                                 <div className="space-y-2">
                                     <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-white/20 ml-2">Frecuencia</label>
-                                    <select 
+                                    <select
                                         value={settings.auto_sync_frequency}
                                         onChange={(e) => setSettings({...settings, auto_sync_frequency: e.target.value})}
                                         className="w-full h-16 px-6 rounded-2xl bg-slate-50 dark:bg-black/20 border border-slate-100 dark:border-white/5 text-slate-700 dark:text-white font-bold focus:ring-2 focus:ring-orange-500/20 outline-none appearance-none"
@@ -883,7 +882,7 @@ export const SettingsPage = () => {
                                 {settings.auto_sync_frequency === 'weekly' && (
                                     <div className="space-y-2 animate-in fade-in zoom-in-95 duration-200">
                                         <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-white/20 ml-2">Día de la Semana</label>
-                                        <select 
+                                        <select
                                             value={settings.auto_sync_day}
                                             onChange={(e) => setSettings({...settings, auto_sync_day: e.target.value})}
                                             className="w-full h-16 px-6 rounded-2xl bg-slate-50 dark:bg-black/20 border border-slate-100 dark:border-white/5 text-slate-700 dark:text-white font-bold focus:ring-2 focus:ring-orange-500/20 outline-none appearance-none"
@@ -901,7 +900,7 @@ export const SettingsPage = () => {
 
                                 <div className="space-y-2">
                                     <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-white/20 ml-2">Hora de Inicio</label>
-                                    <input 
+                                    <input
                                         type="time"
                                         value={settings.auto_sync_time}
                                         onChange={(e) => setSettings({...settings, auto_sync_time: e.target.value})}
@@ -915,8 +914,8 @@ export const SettingsPage = () => {
                     {/* Feedback Status */}
                     {status && (
                         <div className={`mt-10 flex items-center gap-3 p-6 rounded-2xl border ${
-                            status.type === 'success' 
-                                ? 'bg-emerald-500/5 border-emerald-500/20 text-emerald-500' 
+                            status.type === 'success'
+                                ? 'bg-emerald-500/5 border-emerald-500/20 text-emerald-500'
                                 : 'bg-red-500/5 border-red-500/20 text-red-500'
                         } animate-in fade-in slide-in-from-top-2`}>
                             {status.type === 'success' ? <CheckCircle2 size={20} /> : <AlertCircle size={20} />}
@@ -930,8 +929,8 @@ export const SettingsPage = () => {
                             <ShieldCheck size={14} />
                             Acceso Nivel Administrador
                         </div>
-                        
-                        <button 
+
+                        <button
                             type="submit"
                             disabled={isSaving || !hasChanges}
                             className={`flex items-center justify-center gap-2 min-w-[180px] h-14 rounded-2xl font-bold transition-all ${
@@ -952,11 +951,6 @@ export const SettingsPage = () => {
                     </div>
                 </div>
             </form>
-
-            {/* Audit Logs Section */}
-            <div className="pt-10 border-t border-slate-100 dark:border-white/5">
-                <AutoBillingLogs />
-            </div>
         </div>
     );
 };

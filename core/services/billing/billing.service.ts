@@ -10,9 +10,24 @@ import { distributionsRepository } from '../../repositories/distributions.reposi
 
 /**
  * Billing Service
- * 
+ *
  * Handles invoice generation and simulation logic.
  */
+/**
+ * Determines whether a given billing period month (YYYY-MM) is already closed.
+ * The period is considered closed once the calendar month has fully elapsed (after 23:59:59.999 of the last day).
+ */
+export function isPeriodClosed(periodMonth: string, referenceDate: Date = new Date()): boolean {
+  if (!periodMonth || !/^\d{4}-\d{2}$/.test(periodMonth)) {
+    return false;
+  }
+  const [yearStr, monthStr] = periodMonth.split('-');
+  const year = parseInt(yearStr, 10);
+  const month = parseInt(monthStr, 10);
+  const endOfNaturalMonth = new Date(year, month, 0, 23, 59, 59, 999);
+  return referenceDate.getTime() > endOfNaturalMonth.getTime();
+}
+
 export const billingService = {
   /**
    * Helper to format ISO date to DD-MM-YYYY
@@ -110,18 +125,18 @@ export const billingService = {
         eq(nexudusSales.userId, userId),
         eq(nexudusSales.month, monthStr)
       ));
-    
+
     return sales.length > 0 ? { synced: true, salesCount: sales.length, sales } : { synced: false };
   },
 
   /**
    * Retrieves paginated synchronization history from Nexudus sales, grouped by user and sale session.
    */
-  getPaginatedSales: async (params: { 
-    page: number; 
-    limit: number; 
-    userIds?: string[]; 
-    months?: string[] 
+  getPaginatedSales: async (params: {
+    page: number;
+    limit: number;
+    userIds?: string[];
+    months?: string[]
   }) => {
     const { page, limit, userIds, months } = params;
     const offset = (page - 1) * limit;
@@ -137,7 +152,7 @@ export const billingService = {
 
     // Main grouped query
     const data = await db.all(sql`
-      SELECT 
+      SELECT
         ns.user_id as userId,
         u.username as username,
         na.nex_user_id as nexudusCoworkerId, -- Keep for backwards compat if needed, but primarily use from items
@@ -166,7 +181,7 @@ export const billingService = {
       ...row,
       items: JSON.parse(row.items)
     }));
-    
+
     // Count total GROUPS for pagination
     const totalResult = await db.get(sql`
       SELECT count(*) as count FROM (
@@ -218,13 +233,13 @@ export const billingService = {
   /**
    * Synchronizes consumption to Nexudus for a single user, supporting multi-account distribution.
    */
-  syncUserConsumption: async (userId: string, options: { from?: string; to?: string; includeAllPending?: boolean; customNote?: string; nexudusAccountId?: string } = {}) => {
-    const { from, to, includeAllPending = false, customNote, nexudusAccountId } = options;
-    
-    const report = await reportsService.getMonthlyAccumulationForUser(userId, { from, to, includeAllPending });
+  syncUserConsumption: async (userId: string, options: { from?: string; to?: string; includeAllPending?: boolean; customNote?: string; nexudusAccountId?: string; period?: string; partial?: boolean } = {}) => {
+    const { from, to, includeAllPending = false, customNote, nexudusAccountId, period, partial = true } = options;
+
+    const report = await reportsService.getMonthlyAccumulationForUser(userId, { from, to, includeAllPending, period });
     if (!report) throw new Error('No report data found for user');
 
-    const monthStr = report.period.from.slice(0, 7);
+    const monthStr = report.period.month || report.period.from.slice(0, 7);
     const settings = await settingsService.getAllSettings();
     const typeToProductIdMap: Record<string, string> = {
       'a4Bw': settings.nexudus_product_id_a4bw,
@@ -239,14 +254,14 @@ export const billingService = {
     // 1. Obtener todas las cuentas del usuario
     const allAccounts = await db.select().from(userNexudusAccounts).where(eq(userNexudusAccounts.userId, userId));
     const defaultAccount = allAccounts.find((a: any) => a.isDefault === 1) || allAccounts[0];
-    
+
     if (!defaultAccount) {
       throw new Error(`User ${report.data.username} has no valid Nexudus account configured.`);
     }
 
     // 2. Obtener repartos manuales guardados
     const savedDistributions = await distributionsRepository.findByUserAndMonth(userId, monthStr);
-    
+
     // 3. Organizar tareas de cobro por cuenta y tipo
     const tasksPerAccount: Record<string, Record<string, { quantity: number; productId: string }>> = {};
 
@@ -254,28 +269,31 @@ export const billingService = {
       if (quantity <= 0) return;
       const productId = typeToProductIdMap[type];
       if (!productId) return;
-      
+
       if (!tasksPerAccount[accountId]) tasksPerAccount[accountId] = {};
       if (!tasksPerAccount[accountId][type]) tasksPerAccount[accountId][type] = { quantity: 0, productId };
       tasksPerAccount[accountId][type].quantity += quantity;
     };
 
-    // A. Procesar repartos manuales
+    // A. Procesar repartos manuales si existen
     const totalDistributedByType: Record<string, number> = {};
     for (const dist of savedDistributions) {
       registerTask(dist.nexudusAccountId, dist.type, dist.quantity);
       totalDistributedByType[dist.type] = (totalDistributedByType[dist.type] || 0) + dist.quantity;
     }
 
-    // B. Calcular remanente
-    const targetRemainderAccountId = nexudusAccountId || defaultAccount.id;
-    for (const type of copyTypes) {
-      const totalRequested = report.data[type as keyof typeof report.data] as number || 0;
-      const distributed = totalDistributedByType[type] || 0;
-      const remainder = totalRequested - distributed;
-      
-      if (remainder > 0) {
-        registerTask(targetRemainderAccountId, type, remainder);
+    // B. Si NO hay repartos manuales guardados, se asigna todo el consumo pendiente a la cuenta destino
+    // Si hay repartos manuales y no es parcial estricto, o si savedDistributions está vacío:
+    if (savedDistributions.length === 0) {
+      const targetRemainderAccountId = nexudusAccountId || defaultAccount.id;
+      for (const type of copyTypes) {
+        const totalRequested = report.data[type as keyof typeof report.data] as number || 0;
+        const distributed = totalDistributedByType[type] || 0;
+        const remainder = totalRequested - distributed;
+
+        if (remainder > 0) {
+          registerTask(targetRemainderAccountId, type, remainder);
+        }
       }
     }
 
@@ -290,7 +308,7 @@ export const billingService = {
 
     const inicioPeriodo = latestSync ? latestSync.saleDate : report.period.from;
     const fechaActual = new Date().toISOString();
-    
+
     let periodNoteStr = `Periodo: ${billingService.formatDate(inicioPeriodo)} - ${billingService.formatDate(fechaActual)}`;
     if (includeAllPending) {
         periodNoteStr = `Todas las copias pendientes hasta ${billingService.formatDate(fechaActual)}`;
@@ -309,7 +327,7 @@ export const billingService = {
 
         for (const type in tasksPerAccount[accountId]) {
           const task = tasksPerAccount[accountId][type];
-          
+
           const nexudusResponse = await nexudusService.createCoworkerProduct({
             BusinessId: parseInt(settings.nexudus_business_id || '0'),
             CoworkerId: parseInt(account.nexudusUserId || '0'),
@@ -340,7 +358,7 @@ export const billingService = {
       db.transaction((tx: any) => {
         for (const sale of salesToPersist) {
           const localSaleId = randomUUID();
-          
+
           tx.insert(nexudusSales).values({
             id: localSaleId,
             userId: userId,
@@ -377,9 +395,17 @@ export const billingService = {
             );
           }
 
-          tx.update(copies)
-            .set({ nexudusSaleId: localSaleId })
-            .where(updateWhere).run();
+          const unbilledRows = tx.select().from(copies).where(updateWhere).all();
+          let qtyRemaining = sale.quantity;
+          for (const row of unbilledRows) {
+            if (qtyRemaining <= 0) break;
+            const rowQty = sale.type === 'sra3Color' ? row.a3Color : (sale.type === 'sra3Bw' ? row.a3Bw : (row as any)[sale.type]);
+            tx.update(copies)
+              .set({ nexudusSaleId: localSaleId })
+              .where(eq(copies.id, row.id))
+              .run();
+            qtyRemaining -= (rowQty || 0);
+          }
         }
 
         tx.delete(consumptionDistributions).where(and(
@@ -409,11 +435,18 @@ export const billingService = {
   /**
    * Global synchronization job.
    */
-  syncMonthlyConsumption: async (options: { from?: string; to?: string; includeAllPending?: boolean } = {}) => {
-    const report = await reportsService.getMonthlyAccumulation(options);
+  syncMonthlyConsumption: async (options: { from?: string; to?: string; includeAllPending?: boolean; period?: string; partial?: boolean } = {}) => {
+    const report = await reportsService.getMonthlyAccumulation({
+      ...options,
+      filter: 'linked',
+      includeIgnored: false
+    });
     const results: any[] = [];
-    
+
     for (const userData of report.data) {
+      if (!userData.hasLinkedAccount || userData.isIgnored) continue;
+      if (userData.total === 0) continue;
+
       try {
         const result = await billingService.syncUserConsumption(userData.id, options);
         results.push({ ...result, username: userData.username, status: 'success' });
@@ -472,6 +505,13 @@ export const billingService = {
     // 1. Get the local sync record
     const sale = await db.select().from(nexudusSales).where(eq(nexudusSales.id, localId)).get();
     if (!sale) throw new Error('Sync record not found.');
+
+    // 1.1 Time-Bound Shield: Ensure the period's natural month has not passed
+    if (isPeriodClosed(sale.month)) {
+      const error = new Error(`No se puede revertir la sincronización: el período contable ${sale.month} ha finalizado. La facturación es inmutable tras el cierre de mes natural.`);
+      (error as any).statusCode = 400;
+      throw error;
+    }
 
     // 2. Delete in Nexudus
     const remoteId = parseInt(sale.nexudusSaleId);

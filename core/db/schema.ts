@@ -9,6 +9,7 @@ export const users = sqliteTable('users', {
   /** @deprecated User nexudus_accounts instead */
   nexudusUser: text('nexudus_user'),
   a3NoPaperMode: integer('a3_no_paper_mode').notNull().default(0),
+  isIgnored: integer('is_ignored').notNull().default(0),
 });
 
 export const userNexudusAccounts = sqliteTable('user_nexudus_accounts', {
@@ -47,6 +48,7 @@ export const syncLogs = sqliteTable('sync_logs', {
   datetime: text('datetime').notNull(),
   status: text('status').notNull(), // 'success', 'failed', 'partial'
   triggerType: text('trigger_type').default('auto'), // 'auto', 'manual'
+  processType: text('process_type').default('sync'), // 'sync', 'billing'
   summary: text('summary'),
   details: text('details').notNull(), // JSON string con resumen por usuario
 });

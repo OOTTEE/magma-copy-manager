@@ -11,7 +11,7 @@ import { serverConfig } from '../../config/server.config';
 
 /**
  * AutoBilling Service
- * 
+ *
  * Orchestrates the automated monthly billing process.
  * Handles cron scheduling, retries, and sequential task execution.
  */
@@ -35,7 +35,7 @@ export class AutoBillingService {
             const [hour, minute] = time.split(':').map(s => parseInt(s, 10));
             // Cron format: minute hour dayOfMonth month year
             const cronExpr = `${minute || 0} ${hour || 4} ${day} * *`;
-            
+
             logger.info(`AutoBilling: Scheduling job: ${cronExpr}`);
             this.scheduledTask = cron.schedule(cronExpr, () => {
                 this.runJob({ id: 'system', role: 'admin' }).catch(err => {
@@ -60,9 +60,11 @@ export class AutoBillingService {
 
         this.isRunning = true;
         const logId = randomUUID();
+        const startMs = Date.now();
         const startTime = new Date().toISOString();
         const results: any[] = [];
         let status: 'success' | 'failed' | 'partial' = 'success';
+        let fatalErrorStr = '';
 
         logger.info({ logId, startTime }, 'AutoBilling: Starting job');
 
@@ -72,7 +74,7 @@ export class AutoBillingService {
                 try {
                     logger.info({ attempt }, 'AutoBilling: Syncing printer copies...');
                     await copiesFacade.syncPrinterCopies(requestingUser);
-                    break; 
+                    break;
                 } catch (err: any) {
                     logger.warn({ attempt, error: err.message }, 'AutoBilling: Print sync attempt failed');
                     if (attempt === 3) throw new Error(`Print sync failed after 3 attempts: ${err.message}`);
@@ -85,12 +87,12 @@ export class AutoBillingService {
             const customers = allUsers.filter((u: any) => u.role === 'customer');
 
             for (const user of customers) {
-                const userResult = { 
-                    userId: user.id, 
-                    username: user.username, 
-                    billing: 'pending', 
-                    nexudus: 'n/a', 
-                    error: null as string | null 
+                const userResult = {
+                    userId: user.id,
+                    username: user.username,
+                    billing: 'pending',
+                    nexudus: 'n/a',
+                    error: null as string | null
                 };
 
                 try {
@@ -121,16 +123,16 @@ export class AutoBillingService {
             logger.info('AutoBilling: Starting Nexudus synchronization...');
             try {
                 const syncResult = await billingFacade.syncWithNexudus(requestingUser);
-                
+
                 for (const syncItem of syncResult.results) {
                     const existing = results.find(r => r.userId === syncItem.userId);
                     if (existing) {
-                        existing.nexudus = syncItem.salesCreated > 0 
-                            ? `success (${syncItem.salesCreated} sales)` 
-                            : syncItem.skipped > 0 
-                                ? 'skipped (already synced)' 
+                        existing.nexudus = syncItem.salesCreated > 0
+                            ? `success (${syncItem.salesCreated} sales)`
+                            : syncItem.skipped > 0
+                                ? 'skipped (already synced)'
                                 : 'n/a (no data)';
-                        
+
                         if (syncItem.errors > 0) {
                             existing.nexudus = `failed (${syncItem.errors} errors)`;
                             status = 'partial';
@@ -146,22 +148,64 @@ export class AutoBillingService {
         } catch (jobError: any) {
             logger.error(jobError, 'AutoBilling: Fatal Job Error');
             status = 'failed';
+            fatalErrorStr = jobError.stack || jobError.message;
             results.push({ fatalError: jobError.message });
         } finally {
-            // Save Log
-            const summary = status === 'success' 
-                ? `Procesados ${results.length} usuarios con éxito.` 
-                : status === 'partial' 
-                    ? `Procesados con errores en algunos usuarios (${results.filter(r => r.error).length} fallos).`
-                    : `Error fatal en el proceso: ${results[0]?.fatalError || 'Desconocido'}`;
+            const durationMs = Date.now() - startMs;
+
+            // Segregate results into errors, changed, unchanged
+            const structuredErrors: any[] = [];
+            const structuredChanged: any[] = [];
+            let unchangedCount = 0;
+
+            if (fatalErrorStr) {
+                structuredErrors.push({ username: 'Sistema', error: fatalErrorStr });
+            }
+
+            for (const r of results) {
+                if (r.error || (r.nexudus && r.nexudus.includes('failed'))) {
+                    structuredErrors.push({
+                        userId: r.userId,
+                        username: r.username,
+                        error: r.error || r.nexudus
+                    });
+                } else if (r.nexudus && r.nexudus.includes('success')) {
+                    structuredChanged.push({
+                        userId: r.userId,
+                        username: r.username,
+                        details: r.nexudus
+                    });
+                } else if (r.userId) {
+                    unchangedCount++;
+                } else if (r.nexudusBatchError) {
+                    structuredErrors.push({ username: 'Nexudus API', error: r.nexudusBatchError });
+                }
+            }
+
+            const fatalMsg = (results[0]?.fatalError || fatalErrorStr || 'Desconocido').split('\n')[0].trim();
+            const summary = status === 'success'
+                ? `Procesados ${results.length} usuarios con éxito.`
+                : status === 'partial'
+                    ? `Procesados con errores en algunos usuarios (${structuredErrors.length} fallos).`
+                    : `Error fatal en el proceso: ${fatalMsg}`;
+
+            const logDetails = {
+                durationMs,
+                trace: fatalErrorStr || undefined,
+                errors: structuredErrors,
+                changed: structuredChanged,
+                unchangedCount,
+                raw: results
+            };
 
             await db.insert(syncLogs).values({
                 id: logId,
                 datetime: startTime,
                 status,
                 triggerType,
+                processType: 'billing',
                 summary,
-                details: JSON.stringify(results)
+                details: JSON.stringify(logDetails)
             }).run();
 
             // Notify by email

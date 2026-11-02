@@ -8,6 +8,7 @@ interface User {
   nexudusUser: string;
   role: string;
   a3NoPaperMode?: number;
+  isIgnored?: number;
 }
 
 interface UserTableProps {
@@ -18,7 +19,7 @@ interface UserTableProps {
 
 /**
  * UserTable Component
- * 
+ *
  * Tabular view for user management.
  * Shows essential technical fields and actions.
  */
@@ -44,7 +45,14 @@ export const UserTable: React.FC<UserTableProps> = ({ users, onEdit, onLink }) =
                     <UserIcon size={20} strokeWidth={1.5} />
                   </div>
                   <div className="flex flex-col">
-                    <span className="font-bold text-slate-700 dark:text-white/80">{user.username}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-slate-700 dark:text-white/80">{user.username}</span>
+                      {user.isIgnored === 1 && (
+                        <span className="text-[9px] font-black uppercase tracking-wider text-slate-500 dark:text-white/40 bg-slate-100 dark:bg-white/10 px-2 py-0.5 rounded-md border border-slate-200 dark:border-white/10">
+                          Ignorado
+                        </span>
+                      )}
+                    </div>
                     {user.a3NoPaperMode === 1 && (
                       <span className="text-[9px] font-black uppercase tracking-tighter text-[#f15a24] bg-[#f15a24]/10 px-1.5 py-0.5 rounded-md inline-block w-fit mt-0.5 border border-[#f15a24]/20 animate-pulse">
                         A3 Sin Papel
@@ -70,7 +78,7 @@ export const UserTable: React.FC<UserTableProps> = ({ users, onEdit, onLink }) =
                     {user.nexudusUser ? (
                       <NexudusAccountBadge nexudusUserId={user.nexudusUser} />
                     ) : (
-                      <button 
+                      <button
                         onClick={() => onLink(user)}
                         className="text-[10px] font-black uppercase tracking-tight text-red-500 bg-red-500/10 px-2.5 py-1.5 rounded-lg border border-red-500/20 w-fit hover:bg-red-500 hover:text-white transition-all transform active:scale-95 group/btn"
                       >
@@ -83,8 +91,8 @@ export const UserTable: React.FC<UserTableProps> = ({ users, onEdit, onLink }) =
               <td className="px-8 py-5">
                 <span className={`
                   px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider
-                  ${user.role === 'admin' 
-                    ? "bg-amber-500/10 text-amber-500 border border-amber-500/20" 
+                  ${user.role === 'admin'
+                    ? "bg-amber-500/10 text-amber-500 border border-amber-500/20"
                     : "bg-indigo-500/10 text-indigo-500 border border-indigo-500/20"
                   }
                 `}>
@@ -92,7 +100,7 @@ export const UserTable: React.FC<UserTableProps> = ({ users, onEdit, onLink }) =
                 </span>
               </td>
               <td className="px-8 py-5 text-right">
-                <button 
+                <button
                   onClick={() => onEdit(user)}
                   className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#f15a24]/10 text-[#f15a24] hover:bg-[#f15a24] hover:text-white font-bold text-xs transition-all"
                 >

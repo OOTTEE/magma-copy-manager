@@ -6,10 +6,10 @@ import { UserTable } from '../components/UserTable';
 import { UserCard } from '../components/UserCard';
 import { EditUserModal } from '../components/EditUserModal';
 import { LinkNexudusModal } from '../components/LinkNexudusModal';
-import { 
-    LayoutGrid, 
-    Table as TableIcon, 
-    RefreshCw, 
+import {
+    LayoutGrid,
+    Table as TableIcon,
+    RefreshCw,
     Search,
     Users as UsersIcon,
     Loader2,
@@ -18,7 +18,7 @@ import {
 
 /**
  * UserAdminPage Component
- * 
+ *
  * Main administrative page for user management.
  */
 export const UserAdminPage = () => {
@@ -26,6 +26,7 @@ export const UserAdminPage = () => {
     const { users, isLoading, error, fetchUsers, fetchCoworkers, updateUser } = useUserStore();
     const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
     const [searchTerm, setSearchTerm] = useState("");
+    const [statusFilter, setStatusFilter] = useState<'all' | 'billable' | 'ignored'>('all');
     const [editingUser, setEditingUser] = useState<any>(null);
     const [linkingUser, setLinkingUser] = useState<any>(null);
 
@@ -50,11 +51,22 @@ export const UserAdminPage = () => {
         }
     };
 
-    const filteredUsers = users.filter(user => 
-        (user.username?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
-        (user.printUser?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
-        (user.nexudusUser?.toLowerCase() || "").includes(searchTerm.toLowerCase())
-    );
+    const totalCount = users.length;
+    const ignoredCount = users.filter(u => u.isIgnored === 1).length;
+    const billableCount = totalCount - ignoredCount;
+
+    const filteredUsers = users.filter(user => {
+        const matchesSearch =
+            (user.username?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
+            (user.printUser?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
+            (user.nexudusUser?.toLowerCase() || "").includes(searchTerm.toLowerCase());
+
+        if (!matchesSearch) return false;
+
+        if (statusFilter === 'billable') return !user.isIgnored || user.isIgnored === 0;
+        if (statusFilter === 'ignored') return user.isIgnored === 1;
+        return true;
+    });
 
     return (
         <div className="space-y-8 max-w-7xl mx-auto pb-20">
@@ -76,14 +88,14 @@ export const UserAdminPage = () => {
 
                 {/* View Controls & Tools */}
                 <div className="flex items-center gap-2 p-1.5 bg-white dark:bg-white/5 rounded-3xl border border-slate-200 dark:border-white/5 shadow-sm">
-                    <button 
+                    <button
                         onClick={() => setViewMode('table')}
                         className={`p-3 rounded-2xl transition-all ${viewMode === 'table' ? "bg-indigo-500 text-white shadow-lg shadow-indigo-500/30" : "text-slate-400 dark:text-white/20 hover:text-indigo-500"}`}
                         title="Vista de Tabla"
                     >
                         <TableIcon size={20} strokeWidth={2} />
                     </button>
-                    <button 
+                    <button
                         onClick={() => setViewMode('cards')}
                         className={`p-3 rounded-2xl transition-all ${viewMode === 'cards' ? "bg-indigo-500 text-white shadow-lg shadow-indigo-500/30" : "text-slate-400 dark:text-white/20 hover:text-indigo-500"}`}
                         title="Vista de Tarjetas"
@@ -91,7 +103,7 @@ export const UserAdminPage = () => {
                         <LayoutGrid size={20} strokeWidth={2} />
                     </button>
                     <div className="w-px h-8 bg-slate-200 dark:bg-white/5 mx-1" />
-                    <button 
+                    <button
                         onClick={() => fetchUsers(true)}
                         disabled={isLoading}
                         className="p-3 text-slate-400 dark:text-white/20 hover:text-indigo-500 hover:bg-slate-50 dark:hover:bg-white/5 rounded-2xl transition-all disabled:opacity-50"
@@ -102,18 +114,65 @@ export const UserAdminPage = () => {
                 </div>
             </div>
 
-            {/* Filter and Search Bar */}
-            <div className="relative group max-w-xl">
-                 <div className="absolute inset-0 bg-[#f15a24]/20 blur-2xl opacity-0 group-focus-within:opacity-100 transition-all duration-500" />
-                 <div className="relative flex items-center bg-white dark:bg-[#1a1818] border border-slate-200 dark:border-white/5 rounded-[2rem] px-6 py-4 transition-all group-focus-within:border-[#f15a24]/50 shadow-xl shadow-slate-200/50 dark:shadow-none">
-                    <Search className="text-slate-400 dark:text-white/20 mr-4" size={20} strokeWidth={1.5} />
-                    <input 
-                        type="text" 
-                        placeholder="Buscar por usuario, impresora o nexudus..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="flex-1 bg-transparent border-none text-slate-700 dark:text-white font-bold placeholder:text-slate-400 dark:placeholder:text-white/10 outline-none"
-                    />
+            {/* Filter and Search Bar Row */}
+            <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
+                 <div className="relative group flex-1 max-w-xl">
+                     <div className="absolute inset-0 bg-[#f15a24]/20 blur-2xl opacity-0 group-focus-within:opacity-100 transition-all duration-500" />
+                     <div className="relative flex items-center bg-white dark:bg-[#1a1818] border border-slate-200 dark:border-white/5 rounded-[2rem] px-6 py-4 transition-all group-focus-within:border-[#f15a24]/50 shadow-xl shadow-slate-200/50 dark:shadow-none">
+                        <Search className="text-slate-400 dark:text-white/20 mr-4" size={20} strokeWidth={1.5} />
+                        <input
+                            type="text"
+                            placeholder="Buscar por usuario, impresora o nexudus..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="flex-1 bg-transparent border-none text-slate-700 dark:text-white font-bold placeholder:text-slate-400 dark:placeholder:text-white/10 outline-none"
+                        />
+                     </div>
+                 </div>
+
+                 {/* Status Segment Pills */}
+                 <div className="flex items-center gap-1.5 p-1.5 bg-white dark:bg-[#1a1818] rounded-2xl border border-slate-200 dark:border-white/5 shadow-sm self-start md:self-center shrink-0">
+                     <button
+                         onClick={() => setStatusFilter('all')}
+                         className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${
+                             statusFilter === 'all'
+                                 ? 'bg-indigo-500 text-white shadow-md shadow-indigo-500/20'
+                                 : 'text-slate-500 dark:text-white/40 hover:text-slate-800 dark:hover:text-white'
+                         }`}
+                     >
+                         <span>Todos</span>
+                         <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-md bg-black/10 dark:bg-white/10">
+                             {totalCount}
+                         </span>
+                     </button>
+
+                     <button
+                         onClick={() => setStatusFilter('billable')}
+                         className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${
+                             statusFilter === 'billable'
+                                 ? 'bg-indigo-500 text-white shadow-md shadow-indigo-500/20'
+                                 : 'text-slate-500 dark:text-white/40 hover:text-slate-800 dark:hover:text-white'
+                         }`}
+                     >
+                         <span>Facturables</span>
+                         <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-md bg-black/10 dark:bg-white/10">
+                             {billableCount}
+                         </span>
+                     </button>
+
+                     <button
+                         onClick={() => setStatusFilter('ignored')}
+                         className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${
+                             statusFilter === 'ignored'
+                                 ? 'bg-amber-500 text-white shadow-md shadow-amber-500/20'
+                                 : 'text-slate-500 dark:text-white/40 hover:text-slate-800 dark:hover:text-white'
+                         }`}
+                     >
+                         <span>Ignorados</span>
+                         <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-md bg-black/10 dark:bg-white/10">
+                             {ignoredCount}
+                         </span>
+                     </button>
                  </div>
             </div>
 
@@ -141,18 +200,18 @@ export const UserAdminPage = () => {
             ) : (
                 <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
                     {viewMode === 'table' ? (
-                        <UserTable 
-                            users={filteredUsers} 
-                            onEdit={setEditingUser} 
+                        <UserTable
+                            users={filteredUsers}
+                            onEdit={setEditingUser}
                             onLink={setLinkingUser}
                         />
                     ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                             {filteredUsers.map(user => (
-                                <UserCard 
-                                    key={user.id} 
-                                    user={user} 
-                                    onEdit={setEditingUser} 
+                                <UserCard
+                                    key={user.id}
+                                    user={user}
+                                    onEdit={setEditingUser}
                                     onLink={setLinkingUser}
                                 />
                             ))}
@@ -163,16 +222,16 @@ export const UserAdminPage = () => {
 
             {/* Edit User Floating Modal */}
             {editingUser && (
-                <EditUserModal 
-                    user={editingUser} 
-                    onClose={() => setEditingUser(null)} 
+                <EditUserModal
+                    user={editingUser}
+                    onClose={() => setEditingUser(null)}
                     onSave={(data) => handleUpdateUser(editingUser.id, data)}
                 />
             )}
 
             {/* Link Nexudus specialized modal */}
             {linkingUser && (
-                <LinkNexudusModal 
+                <LinkNexudusModal
                     user={linkingUser}
                     onClose={() => setLinkingUser(null)}
                     onSave={async (nexudusId) => {

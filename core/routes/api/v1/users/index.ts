@@ -11,6 +11,7 @@ const userSchema = {
     nexudusUser: { type: 'string' },
     role: { type: 'string' },
     a3NoPaperMode: { type: 'number' },
+    isIgnored: { type: 'number' },
     _links: {
       type: 'object',
       properties: {
@@ -137,7 +138,8 @@ const usersRoute: FastifyPluginAsync = async (fastify) => {
           nexudusUser: { type: 'string' },
           role: { type: 'string' },
           password: { type: 'string' },
-          a3NoPaperMode: { type: 'number' }
+          a3NoPaperMode: { type: 'number' },
+          isIgnored: { type: 'number' }
         }
       },
       response: {
@@ -243,7 +245,7 @@ const usersRoute: FastifyPluginAsync = async (fastify) => {
       tags: ['Users'],
       params: {
         type: 'object',
-        properties: { 
+        properties: {
           id: { type: 'string' },
           accountId: { type: 'string' }
         },
@@ -269,7 +271,7 @@ const usersRoute: FastifyPluginAsync = async (fastify) => {
       tags: ['Users'],
       params: {
         type: 'object',
-        properties: { 
+        properties: {
           id: { type: 'string' },
           accountId: { type: 'string' }
         },

@@ -1,7 +1,8 @@
 import dotenv from 'dotenv';
 
-// Load .env configuration
-dotenv.config();
+// Load .env configuration (supports override via ENV_FILE or DOTENV_CONFIG_PATH)
+const envFile = process.env.ENV_FILE || process.env.DOTENV_CONFIG_PATH || '.env';
+dotenv.config({ path: envFile });
 
 export const serverConfig = {
     logLevel: process.env.LOG_LEVEL || 'info', // INFO, DEBUG, ERROR, WARN, TRACE

@@ -9,23 +9,25 @@ interface User {
   nexudusUser: string;
   role: string;
   a3NoPaperMode?: number;
+  isIgnored?: number;
 }
 
 interface EditUserModalProps {
   user: User;
   onClose: () => void;
-  onSave: (updatedData: { 
-    username?: string; 
-    printUser?: string; 
-    nexudusUser?: string; 
+  onSave: (updatedData: {
+    username?: string;
+    printUser?: string;
+    nexudusUser?: string;
     password?: string;
     a3NoPaperMode?: number;
+    isIgnored?: number;
   }) => Promise<void>;
 }
 
 /**
  * EditUserModal Component
- * 
+ *
  * Floating panel (Glassmorphism) for safe user editing.
  * Security: Password is write-only with verification and visibility toggle.
  */
@@ -34,7 +36,8 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ user, onClose, onS
     username: user.username,
     printUser: user.printUser,
     a3NoPaperMode: user.a3NoPaperMode || 0,
-    password: '', 
+    isIgnored: Boolean(user.isIgnored),
+    password: '',
     confirmPassword: '',
   });
   const [showPassword, setShowPassword] = useState(false);
@@ -54,12 +57,13 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ user, onClose, onS
     setIsSaving(true);
 
     try {
-      const dataToSave: any = { 
+      const dataToSave: any = {
         username: formData.username,
         printUser: formData.printUser,
-        a3NoPaperMode: formData.a3NoPaperMode
+        a3NoPaperMode: formData.a3NoPaperMode,
+        isIgnored: formData.isIgnored ? 1 : 0
       };
-      
+
       if (formData.password) {
         dataToSave.password = formData.password;
       }
@@ -76,7 +80,7 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ user, onClose, onS
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
       {/* Backdrop */}
-      <div 
+      <div
         className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300"
         onClick={onClose}
       />
@@ -98,7 +102,7 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ user, onClose, onS
               </p>
             </div>
           </div>
-          <button 
+          <button
             onClick={onClose}
             className="p-3 text-slate-400 hover:text-slate-600 dark:text-white/20 dark:hover:text-white rounded-2xl bg-white dark:bg-white/5 shadow-sm hover:shadow-md transition-all"
           >
@@ -163,6 +167,26 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ user, onClose, onS
                   className={`relative w-12 h-6 rounded-full transition-colors duration-300 outline-none ${formData.a3NoPaperMode ? 'bg-[#f15a24]' : 'bg-slate-300 dark:bg-white/10'}`}
                 >
                   <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all duration-300 ${formData.a3NoPaperMode ? 'left-7 shadow-lg shadow-black/20' : 'left-1'}`} />
+                </button>
+              </div>
+
+              {/* Ignored User Toggle - Premium Style */}
+              <div className="md:col-span-2 p-6 rounded-3xl bg-slate-50 dark:bg-black/20 border border-slate-100 dark:border-white/5 flex items-center justify-between group hover:border-amber-500/20 transition-all">
+                <div className="flex items-center gap-4">
+                  <div className={`p-3 rounded-2xl transition-colors ${formData.isIgnored ? 'bg-amber-500/15 text-amber-500' : 'bg-slate-200 dark:bg-white/5 text-slate-400'}`}>
+                    <EyeOff size={20} />
+                  </div>
+                  <div>
+                    <p className="text-sm font-black text-slate-700 dark:text-white tracking-tight">Excluir de facturación (Usuario Ignorado)</p>
+                    <p className="text-[10px] font-medium text-slate-400 dark:text-white/20">Se capturarán sus copias pero se omitirá del Reporte Mensual y de Nexudus (staff, mantenimiento)</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setFormData({...formData, isIgnored: !formData.isIgnored})}
+                  className={`relative w-12 h-6 rounded-full transition-colors duration-300 outline-none ${formData.isIgnored ? 'bg-amber-500' : 'bg-slate-300 dark:bg-white/10'}`}
+                >
+                  <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all duration-300 ${formData.isIgnored ? 'left-7 shadow-lg shadow-black/20' : 'left-1'}`} />
                 </button>
               </div>
 

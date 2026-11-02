@@ -9,6 +9,7 @@ interface User {
   nexudusUser: string;
   role: string;
   a3NoPaperMode?: number;
+  isIgnored?: number;
 }
 
 interface UserCardProps {
@@ -19,7 +20,7 @@ interface UserCardProps {
 
 /**
  * UserCard
- * 
+ *
  * Grid card view for user management.
  * High visual hierarchy and mobile-friendly.
  */
@@ -50,9 +51,16 @@ export const UserCard: React.FC<UserCardProps> = ({ user, onEdit, onLink }) => {
           {user.username}
         </h3>
         <div className="flex flex-col items-center gap-1.5 mt-1">
-          <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-white/20">
-            {user.role}
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-white/20">
+              {user.role}
+            </span>
+            {user.isIgnored === 1 && (
+              <span className="text-[9px] font-black uppercase tracking-wider text-slate-500 dark:text-white/40 bg-slate-100 dark:bg-white/10 px-2 py-0.5 rounded-md border border-slate-200 dark:border-white/10">
+                Ignorado
+              </span>
+            )}
+          </div>
           {user.a3NoPaperMode === 1 && (
             <span className="text-[9px] font-black uppercase tracking-tighter text-[#f15a24] bg-[#f15a24]/10 px-2 py-0.5 rounded-lg border border-[#f15a24]/20 animate-pulse">
               Modo A3 Sin Papel
@@ -82,13 +90,13 @@ export const UserCard: React.FC<UserCardProps> = ({ user, onEdit, onLink }) => {
               <span className={user.nexudusUser ? "text-[10px] font-black uppercase tracking-wider" : "text-[10px] font-black uppercase tracking-wider text-red-500"}>Nexudus</span>
             </div>
           </div>
-          
+
           {user.nexudusUser ? (
             <NexudusAccountBadge nexudusUserId={user.nexudusUser} className="w-full" />
           ) : (
             <div className="flex flex-col items-center gap-3 py-4 bg-slate-50 dark:bg-white/5 rounded-2xl border border-dashed border-slate-200 dark:border-white/5">
               <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Sin vinculación</span>
-              <button 
+              <button
                 onClick={() => onLink(user)}
                 className="text-[10px] font-black uppercase tracking-tight text-red-500 bg-red-500/10 px-4 py-2 rounded-xl border border-red-500/20 hover:bg-red-500 hover:text-white transition-all transform active:scale-95"
               >

@@ -26,5 +26,17 @@ describe('Nested Resources API', () => {
             const data = JSON.parse(response.payload);
             expect(Array.isArray(data)).toBe(true);
         });
+
+        it('should accept period query parameter', async () => {
+            const response = await app.inject({
+                method: 'GET',
+                url: '/api/v1/users/admin/copies?period=2026-11',
+                headers: { Authorization: `Bearer ${adminToken}` }
+            });
+
+            expect(response.statusCode).toBe(200);
+            const data = JSON.parse(response.payload);
+            expect(Array.isArray(data)).toBe(true);
+        });
     });
 });

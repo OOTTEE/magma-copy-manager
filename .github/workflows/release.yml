@@ -1,12 +1,24 @@
 name: Release Automation
 on:
+  workflow_dispatch:
+    inputs:
+      type:
+        description: 'Release type'
+        required: true
+        default: 'minor'
+        type: choice
+        options:
+          - minor
+          - patch
+          - major
+          - bugfix
   push:
     branches:
       - main
 jobs:
   release:
-    # Trigger only if the commit message contains 'Release'
-    if: "contains(github.event.head_commit.message, 'Release')"
+    # Trigger on manual dispatch or if commit message contains 'Release'
+    if: "github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, 'Release')"
     runs-on: self-hosted
     permissions:
       contents: write
@@ -22,15 +34,19 @@ jobs:
       - name: Extract Release Type
         id: vars
         run: |
-          MSG="${{ github.event.head_commit.message }}"
-          if [[ $MSG =~ "Release major" ]]; then
-            echo "type=major" >> $GITHUB_OUTPUT
-          elif [[ $MSG =~ "Release minor" ]]; then
-            echo "type=minor" >> $GITHUB_OUTPUT
-          elif [[ $MSG =~ "Release bugfix" ]]; then
-            echo "type=bugfix" >> $GITHUB_OUTPUT
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "type=${{ github.event.inputs.type }}" >> $GITHUB_OUTPUT
           else
-            echo "type=minor" >> $GITHUB_OUTPUT
+            MSG="${{ github.event.head_commit.message }}"
+            if [[ $MSG =~ "Release major" ]]; then
+              echo "type=major" >> $GITHUB_OUTPUT
+            elif [[ $MSG =~ "Release minor" ]]; then
+              echo "type=minor" >> $GITHUB_OUTPUT
+            elif [[ $MSG =~ "Release bugfix" ]]; then
+              echo "type=bugfix" >> $GITHUB_OUTPUT
+            else
+              echo "type=minor" >> $GITHUB_OUTPUT
+            fi
           fi
 
       - name: Setup Node.js

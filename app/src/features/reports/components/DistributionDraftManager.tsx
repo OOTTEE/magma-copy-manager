@@ -367,7 +367,7 @@ export const DistributionDraftManager: React.FC<DistributionDraftManagerProps> =
                 <div className="flex items-start gap-3">
                     <Info className="text-indigo-400 shrink-0 mt-0.5" size={16} />
                     <p className="text-[10px] text-slate-400 dark:text-white/40 font-bold leading-relaxed max-w-lg">
-                        Las copias asignadas a cuentas se registrarán como <strong className="text-indigo-500 uppercase">Vinculadas</strong> listas para subir a Nexudus. Las copias no asignadas se mantendrán como <strong className="text-amber-500 uppercase">Pendientes</strong> sin bloquear la sincronización del mes.
+                        Las copias asignadas a cuentas se registrarán como <strong className="text-indigo-500 uppercase">Publicadas</strong> listas para subir a Nexudus. Las copias no asignadas se mantendrán como <strong className="text-amber-500 uppercase">Pendientes</strong> sin bloquear la sincronización del mes.
                     </p>
                 </div>
 

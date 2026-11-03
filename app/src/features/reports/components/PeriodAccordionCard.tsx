@@ -79,19 +79,19 @@ export const PeriodAccordionCard: React.FC<PeriodAccordionCardProps> = ({
             </div>
 
             <div className="flex items-center gap-2 mt-1">
-              {isFullyBilled ? (
+              {(metrics?.totalCopies ?? 0) === 0 ? (
+                <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-white/40">
+                  Sin actividad
+                </span>
+              ) : isFullyBilled ? (
                 <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wider text-emerald-500">
                   <CheckCircle2 size={12} />
-                  Completamente Facturado
-                </span>
-              ) : isPartial ? (
-                <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wider text-amber-500">
-                  <Clock size={12} />
-                  Facturación Parcial
+                  Completado
                 </span>
               ) : (
-                <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-white/40">
-                  Borrador / Sin Cobrar
+                <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wider text-amber-500">
+                  <Clock size={12} />
+                  Pendiente
                 </span>
               )}
               <span className="text-slate-300 dark:text-white/10">•</span>
@@ -107,17 +107,17 @@ export const PeriodAccordionCard: React.FC<PeriodAccordionCardProps> = ({
           {/* Total Copias */}
           <div className="px-4 py-2 rounded-2xl bg-slate-50 dark:bg-white/[0.02] border border-slate-200/50 dark:border-white/5">
             <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 dark:text-white/30">
-              Total Capturado
+              Copias Totales
             </p>
             <p className="text-base font-black font-mono text-slate-800 dark:text-white/90">
               {metrics?.totalCopies ?? 0} <span className="text-[10px] font-normal text-slate-400">copias</span>
             </p>
           </div>
 
-          {/* Copias Vinculadas */}
+          {/* Copias Publicadas */}
           <div className="px-4 py-2 rounded-2xl bg-indigo-50/50 dark:bg-indigo-500/5 border border-indigo-200/40 dark:border-indigo-500/10">
             <p className="text-[9px] font-black uppercase tracking-widest text-indigo-500">
-              Copias Vinculadas
+              Copias Publicadas
             </p>
             <p className="text-base font-black font-mono text-indigo-600 dark:text-indigo-400">
               {metrics?.linkedCopies ?? 0}
@@ -127,7 +127,7 @@ export const PeriodAccordionCard: React.FC<PeriodAccordionCardProps> = ({
           {/* Copias Pendientes */}
           <div className="px-4 py-2 rounded-2xl bg-slate-50 dark:bg-white/[0.02] border border-slate-200/50 dark:border-white/5">
             <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 dark:text-white/30">
-              Pendientes Reparto
+              Copias Pendientes
             </p>
             <p className={`text-base font-black font-mono ${(metrics?.pendingCopies ?? 0) > 0 ? 'text-amber-500' : 'text-slate-400 dark:text-white/30'}`}>
               {metrics?.pendingCopies ?? 0}

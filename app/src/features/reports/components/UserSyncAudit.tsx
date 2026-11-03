@@ -213,7 +213,7 @@ export const UserSyncAudit: React.FC<UserSyncAuditProps> = ({
                     <CheckCircle2 size={24} className="mx-auto mb-2 text-slate-300 dark:text-white/20" />
                     <p className="text-xs font-bold">No hay ventas registradas en Nexudus para este ciclo</p>
                     <p className="text-[11px] text-slate-400 dark:text-white/30 mt-0.5">
-                        Las copias vinculadas de este usuario aún no se han subido al sistema de facturación.
+                        Las copias de este usuario aún no se han publicado en el sistema de facturación.
                     </p>
                 </div>
             )}

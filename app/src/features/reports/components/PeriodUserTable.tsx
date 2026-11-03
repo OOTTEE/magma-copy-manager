@@ -55,10 +55,10 @@ export const PeriodUserTable: React.FC<PeriodUserTableProps> = ({
         <thead>
           <tr className="border-b border-slate-100 dark:border-white/5 text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-white/30">
             <th className="py-4 px-6">Coworker</th>
-            <th className="py-4 px-4 text-center">Copias Vinculadas</th>
-            <th className="py-4 px-4 text-center">Pendientes de Asignar</th>
-            <th className="py-4 px-4 text-center">Total Capturado</th>
-            <th className="py-4 px-4 text-center">Estado de Cobro</th>
+            <th className="py-4 px-4 text-center">Copias Publicadas</th>
+            <th className="py-4 px-4 text-center">Copias Pendientes</th>
+            <th className="py-4 px-4 text-center">Copias Totales</th>
+            <th className="py-4 px-4 text-center">Estado</th>
             <th className="py-4 px-6 text-right">Acciones</th>
           </tr>
         </thead>
@@ -69,7 +69,6 @@ export const PeriodUserTable: React.FC<PeriodUserTableProps> = ({
             const pendingCopies = item.copies?.pending ?? 0;
             const syncedCopies = item.copies?.synced ?? 0;
             const isFullyBilled = item.status === 'billed';
-            const isPartialBilled = item.status === 'partial';
 
             return (
               <React.Fragment key={item.id}>
@@ -112,7 +111,7 @@ export const PeriodUserTable: React.FC<PeriodUserTableProps> = ({
                     </div>
                   </td>
 
-                  {/* Copias Vinculadas */}
+                  {/* Copias Publicadas */}
                   <td className="py-4 px-4 text-center">
                     <div className="inline-flex flex-col items-center">
                       <span className="text-sm font-black font-mono text-indigo-600 dark:text-indigo-400">
@@ -127,7 +126,7 @@ export const PeriodUserTable: React.FC<PeriodUserTableProps> = ({
                     </div>
                   </td>
 
-                  {/* Pendientes de Asignar */}
+                  {/* Copias Pendientes */}
                   <td className="py-4 px-4 text-center">
                     {pendingCopies > 0 ? (
                       <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-xs font-black font-mono bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
@@ -141,35 +140,35 @@ export const PeriodUserTable: React.FC<PeriodUserTableProps> = ({
                     )}
                   </td>
 
-                  {/* Total Capturado */}
+                  {/* Copias Totales */}
                   <td className="py-4 px-4 text-center font-mono text-xs font-bold text-slate-600 dark:text-white/60">
                     {item.total}
                   </td>
 
-                  {/* Estado de Cobro */}
+                  {/* Estado */}
                   <td className="py-4 px-4 text-center">
-                    {isFullyBilled ? (
+                    {item.total === 0 ? (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-slate-100 dark:bg-white/5 text-slate-400 dark:text-white/30">
+                        Sin actividad
+                      </span>
+                    ) : isFullyBilled ? (
                       <button
                         onClick={() => toggleExpand(item.id, 'sync')}
-                        title="Ver ventas sincronizadas en Nexudus"
+                        title="Ver ventas publicadas en Nexudus"
                         className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 transition-colors"
                       >
                         <CheckCircle2 size={12} />
-                        Facturado
-                      </button>
-                    ) : isPartialBilled ? (
-                      <button
-                        onClick={() => toggleExpand(item.id, 'sync')}
-                        title="Ver ventas sincronizadas en Nexudus"
-                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 hover:bg-amber-500/20 transition-colors"
-                      >
-                        <Clock size={12} />
-                        Parcial
+                        Completado
                       </button>
                     ) : (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-slate-100 dark:bg-white/5 text-slate-500 dark:text-white/40">
-                        Listo para Cobro
-                      </span>
+                      <button
+                        onClick={() => syncedCopies > 0 ? toggleExpand(item.id, 'sync') : undefined}
+                        title={syncedCopies > 0 ? "Ver ventas publicadas en Nexudus (parcial)" : "Faltan copias por publicar en Nexudus"}
+                        className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 ${syncedCopies > 0 ? 'hover:bg-amber-500/20 cursor-pointer' : 'cursor-default'} transition-colors`}
+                      >
+                        <Clock size={12} />
+                        Pendiente
+                      </button>
                     )}
                   </td>
 
@@ -193,8 +192,8 @@ export const PeriodUserTable: React.FC<PeriodUserTableProps> = ({
                         disabled={item.total === 0 || isFullyBilled}
                         title={
                           isFullyBilled 
-                            ? 'Todas las copias ya están facturadas en Nexudus' 
-                            : 'Subir copias vinculadas a Nexudus'
+                            ? 'Todas las copias ya han sido publicadas en Nexudus' 
+                            : 'Publicar copias en Nexudus'
                         }
                         className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold bg-[#f15a24] hover:bg-[#d94e1d] text-white shadow-md shadow-[#f15a24]/20 transition-all disabled:opacity-40 disabled:pointer-events-none active:scale-95"
                       >

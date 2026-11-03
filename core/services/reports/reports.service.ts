@@ -120,9 +120,9 @@ export const reportsService = {
         }
         totalCopies += item.total;
         linkedCopies += (item.copies?.linked ?? item.total);
-        pendingCopies += (item.copies?.pending ?? 0);
         syncedCopies += (item.copies?.synced ?? 0);
       }
+      pendingCopies = Math.max(0, totalCopies - syncedCopies);
 
       let status: 'billed' | 'partial' | 'pending' = 'pending';
       if (totalCopies > 0 && syncedCopies >= totalCopies) {

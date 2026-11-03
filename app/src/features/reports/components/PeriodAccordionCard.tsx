@@ -120,7 +120,7 @@ export const PeriodAccordionCard: React.FC<PeriodAccordionCardProps> = ({
               Copias Publicadas
             </p>
             <p className="text-base font-black font-mono text-indigo-600 dark:text-indigo-400">
-              {metrics?.linkedCopies ?? 0}
+              {metrics?.syncedCopies ?? 0}
             </p>
           </div>
 
@@ -129,8 +129,8 @@ export const PeriodAccordionCard: React.FC<PeriodAccordionCardProps> = ({
             <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 dark:text-white/30">
               Copias Pendientes
             </p>
-            <p className={`text-base font-black font-mono ${(metrics?.pendingCopies ?? 0) > 0 ? 'text-amber-500' : 'text-slate-400 dark:text-white/30'}`}>
-              {metrics?.pendingCopies ?? 0}
+            <p className={`text-base font-black font-mono {((metrics?.totalCopies ?? 0) - (metrics?.syncedCopies ?? 0)) > 0 ? 'text-amber-500' : 'text-slate-400 dark:text-white/30'}`}>
+              {Math.max(0, (metrics?.totalCopies ?? 0) - (metrics?.syncedCopies ?? 0))}
             </p>
           </div>
 

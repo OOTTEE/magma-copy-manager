@@ -65,9 +65,8 @@ export const PeriodUserTable: React.FC<PeriodUserTableProps> = ({
         <tbody className="divide-y divide-slate-100/60 dark:divide-white/[0.03]">
           {data.map(item => {
             const isExpanded = expandedUserId === item.id;
-            const linkedCopies = item.copies?.linked ?? item.total;
-            const pendingCopies = item.copies?.pending ?? 0;
             const syncedCopies = item.copies?.synced ?? 0;
+            const pendingCopies = Math.max(0, item.total - syncedCopies);
             const isFullyBilled = item.status === 'billed';
 
             return (
@@ -113,17 +112,9 @@ export const PeriodUserTable: React.FC<PeriodUserTableProps> = ({
 
                   {/* Copias Publicadas */}
                   <td className="py-4 px-4 text-center">
-                    <div className="inline-flex flex-col items-center">
-                      <span className="text-sm font-black font-mono text-indigo-600 dark:text-indigo-400">
-                        {linkedCopies}
-                      </span>
-                      {syncedCopies > 0 && (
-                        <span className="text-[9px] font-bold text-emerald-500 flex items-center gap-0.5">
-                          <CheckCircle2 size={9} />
-                          {syncedCopies} subidas
-                        </span>
-                      )}
-                    </div>
+                    <span className="text-sm font-black font-mono text-indigo-600 dark:text-indigo-400">
+                      {syncedCopies}
+                    </span>
                   </td>
 
                   {/* Copias Pendientes */}

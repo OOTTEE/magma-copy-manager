@@ -108,20 +108,21 @@ export const dashboardFacade = {
         const isMultiAccount = accountsCount > 1;
 
         // 3. Current period usage object
+        const userData = pendingReport?.data;
         const currentPeriod = {
             month: currentMonth,
             from: pendingReport?.period?.from || `${currentMonth}-01`,
             to: pendingReport?.period?.to || `${currentMonth}-28`,
-            total: pendingReport?.data?.total || 0,
-            a4Bw: pendingReport?.data?.a4Bw || 0,
-            a4Color: pendingReport?.data?.a4Color || 0,
-            a3Bw: pendingReport?.data?.a3Bw || 0,
-            a3Color: pendingReport?.data?.a3Color || 0,
-            sra3Bw: pendingReport?.data?.sra3Bw || 0,
-            sra3Color: pendingReport?.data?.sra3Color || 0,
-            isOverAllocated: Boolean(pendingReport?.data?.isOverAllocated),
-            syncedCopies: pendingReport?.syncedCopies || 0,
-            pendingCopies: pendingReport?.pendingCopies || 0
+            total: userData?.total || 0,
+            a4Bw: userData?.a4Bw || 0,
+            a4Color: userData?.a4Color || 0,
+            a3Bw: userData?.a3Bw || 0,
+            a3Color: userData?.a3Color || 0,
+            sra3Bw: userData?.sra3Bw || 0,
+            sra3Color: userData?.sra3Color || 0,
+            isOverAllocated: Boolean(userData?.isOverAllocated),
+            syncedCopies: userData?.copies?.synced || 0,
+            pendingCopies: userData?.copies?.pending || 0
         };
 
         // 4. Monthly evolution (YTD) - Consolidates total quantity per month

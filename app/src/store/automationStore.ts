@@ -25,6 +25,7 @@ interface AutomationState {
     isLoading: boolean;
     isLoadingPeriods: boolean;
     isTriggering: boolean;
+    triggeringType: 'sync' | 'billing' | null;
     error: string | null;
 
     // Actions
@@ -53,6 +54,7 @@ export const useAutomationStore = create<AutomationState>((set, get) => ({
     isLoading: false,
     isLoadingPeriods: false,
     isTriggering: false,
+    triggeringType: null,
     error: null,
 
     fetchPeriods: async () => {
@@ -118,22 +120,26 @@ export const useAutomationStore = create<AutomationState>((set, get) => ({
     },
 
     triggerSync: async () => {
-        set({ isTriggering: true });
+        set({ isTriggering: true, triggeringType: 'sync', error: null });
         try {
             await automationService.triggerSync();
             await get().fetchLogs({ offset: 0 });
+        } catch (err: any) {
+            set({ error: err?.response?.data?.message || err.message || 'Error al ejecutar sincronización.' });
         } finally {
-            set({ isTriggering: false });
+            set({ isTriggering: false, triggeringType: null });
         }
     },
 
     triggerBilling: async () => {
-        set({ isTriggering: true });
+        set({ isTriggering: true, triggeringType: 'billing', error: null });
         try {
             await automationService.triggerBilling();
             await get().fetchLogs({ offset: 0 });
+        } catch (err: any) {
+            set({ error: err?.response?.data?.message || err.message || 'Error al ejecutar facturación.' });
         } finally {
-            set({ isTriggering: false });
+            set({ isTriggering: false, triggeringType: null });
         }
     }
 }));

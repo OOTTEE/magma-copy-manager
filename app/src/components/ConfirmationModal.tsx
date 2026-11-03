@@ -1,5 +1,6 @@
 import React from 'react';
-import { X, AlertTriangle, AlertCircle } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import { X, AlertTriangle, AlertCircle, Loader2 } from 'lucide-react';
 
 interface ConfirmationModalProps {
     isOpen: boolean;
@@ -10,12 +11,14 @@ interface ConfirmationModalProps {
     confirmText?: string;
     cancelText?: string;
     variant?: 'danger' | 'primary' | 'warning';
+    isLoading?: boolean;
 }
 
 /**
  * ConfirmationModal Component
  * 
- * A reusable, premium floating modal for user confirmations.
+ * A reusable, premium floating modal for user confirmations rendered via portal.
+ * Escapes parent stacking contexts to ensure top-layer visibility.
  * Replaces native browser confirm().
  */
 export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
@@ -26,9 +29,11 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
     message,
     confirmText = "Confirmar",
     cancelText = "Cancelar",
-    variant = 'primary'
+    variant = 'primary',
+    isLoading = false
 }) => {
     if (!isOpen) return null;
+    if (typeof document === 'undefined') return null;
 
     const variantStyles = {
         danger: 'bg-red-500 text-white shadow-red-500/20 hover:bg-red-600',
@@ -44,16 +49,16 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
 
     const Icon = variant === 'danger' ? AlertTriangle : AlertCircle;
 
-    return (
-        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
+    const modalContent = (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
             {/* Backdrop */}
             <div 
-                className="absolute inset-0 bg-slate-900/60 backdrop-blur-md animate-in fade-in duration-300"
-                onClick={onClose}
+                className="fixed inset-0 bg-slate-900/60 backdrop-blur-md animate-in fade-in duration-300"
+                onClick={isLoading ? undefined : onClose}
             />
             
             {/* Modal Content */}
-            <div className="relative w-full max-w-md bg-white dark:bg-[#1a1818] rounded-[2.5rem] shadow-2xl border border-slate-200 dark:border-white/5 overflow-hidden animate-in zoom-in-95 fade-in duration-300">
+            <div className="relative w-full max-w-md bg-white dark:bg-[#1a1818] rounded-[2.5rem] shadow-2xl border border-slate-200 dark:border-white/5 overflow-hidden animate-in zoom-in-95 fade-in duration-300 z-10">
                 <div className="p-8">
                     {/* Header */}
                     <div className="flex items-center justify-between mb-6">
@@ -62,7 +67,8 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
                         </div>
                         <button 
                             onClick={onClose}
-                            className="p-2 text-slate-400 hover:text-slate-600 dark:text-white/20 dark:hover:text-white transition-all"
+                            disabled={isLoading}
+                            className="p-2 text-slate-400 hover:text-slate-600 dark:text-white/20 dark:hover:text-white transition-all disabled:opacity-50"
                         >
                             <X size={20} />
                         </button>
@@ -82,13 +88,16 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
                     <div className="flex flex-col sm:flex-row gap-3">
                         <button 
                             onClick={onConfirm}
-                            className={`flex-1 px-8 py-4 rounded-2xl font-black uppercase tracking-widest text-xs shadow-xl transition-all active:scale-95 ${variantStyles[variant]}`}
+                            disabled={isLoading}
+                            className={`flex-1 flex items-center justify-center gap-2 px-8 py-4 rounded-2xl font-black uppercase tracking-widest text-xs shadow-xl transition-all active:scale-95 disabled:opacity-50 disabled:pointer-events-none ${variantStyles[variant]}`}
                         >
+                            {isLoading && <Loader2 size={16} className="animate-spin" />}
                             {confirmText}
                         </button>
                         <button 
                             onClick={onClose}
-                            className="flex-1 px-8 py-4 bg-slate-100 dark:bg-white/5 text-slate-500 dark:text-white/40 rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-slate-200 dark:hover:bg-white/10 transition-all active:scale-95"
+                            disabled={isLoading}
+                            className="flex-1 px-8 py-4 bg-slate-100 dark:bg-white/5 text-slate-500 dark:text-white/40 rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-slate-200 dark:hover:bg-white/10 transition-all active:scale-95 disabled:opacity-50"
                         >
                             {cancelText}
                         </button>
@@ -97,4 +106,6 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
             </div>
         </div>
     );
+
+    return createPortal(modalContent, document.body);
 };

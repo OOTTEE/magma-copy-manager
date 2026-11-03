@@ -17,6 +17,7 @@ export const AutomationFilterBar: React.FC = () => {
         filters, 
         isLoading, 
         isTriggering, 
+        triggeringType,
         setFilter, 
         triggerSync, 
         triggerBilling,
@@ -31,13 +32,16 @@ export const AutomationFilterBar: React.FC = () => {
         type: null
     });
 
-    const handleConfirmTrigger = async () => {
-        if (modalState.type === 'sync') {
-            await triggerSync();
-        } else if (modalState.type === 'billing') {
-            await triggerBilling();
-        }
+    const handleConfirmTrigger = () => {
+        const actionType = modalState.type;
+        // Close modal immediately: "Una confirmación basta"
         setModalState({ isOpen: false, type: null });
+
+        if (actionType === 'sync') {
+            triggerSync();
+        } else if (actionType === 'billing') {
+            triggerBilling();
+        }
     };
 
     return (
@@ -152,19 +156,27 @@ export const AutomationFilterBar: React.FC = () => {
                     <button
                         onClick={() => setModalState({ isOpen: true, type: 'sync' })}
                         disabled={isTriggering}
-                        className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 text-xs font-black transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-50"
+                        className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 text-xs font-black transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-50 disabled:pointer-events-none"
                     >
-                        <Zap size={14} />
-                        Sincronizar Impresora
+                        {isTriggering && triggeringType === 'sync' ? (
+                            <RefreshCw size={14} className="animate-spin text-indigo-500" />
+                        ) : (
+                            <Zap size={14} />
+                        )}
+                        {isTriggering && triggeringType === 'sync' ? "Sincronizando..." : "Sincronizar Impresora"}
                     </button>
 
                     <button
                         onClick={() => setModalState({ isOpen: true, type: 'billing' })}
                         disabled={isTriggering}
-                        className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-xs font-black shadow-md shadow-slate-900/10 dark:shadow-white/5 transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-50"
+                        className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-xs font-black shadow-md shadow-slate-900/10 dark:shadow-white/5 transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-50 disabled:pointer-events-none"
                     >
-                        <Play size={14} />
-                        Ejecutar Facturación
+                        {isTriggering && triggeringType === 'billing' ? (
+                            <RefreshCw size={14} className="animate-spin text-amber-400" />
+                        ) : (
+                            <Play size={14} />
+                        )}
+                        {isTriggering && triggeringType === 'billing' ? "Facturando..." : "Ejecutar Facturación"}
                     </button>
                 </div>
             </div>
@@ -182,6 +194,7 @@ export const AutomationFilterBar: React.FC = () => {
                 }
                 confirmText={isTriggering ? "Ejecutando..." : "Ejecutar Ahora"}
                 variant={modalState.type === 'billing' ? "danger" : "primary"}
+                isLoading={isTriggering}
             />
         </div>
     );

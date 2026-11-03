@@ -65,6 +65,7 @@ Magma nace para eliminar la fricción operativa en la gestión de costes de impr
 | 2026-11-02 | Admin Navigation | Direct Landing on Monthly Report (Camino A) | Retirada de la pantalla de 'Inicio' para el rol Administrador para eliminar pantallas de vanidad pasivas. Los administradores aterrizan directamente en el 'Reporte Mensual' al autenticarse, optimizando el tiempo hacia la acción operativa. Los clientes mantienen su vista personal de consumos. |
 | 2026-11-02 | Synced Copies / Rollback Policy | Inline Rollback & Time-Bound Reversion (Visión A) | Supresión de la pantalla plana 'Copias Vinculadas' del menú. Integración de la auditoría de ventas y acción de reversión (rollback) directamente en el detalle de usuario del Reporte Mensual. Blindaje temporal: la reversión solo está permitida mientras el período contable esté vigente (no caducado). |
 | 2026-11-03 | Monthly Report UX / Taxonomy | Consumable Publication Taxonomy (Visión A: Flujo Operativo Puro) | Sustitución de términos ambiguos por una taxonomía rigurosa y transparente: 'Copias publicadas' (refleja exclusiva y estrictamente las copias con ventas ya confirmadas y transmitidas a Nexudus), 'Copias pendientes' (remanente real pendiente de sincronizar: Totales - Publicadas) y 'Copias totales' (volumen capturado del período). Se desvinculan las columnas principales del reparto contable multi-cuenta, eliminando falsos positivos donde consumos no facturados aparecían como publicados. |
+| 2026-11-03 | Multi-Account Allocation | In-situ Allocation Ledger & Over-Allocation Safety Freeze | Rediseño de la herramienta de reparto para usuarios con múltiples cuentas Nexudus. Se sustituye la matriz rígida por una bitácora de entradas ('Allocation Ledger') donde el usuario o admin registra partidas hacia cuentas secundarias en cualquier momento del mes (con cantidad y motivo), mientras la cuenta principal absorbe el remanente. Protocolo de seguridad: si al cierre contable la suma declarada supera las copias reales de la impresora, el usuario se congela (no se publica en Nexudus), se muestra un indicador de sobreasignación en el reporte mensual y se despacha una alerta por correo al Administrador. |
 
 ### 3. Reporte Mensual: La Pre-Auditoría (Drafting) y Cierre Periódico
 El reporte mensual evoluciona de una vista estática a un **Centro de Cierre y Planificación Contable**:
@@ -105,6 +106,16 @@ Unificación del ciclo de vida contable dentro del Reporte Mensual y blindaje de
   - **Dinámica Operativa**: El corte de lectura de copias del ciclo finaliza un par de días antes del cierre de mes, pero la **facturación real y efectiva se ejecuta el último día del mes**.
   - **Ventana de Gracia**: La posibilidad de rectificar y deshacer una sincronización permanece activa durante todo el mes natural correspondiente al ciclo (hasta el último segundo del último día de ese mes).
   - **Bloqueo Definitivo**: Llegado el primer día del mes siguiente (ej. 1 de diciembre para el ciclo de noviembre), la facturación ya es un hecho consumado e irrevocable en el sistema contable. A partir de ese momento, la opción de «Deshacer sincronización» queda terminantemente bloqueada en Magma para impedir descuadres fiscales y dobles facturaciones.
+
+### 8. Bitácora de Asignación Multi-cuenta (Allocation Ledger) y Blindaje por Sobreasignación
+Rediseño integral de la experiencia de distribución para coworkers con múltiples cuentas en Nexudus:
+- **Exclusividad para Perfiles Multi-cuenta**: El botón y las herramientas de reparto se ocultan por completo para usuarios con una sola cuenta vinculada, garantizando cero ruido operativo.
+- **Modelo de Bitácora In-situ (Allocation Ledger)**: Los coworkers pueden añadir entradas de asignación puntuales hacia cuentas secundarias en cualquier momento del mes (indicando cuenta destino, cantidad de copias y motivo/concepto del trabajo), sin depender de una foto fija o del cierre contable.
+- **Absorción Pasiva en Cuenta Principal**: La cuenta principal jamás se edita a mano; absorbe automáticamente la diferencia entre el total real de la impresora y la suma de las partidas asignadas.
+- **Blindaje por Sobreasignación (Over-Allocation Freeze)**:
+  - Si al momento del cierre mensual la suma de las partidas registradas por el usuario supera el volumen físico detectado en la impresora, **se congela la publicación hacia Nexudus de ese usuario específico** (sin bloquear la facturación de los demás miembros).
+  - Se despacha de forma proactiva una **alerta por correo electrónico al Administrador** detallando el descuadre (usuario, copias declaradas vs copias reales).
+  - En la tabla del Reporte Mensual se muestra una píldora o badge distintivo de atención contable (*Sobreasignado / Bloqueado*) para facilitar la intervención manual o solicitar al usuario la corrección de sus registros.
 
 ## Decisiones Estéticas (UX Premium)
 

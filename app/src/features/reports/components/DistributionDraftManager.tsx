@@ -1,21 +1,19 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
-    Save,
     Loader2,
     AlertCircle,
-    Plus,
-    Minus,
     CheckCircle2,
-    Info,
-    LayoutGrid,
+    Plus,
+    Trash2,
+    Layers,
     Share2,
-    Calculator,
-    Zap
+    AlertTriangle,
+    FileText
 } from 'lucide-react';
 import { api } from '../../../services/api';
 import { NexudusAccountBadge } from '../../users/components/NexudusAccountBadge';
 
-const ALL_COPY_TYPES = [
+export const ALL_COPY_TYPES = [
     { key: 'a4Bw', label: 'A4 B/N', color: 'slate' },
     { key: 'a4Color', label: 'A4 Color', color: 'indigo' },
     { key: 'a3Bw', label: 'A3 B/N', color: 'slate' },
@@ -33,10 +31,15 @@ export interface CopyConsumption {
     sra3Color?: number;
 }
 
-interface Distribution {
+interface DistributionEntry {
+    id: string;
+    userId: string;
     nexudusAccountId: string;
+    month: string;
     type: string;
     quantity: number;
+    concept?: string | null;
+    createdAt: string;
 }
 
 interface NexudusAccount {
@@ -49,6 +52,7 @@ interface NexudusAccount {
 interface DistributionDraftManagerProps {
     userId: string;
     consumption: CopyConsumption;
+    period?: string; // YYYY-MM
     onBalanceChange?: (isBalanced: boolean) => void;
     onSaveSuccess?: () => void;
 }
@@ -56,335 +60,433 @@ interface DistributionDraftManagerProps {
 export const DistributionDraftManager: React.FC<DistributionDraftManagerProps> = ({
     userId,
     consumption,
+    period,
     onBalanceChange,
     onSaveSuccess
 }) => {
     const [accounts, setAccounts] = useState<NexudusAccount[]>([]);
-    const [distributions, setDistributions] = useState<Distribution[]>([]);
+    const [entries, setEntries] = useState<DistributionEntry[]>([]);
     const [isLoading, setIsLoading] = useState(false);
-    const [isSaving, setIsSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    const defaultAccountId = useMemo(() => accounts.find(a => a.isDefault === 1)?.id, [accounts]);
+    // Form state for creating a new entry
+    const [selectedAccountId, setSelectedAccountId] = useState<string>('');
+    const [selectedType, setSelectedType] = useState<string>('a4Color');
+    const [quantity, setQuantity] = useState<string>('');
+    const [concept, setConcept] = useState<string>('');
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [deletingId, setDeletingId] = useState<string | null>(null);
+
+    const defaultAccount = useMemo(() => accounts.find(a => a.isDefault === 1) || accounts[0], [accounts]);
+    const secondaryAccounts = useMemo(() => accounts.filter(a => a.id !== defaultAccount?.id), [accounts, defaultAccount]);
 
     const getConsumptionValue = useCallback((key: string): number => {
         const val = (consumption as Record<string, unknown>)[key];
         return typeof val === 'number' ? val : 0;
     }, [consumption]);
 
-    // Load data
+    const totalPhysical = useMemo(() => {
+        return ALL_COPY_TYPES.reduce((acc, t) => acc + getConsumptionValue(t.key), 0);
+    }, [getConsumptionValue]);
+
+    const totalAssigned = useMemo(() => {
+        return entries.reduce((acc, e) => acc + (e.quantity || 0), 0);
+    }, [entries]);
+
+    const isOverAllocated = totalAssigned > totalPhysical;
+    const remainder = Math.max(0, totalPhysical - totalAssigned);
+
+    // Auto-select first secondary account when loaded
     useEffect(() => {
-        const loadData = async () => {
-            setIsLoading(true);
-            try {
-                const [accountsRes, distRes] = await Promise.all([
-                    api.GET('/api/v1/users/{id}/nexudus-accounts', { params: { path: { id: userId } } }),
-                    api.GET("/api/v1/billing/distributions", { params: { query: { userId } } })
-                ]);
-
-                setAccounts((accountsRes.data as unknown as NexudusAccount[]) || []);
-                setDistributions((distRes.data as unknown as Distribution[]) || []);
-            } catch {
-                setError("Error al cargar datos de reparto.");
-            } finally {
-                setIsLoading(false);
-            }
-        };
-        loadData();
-    }, [userId]);
-
-    // Calculate totals assigned per type
-    const totals = useMemo(() => {
-        const assigned: Record<string, number> = {};
-        distributions.forEach(d => {
-            assigned[d.type] = (assigned[d.type] || 0) + d.quantity;
-        });
-
-        // Check if balanced for all types with consumption > 0
-        const relevantTypes = ALL_COPY_TYPES.filter(t => getConsumptionValue(t.key) > 0);
-        let isAllBalanced = true;
-        relevantTypes.forEach(type => {
-            if (assigned[type.key] !== getConsumptionValue(type.key)) {
-                isAllBalanced = false;
-            }
-        });
-
-        // Corner case: Multi-account user MUST have some distribution
-        if (accounts.length > 1 && distributions.length === 0 && relevantTypes.length > 0) {
-            isAllBalanced = false;
+        if (secondaryAccounts.length > 0 && !selectedAccountId) {
+            setSelectedAccountId(secondaryAccounts[0].id);
         }
-
-        return { assigned, isAllBalanced };
-    }, [distributions, accounts, getConsumptionValue]);
+    }, [secondaryAccounts, selectedAccountId]);
 
     // Notify parent about balance status
     useEffect(() => {
-        onBalanceChange?.(totals.isAllBalanced);
-    }, [totals.isAllBalanced, onBalanceChange]);
+        onBalanceChange?.(!isOverAllocated);
+    }, [isOverAllocated, onBalanceChange]);
 
-    const handleUpdateQuantity = (accountId: string, type: string, value: number) => {
-        const defaultAccount = accounts.find(a => a.isDefault === 1) || accounts[0];
-        if (!defaultAccount) return;
-
-        const isDefaultAccount = accountId === defaultAccount.id;
-        const currentQty = distributions.find(d => d.nexudusAccountId === accountId && d.type === type)?.quantity || 0;
-        const newQty = Math.max(0, value);
-        const totalForType = getConsumptionValue(type);
-
-        // If no changes, do nothing
-        if (newQty === currentQty) return;
-
-        setDistributions(prev => {
-            const currentDistributions = [...prev];
-            const diff = newQty - currentQty;
-
-            if (diff > 0) {
-                // INCREMENT LOGIC
-                if (isDefaultAccount) {
-                    // Rule: "Si incrementamos la cuenta por defecto, y tenemos elementos sin asignar, deberemos permitir el incremento"
-                    const currentTotalAssigned = totals.assigned[type] || 0;
-                    const unassignedPool = Math.max(0, totalForType - currentTotalAssigned);
-
-                    if (unassignedPool <= 0) return prev;
-
-                    const actualIncrement = Math.min(diff, unassignedPool);
-
-                    let found = false;
-                    const nextDistributions = currentDistributions.map(d => {
-                        if (d.nexudusAccountId === accountId && d.type === type) {
-                            found = true;
-                            return { ...d, quantity: d.quantity + actualIncrement };
-                        }
-                        return d;
-                    });
-
-                    if (!found) {
-                        nextDistributions.push({ nexudusAccountId: accountId, type, quantity: actualIncrement });
-                    }
-                    return nextDistributions;
-                } else {
-                    // Rule: "Si incremento la cuenta B, la cuenta A quedará en X" (subtracting from A)
-                    const defaultDistIdx = currentDistributions.findIndex(d => d.nexudusAccountId === defaultAccount.id && d.type === type);
-                    const defaultQty = defaultDistIdx >= 0 ? currentDistributions[defaultDistIdx].quantity : 0;
-
-                    if (defaultQty <= 0) return prev; // Cannot increment secondary if A is empty
-
-                    const actualIncrement = Math.min(diff, defaultQty);
-
-                    // Update Secondary
-                    let secondaryFound = false;
-                    const nextDistributions = currentDistributions.map(d => {
-                        if (d.nexudusAccountId === accountId && d.type === type) {
-                            secondaryFound = true;
-                            return { ...d, quantity: d.quantity + actualIncrement };
-                        }
-                        if (d.nexudusAccountId === defaultAccount.id && d.type === type) {
-                            return { ...d, quantity: d.quantity - actualIncrement };
-                        }
-                        return d;
-                    }).filter(d => d.quantity > 0);
-
-                    if (!secondaryFound) {
-                        nextDistributions.push({ nexudusAccountId: accountId, type, quantity: actualIncrement });
-                    }
-
-                    return nextDistributions;
-                }
-            } else {
-                // DECREMENT LOGIC
-                // Rule: "Si quiero reducir de cualquiera, no se ajustará nada"
-                return prev.map(d => {
-                    if (d.nexudusAccountId === accountId && d.type === type) {
-                        return { ...d, quantity: newQty };
-                    }
-                    return d;
-                }).filter(d => d.quantity > 0);
-            }
-        });
-    };
-
-    const handleSave = async () => {
-        setIsSaving(true);
+    const loadData = useCallback(async () => {
+        setIsLoading(true);
         setError(null);
         try {
-            const { error: apiError } = await api.POST("/api/v1/billing/distributions", {
-                body: { userId, distributions }
+            const [accountsRes, entriesRes] = await Promise.all([
+                api.GET('/api/v1/users/{id}/nexudus-accounts', { params: { path: { id: userId } } }),
+                api.GET('/api/v1/billing/distributions', { 
+                    params: { 
+                        query: { 
+                            userId,
+                            ...(period ? { month: period } : {})
+                        } 
+                    } 
+                })
+            ]);
+
+            setAccounts((accountsRes.data as unknown as NexudusAccount[]) || []);
+            setEntries((entriesRes.data as unknown as DistributionEntry[]) || []);
+        } catch {
+            setError('Error al cargar la bitácora de reparto.');
+        } finally {
+            setIsLoading(false);
+        }
+    }, [userId, period]);
+
+    useEffect(() => {
+        loadData();
+    }, [loadData]);
+
+    const handleCreateEntry = async (e: React.FormEvent) => {
+        e.preventDefault();
+        const parsedQty = parseInt(quantity, 10);
+        if (!selectedAccountId || isNaN(parsedQty) || parsedQty <= 0) {
+            setError('Indica una cuenta y una cantidad válida de copias.');
+            return;
+        }
+
+        setIsSubmitting(true);
+        setError(null);
+        try {
+            await api.POST('/api/v1/billing/distributions/entries', {
+                body: {
+                    userId,
+                    nexudusAccountId: selectedAccountId,
+                    type: selectedType,
+                    quantity: parsedQty,
+                    concept: concept.trim() || undefined,
+                    ...(period ? { month: period } : {})
+                }
             });
-            if (apiError) throw apiError;
+
+            // Reset form inputs
+            setQuantity('');
+            setConcept('');
+            await loadData();
             onSaveSuccess?.();
-            setError(null);
-        } catch (err: unknown) {
-            const msg = err instanceof Error ? err.message : "Error al guardar el reparto.";
+        } catch (err) {
+            const msg = err instanceof Error ? err.message : 'Error al guardar la asignación.';
             setError(msg);
         } finally {
-            setIsSaving(false);
+            setIsSubmitting(false);
         }
     };
 
-    const handleAutoFill = () => {
-        const defaultAcc = accounts.find(a => a.isDefault === 1) || accounts[0];
-        if (!defaultAcc) return;
-
-        const newDistributions: Distribution[] = [];
-        ALL_COPY_TYPES.forEach(type => {
-            const val = getConsumptionValue(type.key);
-            if (val > 0) {
-                newDistributions.push({
-                    nexudusAccountId: defaultAcc.id,
-                    type: type.key,
-                    quantity: val
-                });
-            }
-        });
-        setDistributions(newDistributions);
+    const handleDeleteEntry = async (entryId: string) => {
+        setDeletingId(entryId);
+        setError(null);
+        try {
+            await api.DELETE('/api/v1/billing/distributions/entries/{id}', {
+                params: { path: { id: entryId } }
+            });
+            await loadData();
+            onSaveSuccess?.();
+        } catch (err) {
+            const msg = err instanceof Error ? err.message : 'Error al eliminar la partida.';
+            setError(msg);
+        } finally {
+            setDeletingId(null);
+        }
     };
 
-    if (isLoading) {
+    if (isLoading && accounts.length === 0) {
         return (
-            <div className="flex items-center justify-center py-12 gap-3 text-slate-400">
-                <Loader2 className="animate-spin" size={20} />
-                <span className="text-[10px] font-black uppercase tracking-widest">Cargando borrador...</span>
+            <div className="py-12 flex flex-col items-center justify-center gap-3 text-slate-400">
+                <Loader2 className="animate-spin text-indigo-500" size={28} />
+                <span className="text-xs font-bold uppercase tracking-wider">Cargando bitácora de asignaciones...</span>
             </div>
         );
     }
 
     return (
-        <div className="p-8 space-y-8 animate-in fade-in slide-in-from-top-4 duration-500 bg-slate-50/50 dark:bg-black/20">
-            {/* Header / Summary */}
-            <div className="flex flex-col md:flex-row gap-6 items-stretch">
-                <div className="flex-1 grid grid-cols-2 lg:grid-cols-6 gap-3">
-                    {ALL_COPY_TYPES.filter(t => getConsumptionValue(t.key) > 0).map(type => {
-                        const consumptionVal = getConsumptionValue(type.key);
-                        const isBalanced = (totals.assigned[type.key] || 0) === consumptionVal;
-                        return (
-                            <div key={type.key} className={`p-4 rounded-2xl border transition-all ${isBalanced ? 'bg-emerald-500/5 border-emerald-500/10' : 'bg-amber-500/5 border-amber-500/10'}`}>
-                                <p className="text-[8px] font-black uppercase tracking-widest text-slate-400 mb-1">{type.label}</p>
-                                <div className="flex items-baseline gap-1.5">
-                                    <span className={`text-lg font-black ${isBalanced ? 'text-emerald-500' : 'text-amber-500'}`}>
-                                        {totals.assigned[type.key] || 0}
-                                    </span>
-                                    <span className="text-[10px] font-bold text-slate-400">/ {consumptionVal}</span>
-                                </div>
+        <div className="p-6 md:p-8 flex flex-col gap-6 bg-slate-50/50 dark:bg-black/20">
+            {/* Header: Overview and Default Account Banner */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                {/* Default Account Card (Passive Remainder) */}
+                <div className="p-5 rounded-2xl bg-white dark:bg-white/[0.03] border border-slate-200/80 dark:border-white/5 flex flex-col justify-between">
+                    <div>
+                        <div className="flex items-center justify-between gap-2 mb-2">
+                            <span className="text-[10px] font-black uppercase tracking-widest text-indigo-500 flex items-center gap-1.5">
+                                <Share2 size={13} />
+                                Cuenta Principal
+                            </span>
+                            <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-indigo-500/10 text-indigo-500 border border-indigo-500/20">
+                                Por defecto
+                            </span>
+                        </div>
+                        {defaultAccount ? (
+                            <div className="mt-1">
+                                <NexudusAccountBadge nexudusUserId={defaultAccount.nexudusUserId} />
                             </div>
-                        );
-                    })}
-                </div>
-
-                <div className={`shrink-0 md:w-64 p-6 rounded-3xl border flex flex-col justify-center items-center text-center gap-2 transition-all ${totals.isAllBalanced ? 'bg-emerald-600 shadow-xl shadow-emerald-500/20 border-emerald-500' : 'bg-amber-500 shadow-xl shadow-amber-500/20 border-amber-400'}`}>
-                    {totals.isAllBalanced ? (
-                        <>
-                            <CheckCircle2 size={32} className="text-white" />
-                            <div>
-                                <p className="text-[10px] font-black uppercase tracking-widest text-white/60">Balance Correcto</p>
-                                <p className="text-white font-black text-xs">Listo para sincronizar</p>
-                            </div>
-                        </>
-                    ) : (
-                        <>
-                            <Calculator size={32} className="text-white" />
-                            <div>
-                                <p className="text-[10px] font-black uppercase tracking-widest text-white/60">Balance Pendiente</p>
-                                <p className="text-white font-black text-xs">Ajuste requerido</p>
-                            </div>
-                        </>
-                    )}
-                </div>
-            </div>
-
-            {/* Editor Grid */}
-            <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                        <LayoutGrid size={18} className="text-indigo-500" />
-                        <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-white/20">Distribución por Cuenta Nexudus</h3>
+                        ) : (
+                            <p className="text-xs text-slate-400">Sin cuenta configurada</p>
+                        )}
+                        <p className="text-[11px] text-slate-400 dark:text-white/40 mt-2 font-medium">
+                            Absorbe automáticamente las copias no desviadas a cuentas secundarias.
+                        </p>
                     </div>
-                    <button
-                        onClick={handleAutoFill}
-                        className="text-[9px] font-black uppercase tracking-widest text-indigo-500 hover:text-white flex items-center gap-2 px-3 py-1.5 bg-indigo-500/5 hover:bg-indigo-500 rounded-xl border border-indigo-500/10 transition-all hover:scale-105 active:scale-95"
-                    >
-                        <Zap size={12} />
-                        Auto-llenar Remanente
-                    </button>
+
+                    <div className="mt-4 pt-3 border-t border-slate-100 dark:border-white/5 flex items-baseline justify-between">
+                        <span className="text-xs font-bold text-slate-500 dark:text-white/60">Remanente previsto:</span>
+                        <span className={`text-base font-black font-mono ${isOverAllocated ? 'text-slate-400' : 'text-indigo-600 dark:text-indigo-400'}`}>
+                            {remainder} <span className="text-[10px] font-normal text-slate-400">copias</span>
+                        </span>
+                    </div>
                 </div>
 
-                <div className="grid grid-cols-1 gap-4">
-                    {accounts.map(account => (
-                        <div key={account.id} className={`p-6 rounded-[2rem] border transition-all ${account.isDefault ? 'bg-white dark:bg-white/[0.04] border-indigo-500/30' : 'bg-white/50 dark:bg-white/[0.02] border-slate-200 dark:border-white/5'}`}>
-                            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-                                <div className="flex items-center gap-4 min-w-[240px]">
-                                    <div className={`p-3 rounded-2xl ${account.isDefault ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/20' : 'bg-slate-100 dark:bg-white/10 text-slate-400'}`}>
-                                        <Share2 size={18} />
-                                    </div>
-                                    <div>
-                                        <NexudusAccountBadge nexudusUserId={account.nexudusUserId} />
-                                        {account.isDefault === 1 && (
-                                            <span className="text-[8px] font-black uppercase tracking-widest text-indigo-500 block mt-1">Cuenta Principal</span>
-                                        )}
-                                    </div>
-                                </div>
+                {/* Macro Balance & Status Card */}
+                <div className={`p-5 rounded-2xl lg:col-span-2 border transition-all flex flex-col justify-between ${
+                    isOverAllocated 
+                        ? 'bg-rose-50/70 dark:bg-rose-950/20 border-rose-300 dark:border-rose-500/30' 
+                        : 'bg-white dark:bg-white/[0.03] border-slate-200/80 dark:border-white/5'
+                }`}>
+                    <div>
+                        <div className="flex items-center justify-between gap-2 mb-2">
+                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-white/40">
+                                Balance del Ciclo
+                            </span>
+                            {isOverAllocated ? (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-rose-500 text-white shadow-sm shadow-rose-500/30">
+                                    <AlertTriangle size={11} />
+                                    Sobreasignado
+                                </span>
+                            ) : (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                                    <CheckCircle2 size={11} />
+                                    Equilibrado
+                                </span>
+                            )}
+                        </div>
 
-                                <div className="flex-1 grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-6">
-                                    {ALL_COPY_TYPES.filter(type => getConsumptionValue(type.key) > 0).map(type => (
-                                        <div key={type.key} className="flex flex-col gap-1.5">
-                                            <div className="flex items-center justify-between px-1">
-                                                <label className="text-[8px] font-black text-slate-400 uppercase">{type.label}</label>
-                                                {totals.assigned[type.key] > getConsumptionValue(type.key) && (
-                                                    <AlertCircle size={10} className="text-red-500" />
-                                                )}
-                                            </div>
-                                            <div className="flex items-center bg-slate-100 dark:bg-black/40 rounded-xl p-1 border border-slate-200 dark:border-white/5 shadow-inner">
-                                                <button
-                                                    onClick={() => handleUpdateQuantity(account.id, type.key, (distributions.find(d => d.nexudusAccountId === account.id && d.type === type.key)?.quantity || 0) - 1)}
-                                                    className="p-1 hover:text-indigo-500 text-slate-400 transition-colors"
-                                                ><Minus size={14} /></button>
-                                                <input
-                                                    type="number"
-                                                    value={distributions.find(d => d.nexudusAccountId === account.id && d.type === type.key)?.quantity ?? ''}
-                                                    onChange={(e) => handleUpdateQuantity(account.id, type.key, parseInt(e.target.value || '0'))}
-                                                    placeholder="0"
-                                                    className="w-full bg-transparent border-none text-center text-xs font-black text-slate-700 dark:text-white outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                                />
-                                                <button
-                                                    onClick={() => handleUpdateQuantity(account.id, type.key, (distributions.find(d => d.nexudusAccountId === account.id && d.type === type.key)?.quantity || 0) + 1)}
-                                                    disabled={account.id === defaultAccountId
-                                                        ? (totals.assigned[type.key] || 0) >= getConsumptionValue(type.key)
-                                                        : (distributions.find(d => d.nexudusAccountId === defaultAccountId && d.type === type.key)?.quantity || 0) <= 0
-                                                    }
-                                                    className="p-1 hover:text-indigo-500 disabled:opacity-20 disabled:hover:text-slate-400 text-slate-400 transition-colors"
-                                                ><Plus size={14} /></button>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
+                        {/* Balance Numbers */}
+                        <div className="grid grid-cols-3 gap-3 my-2">
+                            <div>
+                                <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Total Físico</p>
+                                <p className="text-xl font-black font-mono text-slate-800 dark:text-white">{totalPhysical}</p>
+                            </div>
+                            <div>
+                                <p className="text-[9px] font-black uppercase tracking-widest text-indigo-500">Asignadas a Secundarias</p>
+                                <p className="text-xl font-black font-mono text-indigo-600 dark:text-indigo-400">{totalAssigned}</p>
+                            </div>
+                            <div>
+                                <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Remanente Principal</p>
+                                <p className={`text-xl font-black font-mono ${isOverAllocated ? 'text-rose-500 line-through' : 'text-emerald-600 dark:text-emerald-400'}`}>
+                                    {remainder}
+                                </p>
                             </div>
                         </div>
-                    ))}
+
+                        {isOverAllocated && (
+                            <div className="mt-3 p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-start gap-2.5 text-rose-700 dark:text-rose-400 text-xs font-semibold leading-relaxed">
+                                <AlertTriangle size={16} className="shrink-0 mt-0.5 text-rose-500" />
+                                <div>
+                                    <p className="font-bold">Publicación bloqueada por sobreasignación (+{totalAssigned - totalPhysical} copias en exceso)</p>
+                                    <p className="text-[11px] opacity-90 mt-0.5">
+                                        Las partidas asignadas a cuentas secundarias superan las capturadas en la impresora. Al cerrar el mes se congelará la subida y se notificará al administrador hasta corregir el exceso.
+                                    </p>
+                                </div>
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
 
-            {/* Footer Actions */}
-            <div className="flex flex-col md:flex-row items-center justify-between gap-6 pt-6 border-t border-slate-200 dark:border-white/5">
-                <div className="flex items-start gap-3">
-                    <Info className="text-indigo-400 shrink-0 mt-0.5" size={16} />
-                    <p className="text-[10px] text-slate-400 dark:text-white/40 font-bold leading-relaxed max-w-lg">
-                        Las copias asignadas a cuentas se registrarán como <strong className="text-indigo-500 uppercase">Publicadas</strong> listas para subir a Nexudus. Las copias no asignadas se mantendrán como <strong className="text-amber-500 uppercase">Pendientes</strong> sin bloquear la sincronización del mes.
-                    </p>
+            {/* Error Message */}
+            {error && (
+                <div className="p-3.5 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center gap-2 text-red-600 dark:text-red-400 text-xs font-bold">
+                    <AlertCircle size={15} />
+                    <span>{error}</span>
                 </div>
+            )}
 
-                <div className="flex items-center gap-4">
-                    {error && (
-                        <div className="flex items-center gap-2 text-red-500 text-[10px] font-black uppercase tracking-widest whitespace-nowrap">
-                            <AlertCircle size={14} /> {error}
+            {/* Main Area: 2 Columns on desktop (Ledger Table + Add Entry Form) */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                {/* Left: Allocation Ledger Entries List */}
+                <div className="lg:col-span-7 flex flex-col gap-3">
+                    <div className="flex items-center justify-between px-1">
+                        <h4 className="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-white/80 flex items-center gap-2">
+                            <Layers size={14} className="text-indigo-500" />
+                            <span>Partidas en Cuentas Secundarias ({entries.length})</span>
+                        </h4>
+                    </div>
+
+                    {entries.length === 0 ? (
+                        <div className="p-8 rounded-2xl bg-white dark:bg-white/[0.02] border border-slate-200/80 dark:border-white/5 text-center flex flex-col items-center justify-center">
+                            <FileText size={28} className="text-slate-300 dark:text-white/20 mb-2" />
+                            <p className="text-xs font-bold text-slate-600 dark:text-white/70">No hay partidas registradas</p>
+                            <p className="text-[11px] text-slate-400 dark:text-white/40 mt-1 max-w-sm">
+                                Todo el consumo del período se asignará automáticamente a la cuenta principal sin necesidad de configuración.
+                            </p>
+                        </div>
+                    ) : (
+                        <div className="overflow-hidden rounded-2xl bg-white dark:bg-white/[0.02] border border-slate-200/80 dark:border-white/5">
+                            <table className="w-full text-left border-collapse text-xs">
+                                <thead>
+                                    <tr className="border-b border-slate-100 dark:border-white/5 text-[9px] font-black uppercase tracking-widest text-slate-400 dark:text-white/30 bg-slate-50 dark:bg-white/[0.01]">
+                                        <th className="py-3 px-4">Cuenta Destino</th>
+                                        <th className="py-3 px-3">Tipo</th>
+                                        <th className="py-3 px-3 text-center">Copias</th>
+                                        <th className="py-3 px-4">Concepto / Motivo</th>
+                                        <th className="py-3 px-3 text-right">Acción</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100 dark:divide-white/[0.03]">
+                                    {entries.map(entry => {
+                                        const account = accounts.find(a => a.id === entry.nexudusAccountId);
+                                        const typeObj = ALL_COPY_TYPES.find(t => t.key === entry.type);
+                                        const isDeleting = deletingId === entry.id;
+
+                                        return (
+                                            <tr key={entry.id} className="hover:bg-slate-50/60 dark:hover:bg-white/[0.02] transition-colors">
+                                                <td className="py-3 px-4 font-bold text-slate-800 dark:text-white/90">
+                                                    {account ? (
+                                                        <NexudusAccountBadge nexudusUserId={account.nexudusUserId} />
+                                                    ) : (
+                                                        <span className="font-mono text-xs">{entry.nexudusAccountId}</span>
+                                                    )}
+                                                </td>
+                                                <td className="py-3 px-3">
+                                                    <span className="inline-block px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-100 dark:bg-white/5 text-slate-600 dark:text-white/70">
+                                                        {typeObj?.label || entry.type}
+                                                    </span>
+                                                </td>
+                                                <td className="py-3 px-3 text-center font-mono font-black text-indigo-600 dark:text-indigo-400">
+                                                    {entry.quantity}
+                                                </td>
+                                                <td className="py-3 px-4 text-slate-600 dark:text-white/60 text-[11px]">
+                                                    {entry.concept ? (
+                                                        <span>{entry.concept}</span>
+                                                    ) : (
+                                                        <span className="text-slate-300 dark:text-white/20 italic">Sin concepto</span>
+                                                    )}
+                                                </td>
+                                                <td className="py-3 px-3 text-right">
+                                                    <button
+                                                        onClick={() => handleDeleteEntry(entry.id)}
+                                                        disabled={isDeleting}
+                                                        title="Eliminar partida"
+                                                        className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-500/10 transition-colors disabled:opacity-40"
+                                                    >
+                                                        {isDeleting ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
                         </div>
                     )}
-                    <button
-                        onClick={handleSave}
-                        disabled={isSaving}
-                        className="flex items-center gap-3 px-10 py-4 bg-slate-800 dark:bg-white text-white dark:text-slate-900 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] shadow-xl hover:brightness-110 active:scale-95 transition-all disabled:opacity-50"
-                    >
-                        {isSaving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
-                        Guardar Borrador
-                    </button>
+                </div>
+
+                {/* Right: Quick Entry Registration Form */}
+                <div className="lg:col-span-5 p-5 rounded-2xl bg-white dark:bg-white/[0.03] border border-slate-200/80 dark:border-white/5 flex flex-col gap-4">
+                    <div className="flex items-center gap-2">
+                        <div className="p-2 rounded-xl bg-indigo-500/10 text-indigo-500">
+                            <Plus size={16} />
+                        </div>
+                        <div>
+                            <h4 className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-white">
+                                Nueva Asignación In-Situ
+                            </h4>
+                            <p className="text-[10px] text-slate-400">Desvía copias hacia una cuenta secundaria</p>
+                        </div>
+                    </div>
+
+                    {secondaryAccounts.length === 0 ? (
+                        <div className="p-4 rounded-xl bg-slate-50 dark:bg-white/5 text-center text-xs text-slate-400 font-medium">
+                            No tienes cuentas secundarias registradas para repartir.
+                        </div>
+                    ) : (
+                        <form onSubmit={handleCreateEntry} className="flex flex-col gap-3.5">
+                            {/* Account Selector */}
+                            <div>
+                                <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 block mb-1.5">
+                                    Cuenta Destino
+                                </label>
+                                <select
+                                    value={selectedAccountId}
+                                    onChange={(e) => setSelectedAccountId(e.target.value)}
+                                    className="w-full px-3 py-2.5 rounded-xl bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-xs font-bold text-slate-800 dark:text-white focus:outline-none focus:border-indigo-500 transition-colors"
+                                >
+                                    {secondaryAccounts.map(acc => (
+                                        <option key={acc.id} value={acc.id} className="dark:bg-slate-900">
+                                            Cuenta: {acc.nexudusUserId}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            {/* Copy Type & Quantity (2 cols) */}
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 block mb-1.5">
+                                        Modalidad
+                                    </label>
+                                    <select
+                                        value={selectedType}
+                                        onChange={(e) => setSelectedType(e.target.value)}
+                                        className="w-full px-3 py-2.5 rounded-xl bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-xs font-bold text-slate-800 dark:text-white focus:outline-none focus:border-indigo-500 transition-colors"
+                                    >
+                                        {ALL_COPY_TYPES.map(t => (
+                                            <option key={t.key} value={t.key} className="dark:bg-slate-900">
+                                                {t.label}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 block mb-1.5">
+                                        Cantidad
+                                    </label>
+                                    <input
+                                        type="number"
+                                        min="1"
+                                        value={quantity}
+                                        onChange={(e) => setQuantity(e.target.value)}
+                                        placeholder="Ej: 25"
+                                        required
+                                        className="w-full px-3 py-2.5 rounded-xl bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-xs font-black font-mono text-slate-800 dark:text-white placeholder:text-slate-400 focus:outline-none focus:border-indigo-500 transition-colors"
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Concept / Reason */}
+                            <div>
+                                <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 block mb-1.5">
+                                    Concepto / Motivo <span className="font-normal text-slate-400">(opcional)</span>
+                                </label>
+                                <input
+                                    type="text"
+                                    value={concept}
+                                    onChange={(e) => setConcept(e.target.value)}
+                                    placeholder="Ej: Planos obra Cliente X, dossier..."
+                                    maxLength={100}
+                                    className="w-full px-3 py-2.5 rounded-xl bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-xs font-medium text-slate-800 dark:text-white placeholder:text-slate-400 focus:outline-none focus:border-indigo-500 transition-colors"
+                                />
+                            </div>
+
+                            {/* Submit Button */}
+                            <button
+                                type="submit"
+                                disabled={isSubmitting || !quantity || parseInt(quantity, 10) <= 0}
+                                className="mt-1 w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white shadow-md shadow-indigo-600/20 active:scale-95 transition-all disabled:opacity-40 disabled:pointer-events-none"
+                            >
+                                {isSubmitting ? (
+                                    <>
+                                        <Loader2 size={14} className="animate-spin" />
+                                        <span>Registrando...</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <Plus size={14} />
+                                        <span>Registrar Asignación</span>
+                                    </>
+                                )}
+                            </button>
+                        </form>
+                    )}
                 </div>
             </div>
         </div>

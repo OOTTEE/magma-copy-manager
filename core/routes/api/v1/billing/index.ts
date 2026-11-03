@@ -486,14 +486,16 @@ const billingRoute: FastifyPluginAsync = async (fastify) => {
    * GET /api/v1/billing/distributions
    * Get current consumption distributions for a user.
    */
-  fastify.get<{ Querystring: { userId: string } }>('/distributions', {
+  fastify.get<{ Querystring: { userId?: string; month?: string } }>('/distributions', {
     schema: {
       tags: ['Billing'],
       description: 'Get current consumption distributions for a user.',
       querystring: {
         type: 'object',
-        properties: { userId: { type: 'string' } },
-        required: ['userId']
+        properties: { 
+          userId: { type: 'string' },
+          month: { type: 'string' }
+        }
       },
       response: {
         200: {
@@ -501,9 +503,14 @@ const billingRoute: FastifyPluginAsync = async (fastify) => {
           items: {
             type: 'object',
             properties: {
+              id: { type: 'string' },
+              userId: { type: 'string' },
               nexudusAccountId: { type: 'string' },
+              month: { type: 'string' },
               type: { type: 'string' },
-              quantity: { type: 'integer' }
+              quantity: { type: 'integer' },
+              concept: { type: ['string', 'null'] },
+              createdAt: { type: 'string' }
             }
           }
         }
@@ -512,16 +519,85 @@ const billingRoute: FastifyPluginAsync = async (fastify) => {
     preValidation: [fastify.authenticate]
   }, async (request, reply) => {
     const requestingUser = request.user as { id: string; role: string };
-    const { userId } = request.query;
-    const distributions = await billingFacade.getDistributions(requestingUser, userId);
+    const { userId, month } = request.query;
+    const distributions = await billingFacade.getDistributions(requestingUser, userId, month);
     return reply.send(distributions);
+  });
+
+  /**
+   * POST /api/v1/billing/distributions/entries
+   * Create a single distribution entry (Allocation Ledger).
+   */
+  fastify.post<{ Body: { userId?: string; nexudusAccountId: string; month?: string; type: string; quantity: number; concept?: string } }>('/distributions/entries', {
+    schema: {
+      tags: ['Billing'],
+      description: 'Create a single allocation ledger entry.',
+      body: {
+        type: 'object',
+        required: ['nexudusAccountId', 'type', 'quantity'],
+        properties: {
+          userId: { type: 'string' },
+          nexudusAccountId: { type: 'string' },
+          month: { type: 'string' },
+          type: { type: 'string' },
+          quantity: { type: 'integer' },
+          concept: { type: 'string' }
+        }
+      },
+      response: {
+        201: {
+          type: 'object',
+          properties: {
+            id: { type: 'string' },
+            userId: { type: 'string' },
+            nexudusAccountId: { type: 'string' },
+            month: { type: 'string' },
+            type: { type: 'string' },
+            quantity: { type: 'integer' },
+            concept: { type: ['string', 'null'] },
+            createdAt: { type: 'string' }
+          }
+        }
+      }
+    },
+    preValidation: [fastify.authenticate]
+  }, async (request, reply) => {
+    const requestingUser = request.user as { id: string; role: string };
+    const entry = await billingFacade.createDistributionEntry(requestingUser, request.body);
+    return reply.status(201).send(entry);
+  });
+
+  /**
+   * DELETE /api/v1/billing/distributions/entries/:id
+   * Delete a single allocation ledger entry.
+   */
+  fastify.delete<{ Params: { id: string } }>('/distributions/entries/:id', {
+    schema: {
+      tags: ['Billing'],
+      description: 'Delete a single allocation ledger entry.',
+      params: {
+        type: 'object',
+        required: ['id'],
+        properties: {
+          id: { type: 'string' }
+        }
+      },
+      response: {
+        200: { type: 'object', properties: { success: { type: 'boolean' } } }
+      }
+    },
+    preValidation: [fastify.authenticate]
+  }, async (request, reply) => {
+    const requestingUser = request.user as { id: string; role: string };
+    await billingFacade.deleteDistributionEntry(requestingUser, request.params.id);
+    return reply.send({ success: true });
   });
 
   /**
    * POST /api/v1/billing/distributions
    * Save consumption distributions for a user.
    */
-  fastify.post<{ Body: { userId: string; distributions: Array<{ nexudusAccountId: string; type: string; quantity: number }> } }>('/distributions', {
+  fastify.post<{ Body: { userId: string; distributions: Array<{ nexudusAccountId: string; type: string; quantity: number; concept?: string }> } }>('/distributions', {
     schema: {
       tags: ['Billing'],
       description: 'Save consumption distributions for a user.',

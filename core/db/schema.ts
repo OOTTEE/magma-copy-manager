@@ -92,5 +92,6 @@ export const consumptionDistributions = sqliteTable('consumption_distributions',
   month: text('month').notNull(), // YYYY-MM
   type: text('type').notNull(),  // a4Bw, a4Color, a3Bw, a3Color, sra3Bw, sra3Color
   quantity: integer('quantity').notNull(),
+  concept: text('concept'),
   createdAt: text('created_at').notNull(),
 });

@@ -14,6 +14,40 @@ export const distributionsRepository = {
             ));
     },
 
+    findById: async (id: string) => {
+        const results = await db
+            .select()
+            .from(consumptionDistributions)
+            .where(eq(consumptionDistributions.id, id));
+        return results[0] || null;
+    },
+
+    createEntry: async (entry: {
+        userId: string;
+        nexudusAccountId: string;
+        month: string;
+        type: string;
+        quantity: number;
+        concept?: string;
+    }) => {
+        const newEntry = {
+            id: randomUUID(),
+            userId: entry.userId,
+            nexudusAccountId: entry.nexudusAccountId,
+            month: entry.month,
+            type: entry.type,
+            quantity: entry.quantity,
+            concept: entry.concept || null,
+            createdAt: new Date().toISOString()
+        };
+        await db.insert(consumptionDistributions).values(newEntry);
+        return newEntry;
+    },
+
+    deleteEntry: async (id: string) => {
+        return await db.delete(consumptionDistributions).where(eq(consumptionDistributions.id, id));
+    },
+
     saveBatch: async (userId: string, month: string, distributions: any[]) => {
         // En better-sqlite3 las transacciones de Drizzle son síncronas.
         // El uso de async dentro del callback provoca el error "Transaction function cannot return a promise".
@@ -34,6 +68,7 @@ export const distributionsRepository = {
                     month,
                     type: d.type,
                     quantity: d.quantity,
+                    concept: d.concept || null,
                     createdAt: now
                 }));
                 tx.insert(consumptionDistributions).values(values).run();

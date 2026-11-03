@@ -1,5 +1,6 @@
 import { billingService } from '../../services/billing/billing.service';
 import { reportsService } from '../../services/reports/reports.service';
+import { distributionsRepository } from '../../repositories/distributions.repository';
 
 /**
  * Facade for Billing domain.
@@ -19,14 +20,72 @@ export const billingFacade = {
   /**
    * Retrieves current month's copy distributions for a user.
    */
-  getDistributions: async (requestingUser: { id: string; role: string }, userId?: string) => {
+  getDistributions: async (requestingUser: { id: string; role: string }, userId?: string, month?: string) => {
     // Determine target user
     const targetUserId = (requestingUser.role === 'admin' && userId) ? userId : requestingUser.id;
 
+    if (requestingUser.role !== 'admin' && userId && userId !== requestingUser.id) {
+      const error = new Error('Unauthorized access to distributions.');
+      (error as any).statusCode = 403;
+      throw error;
+    }
+
     const { fromStr } = await reportsService.getPeriodDates();
-    const monthStr = fromStr.slice(0, 7);
+    const monthStr = month || fromStr.slice(0, 7);
 
     return await billingService.getDistributions(targetUserId, monthStr);
+  },
+
+  /**
+   * Creates a single distribution entry (Allocation Ledger).
+   */
+  createDistributionEntry: async (requestingUser: { id: string; role: string }, entry: {
+    userId?: string;
+    nexudusAccountId: string;
+    month?: string;
+    type: string;
+    quantity: number;
+    concept?: string;
+  }) => {
+    const targetUserId = (requestingUser.role === 'admin' && entry.userId) ? entry.userId : requestingUser.id;
+
+    if (requestingUser.role !== 'admin' && entry.userId && entry.userId !== requestingUser.id) {
+      const error = new Error('Unauthorized distribution attempt.');
+      (error as any).statusCode = 403;
+      throw error;
+    }
+
+    const { fromStr } = await reportsService.getPeriodDates();
+    const monthStr = entry.month || fromStr.slice(0, 7);
+
+    return await billingService.createDistributionEntry({
+      userId: targetUserId,
+      nexudusAccountId: entry.nexudusAccountId,
+      month: monthStr,
+      type: entry.type,
+      quantity: entry.quantity,
+      concept: entry.concept
+    });
+  },
+
+  /**
+   * Deletes a single distribution entry.
+   */
+  deleteDistributionEntry: async (requestingUser: { id: string; role: string }, id: string) => {
+    const existing = await distributionsRepository.findById(id);
+    if (!existing) {
+      const error = new Error('Distribution entry not found.');
+      (error as any).statusCode = 404;
+      throw error;
+    }
+
+    if (requestingUser.role !== 'admin' && existing.userId !== requestingUser.id) {
+      const error = new Error('Unauthorized to delete this distribution entry.');
+      (error as any).statusCode = 403;
+      throw error;
+    }
+
+    return await billingService.deleteDistributionEntry(id);
   },
 
   /**

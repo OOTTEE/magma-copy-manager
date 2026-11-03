@@ -843,7 +843,12 @@ paths:
             type: string
           in: query
           name: userId
-          required: true
+          required: false
+        - schema:
+            type: string
+          in: query
+          name: month
+          required: false
       responses:
         "200":
           description: Default Response
@@ -854,12 +859,23 @@ paths:
                 items:
                   type: object
                   properties:
+                    id:
+                      type: string
+                    userId:
+                      type: string
                     nexudusAccountId:
+                      type: string
+                    month:
                       type: string
                     type:
                       type: string
                     quantity:
                       type: integer
+                    concept:
+                      type: string
+                      nullable: true
+                    createdAt:
+                      type: string
     post:
       tags:
         - Billing
@@ -891,6 +907,80 @@ paths:
                         type: string
                       quantity:
                         type: integer
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+  /api/v1/billing/distributions/entries:
+    post:
+      tags:
+        - Billing
+      description: Create a single allocation ledger entry.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - nexudusAccountId
+                - type
+                - quantity
+              properties:
+                userId:
+                  type: string
+                nexudusAccountId:
+                  type: string
+                month:
+                  type: string
+                type:
+                  type: string
+                quantity:
+                  type: integer
+                concept:
+                  type: string
+      responses:
+        "201":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  userId:
+                    type: string
+                  nexudusAccountId:
+                    type: string
+                  month:
+                    type: string
+                  type:
+                    type: string
+                  quantity:
+                    type: integer
+                  concept:
+                    type: string
+                    nullable: true
+                  createdAt:
+                    type: string
+  /api/v1/billing/distributions/entries/{id}:
+    delete:
+      tags:
+        - Billing
+      description: Delete a single allocation ledger entry.
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: id
+          required: true
       responses:
         "200":
           description: Default Response

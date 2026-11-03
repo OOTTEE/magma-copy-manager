@@ -8,7 +8,8 @@ import {
   UploadCloud, 
   Layers,
   FileText,
-  Zap
+  Zap,
+  AlertTriangle
 } from 'lucide-react';
 import type { ReportUserData } from '../../../store/reportStore';
 import { DistributionDraftManager } from './DistributionDraftManager';
@@ -142,6 +143,15 @@ export const PeriodUserTable: React.FC<PeriodUserTableProps> = ({
                       <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-slate-100 dark:bg-white/5 text-slate-400 dark:text-white/30">
                         Sin actividad
                       </span>
+                    ) : item.isOverAllocated ? (
+                      <button
+                        onClick={() => toggleExpand(item.id, 'distribution')}
+                        title="Sobreasignación: Las copias declaradas en la bitácora superan las capturadas en la impresora"
+                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20 hover:bg-rose-500/20 transition-colors animate-pulse"
+                      >
+                        <AlertTriangle size={12} />
+                        Sobreasignado
+                      </button>
                     ) : isFullyBilled ? (
                       <button
                         onClick={() => toggleExpand(item.id, 'sync')}
@@ -166,23 +176,27 @@ export const PeriodUserTable: React.FC<PeriodUserTableProps> = ({
                   {/* Acciones */}
                   <td className="py-4 px-6 text-right">
                     <div className="inline-flex items-center gap-2">
-                      <button
-                        onClick={() => toggleExpand(item.id, 'distribution')}
-                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border transition-all ${
-                          isExpanded && activeTab[item.id] === 'distribution'
-                            ? 'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-500/30'
-                            : 'bg-white dark:bg-white/5 text-slate-600 dark:text-white/60 border-slate-200 dark:border-white/10 hover:border-indigo-500/30 hover:text-indigo-500'
-                        }`}
-                      >
-                        <Sliders size={12} />
-                        <span>Repartir</span>
-                      </button>
+                      {item.accountsCount > 1 && (
+                        <button
+                          onClick={() => toggleExpand(item.id, 'distribution')}
+                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border transition-all ${
+                            isExpanded && activeTab[item.id] === 'distribution'
+                              ? 'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-500/30'
+                              : 'bg-white dark:bg-white/5 text-slate-600 dark:text-white/60 border-slate-200 dark:border-white/10 hover:border-indigo-500/30 hover:text-indigo-500'
+                          }`}
+                        >
+                          <Sliders size={12} />
+                          <span>Repartir</span>
+                        </button>
+                      )}
 
                       <button
                         onClick={() => onCharge(item.id)}
-                        disabled={item.total === 0 || isFullyBilled}
+                        disabled={item.total === 0 || isFullyBilled || Boolean(item.isOverAllocated)}
                         title={
-                          isFullyBilled 
+                          item.isOverAllocated
+                            ? 'Publicación bloqueada: las copias asignadas en bitácora superan las de la impresora'
+                            : isFullyBilled 
                             ? 'Todas las copias ya han sido publicadas en Nexudus' 
                             : 'Publicar copias en Nexudus'
                         }
@@ -214,17 +228,19 @@ export const PeriodUserTable: React.FC<PeriodUserTableProps> = ({
                             <span>Capturas de Impresora</span>
                           </button>
 
-                          <button
-                            onClick={() => setActiveTab(prev => ({ ...prev, [item.id]: 'distribution' }))}
-                            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                              activeTab[item.id] === 'distribution'
-                                ? 'bg-indigo-500 text-white shadow-md shadow-indigo-500/20'
-                                : 'text-slate-600 dark:text-white/60 hover:bg-slate-200/60 dark:hover:bg-white/5'
-                            }`}
-                          >
-                            <Sliders size={13} />
-                            <span>Reparto de Consumos {item.accountsCount > 1 ? `(${item.accountsCount} cuentas)` : ''}</span>
-                          </button>
+                          {item.accountsCount > 1 && (
+                            <button
+                              onClick={() => setActiveTab(prev => ({ ...prev, [item.id]: 'distribution' }))}
+                              className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                                activeTab[item.id] === 'distribution'
+                                  ? 'bg-indigo-500 text-white shadow-md shadow-indigo-500/20'
+                                  : 'text-slate-600 dark:text-white/60 hover:bg-slate-200/60 dark:hover:bg-white/5'
+                              }`}
+                            >
+                              <Sliders size={13} />
+                              <span>Bitácora de Reparto ({item.accountsCount} cuentas)</span>
+                            </button>
+                          )}
 
                           <button
                             onClick={() => setActiveTab(prev => ({ ...prev, [item.id]: 'sync' }))}
@@ -254,6 +270,7 @@ export const PeriodUserTable: React.FC<PeriodUserTableProps> = ({
                         ) : activeTab[item.id] === 'distribution' ? (
                           <DistributionDraftManager
                             userId={item.id}
+                            period={period}
                             consumption={{
                               a4Bw: item.a4Bw,
                               a4Color: item.a4Color,

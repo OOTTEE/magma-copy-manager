@@ -7,6 +7,7 @@ import { eq, and, sql, isNull, desc } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 import { logger } from '../../lib/logger';
 import { distributionsRepository } from '../../repositories/distributions.repository';
+import { emailService } from '../notifications/email.service';
 
 /**
  * Billing Service
@@ -52,6 +53,27 @@ export const billingService = {
    */
   saveDistributions: async (userId: string, month: string, distributions: any[]) => {
     return await distributionsRepository.saveBatch(userId, month, distributions);
+  },
+
+  /**
+   * Creates a single distribution entry (Allocation Ledger).
+   */
+  createDistributionEntry: async (entry: {
+    userId: string;
+    nexudusAccountId: string;
+    month: string;
+    type: string;
+    quantity: number;
+    concept?: string;
+  }) => {
+    return await distributionsRepository.createEntry(entry);
+  },
+
+  /**
+   * Deletes a single distribution entry.
+   */
+  deleteDistributionEntry: async (id: string) => {
+    return await distributionsRepository.deleteEntry(id);
   },
 
   /**
@@ -262,6 +284,32 @@ export const billingService = {
     // 2. Obtener repartos manuales guardados
     const savedDistributions = await distributionsRepository.findByUserAndMonth(userId, monthStr);
 
+    let totalDistributed = 0;
+    const totalDistributedByType: Record<string, number> = {};
+    for (const dist of savedDistributions) {
+      totalDistributed += dist.quantity;
+      totalDistributedByType[dist.type] = (totalDistributedByType[dist.type] || 0) + dist.quantity;
+    }
+
+    const totalPhysical = report.data.total;
+
+    // Validación de Sobreasignación:
+    if (savedDistributions.length > 0 && totalDistributed > totalPhysical) {
+      logger.warn({ userId, username: report.data.username, totalDistributed, totalPhysical, month: monthStr }, 'Sobreasignación detectada: no se publican copias a Nexudus para este usuario.');
+
+      await emailService.sendNotification({
+        subject: `[Magma] Alerta de Sobreasignación: ${report.data.username}`,
+        title: `Cierre Bloqueado por Sobreasignación`,
+        message: `El usuario ${report.data.username} tiene ${totalDistributed} copias declaradas en su bitácora, superando las ${totalPhysical} copias reales capturadas por la impresora en el período ${monthStr}. No se han emitido cargos a Nexudus para este usuario.`,
+        type: 'warning'
+      });
+
+      const err = new Error(`Sobreasignación de copias: El usuario ${report.data.username} tiene ${totalDistributed} copias declaradas en su bitácora, superando las ${totalPhysical} copias registradas por la impresora. Sincronización bloqueada.`);
+      (err as any).statusCode = 400;
+      (err as any).isOverAllocated = true;
+      throw err;
+    }
+
     // 3. Organizar tareas de cobro por cuenta y tipo
     const tasksPerAccount: Record<string, Record<string, { quantity: number; productId: string }>> = {};
 
@@ -275,25 +323,20 @@ export const billingService = {
       tasksPerAccount[accountId][type].quantity += quantity;
     };
 
-    // A. Procesar repartos manuales si existen
-    const totalDistributedByType: Record<string, number> = {};
+    // A. Procesar partidas asignadas en bitácora
     for (const dist of savedDistributions) {
       registerTask(dist.nexudusAccountId, dist.type, dist.quantity);
-      totalDistributedByType[dist.type] = (totalDistributedByType[dist.type] || 0) + dist.quantity;
     }
 
-    // B. Si NO hay repartos manuales guardados, se asigna todo el consumo pendiente a la cuenta destino
-    // Si hay repartos manuales y no es parcial estricto, o si savedDistributions está vacío:
-    if (savedDistributions.length === 0) {
-      const targetRemainderAccountId = nexudusAccountId || defaultAccount.id;
-      for (const type of copyTypes) {
-        const totalRequested = report.data[type as keyof typeof report.data] as number || 0;
-        const distributed = totalDistributedByType[type] || 0;
-        const remainder = totalRequested - distributed;
+    // B. Absorción pasiva: la cuenta principal recibe automáticamente el remanente de cada tipo
+    const targetRemainderAccountId = nexudusAccountId || defaultAccount.id;
+    for (const type of copyTypes) {
+      const totalRequested = report.data[type as keyof typeof report.data] as number || 0;
+      const distributed = totalDistributedByType[type] || 0;
+      const remainder = totalRequested - distributed;
 
-        if (remainder > 0) {
-          registerTask(targetRemainderAccountId, type, remainder);
-        }
+      if (remainder > 0) {
+        registerTask(targetRemainderAccountId, type, remainder);
       }
     }
 

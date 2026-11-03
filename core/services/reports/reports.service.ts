@@ -290,6 +290,8 @@ export const reportsService = {
         distributedUnbilledTotal += d.quantity;
       }
 
+      const isOverAllocated = Boolean(hasLinkedAccount && userAccs.length > 1 && distributedUnbilledTotal > total);
+
       let linkedTotal = syncedTotal;
       let pendingTotal = 0;
       if (hasLinkedAccount) {
@@ -322,6 +324,7 @@ export const reportsService = {
         isIgnored: Boolean(user.isIgnored),
         hasLinkedAccount,
         accountsCount: userAccs.length,
+        isOverAllocated,
         status: userStatus,
         a4Color,
         a4Bw,

@@ -30,6 +30,7 @@ export interface ReportUserData {
   isIgnored: boolean;
   hasLinkedAccount: boolean;
   accountsCount: number;
+  isOverAllocated?: boolean;
   status: 'billed' | 'partial' | 'pending';
   a4Color: number;
   a4Bw: number;

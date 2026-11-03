@@ -1,5 +1,20 @@
-import { describe, it, expect } from 'vitest';
-import { isPeriodClosed } from './billing.service';
+import { describe, it, expect, vi } from 'vitest';
+import { isPeriodClosed, billingService } from './billing.service';
+import { reportsService } from '../reports/reports.service';
+import { settingsService } from '../settings/settings.service';
+import { distributionsRepository } from '../../repositories/distributions.repository';
+import { emailService } from '../notifications/email.service';
+import { db } from '../../db';
+
+vi.mock('../reports/reports.service');
+vi.mock('../settings/settings.service');
+vi.mock('../../repositories/distributions.repository');
+vi.mock('../notifications/email.service');
+vi.mock('../../db', () => ({
+    db: {
+        select: vi.fn(),
+    }
+}));
 
 describe('isPeriodClosed (Time-Bound Shield)', () => {
     it('should return false for invalid or missing period strings', () => {
@@ -35,5 +50,48 @@ describe('isPeriodClosed (Time-Bound Shield)', () => {
         const refDate = new Date('2026-11-02T12:00:00Z');
         expect(isPeriodClosed('2026-12', refDate)).toBe(false);
         expect(isPeriodClosed('2027-01', refDate)).toBe(false);
+    });
+});
+
+describe('syncUserConsumption (Over-Allocation Safety Protocol)', () => {
+    it('should block sync, send notification email, and throw error when allocated copies exceed printer copies', async () => {
+        vi.mocked(reportsService.getMonthlyAccumulationForUser).mockResolvedValue({
+            period: { month: '2026-11', from: '2026-11-01', to: '2026-11-30' },
+            data: {
+                username: 'alice',
+                total: 40,
+                a4Color: 20,
+                a4Bw: 20,
+                a3Color: 0,
+                a3Bw: 0,
+                sra3Color: 0,
+                sra3Bw: 0
+            }
+        } as any);
+
+        vi.mocked(settingsService.getAllSettings).mockResolvedValue({} as any);
+
+        vi.mocked(db.select).mockReturnValue({
+            from: vi.fn().mockReturnValue({
+                where: vi.fn().mockResolvedValue([
+                    { id: 'acc-1', isDefault: 1, nexudusUserId: '111' },
+                    { id: 'acc-2', isDefault: 0, nexudusUserId: '222' }
+                ])
+            })
+        } as any);
+
+        // 65 copies declared in ledger vs 40 physical copies
+        vi.mocked(distributionsRepository.findByUserAndMonth).mockResolvedValue([
+            { id: 'dist-1', nexudusAccountId: 'acc-2', type: 'a4Color', quantity: 65, concept: 'Dossier oversize' }
+        ] as any);
+
+        await expect(billingService.syncUserConsumption('user-alice', { period: '2026-11' }))
+            .rejects.toThrow('Sobreasignación de copias');
+
+        expect(emailService.sendNotification).toHaveBeenCalledWith(expect.objectContaining({
+            type: 'warning',
+            title: 'Cierre Bloqueado por Sobreasignación',
+            subject: expect.stringContaining('Alerta de Sobreasignación')
+        }));
     });
 });

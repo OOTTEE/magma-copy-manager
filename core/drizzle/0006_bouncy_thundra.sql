@@ -1,0 +1,1 @@
+ALTER TABLE `consumption_distributions` ADD `concept` text;

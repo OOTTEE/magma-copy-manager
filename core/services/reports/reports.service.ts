@@ -1,6 +1,6 @@
 import { db } from '../../db';
 import { users, copies, nexudusSales, userNexudusAccounts, consumptionDistributions } from '../../db/schema';
-import { eq, and, sql, gte, lte, isNull, desc } from 'drizzle-orm';
+import { eq, and, or, sql, gte, lte, gt, isNull, desc } from 'drizzle-orm';
 import { settingsService } from '../settings/settings.service';
 
 /**
@@ -174,7 +174,7 @@ export const reportsService = {
     let { fromStr, toStr, periodMonth } = await reportsService.getPeriodDates(period || 0);
     if (options.from) fromStr = options.from;
     if (options.to) toStr = options.to;
-    const currentMonthStr = period || periodMonth || fromStr.slice(0, 7);
+    const currentMonthStr = period || periodMonth || toStr.slice(0, 7);
 
     // 1. Get users
     let allUsers = await db.select().from(users);
@@ -200,45 +200,53 @@ export const reportsService = {
     }
 
     // 4. Query copy aggregates per user
-    let copyDateFilter = and(
-      gte(copies.datetime, fromStr),
-      lte(copies.datetime, toStr)
-    );
-    if (includeAllPending) {
-      copyDateFilter = undefined;
-    }
+    const periodFilter = includeAllPending
+      ? or(
+          isNull(copies.nexudusSaleId),
+          eq(nexudusSales.month, currentMonthStr),
+          sql`substr(${nexudusSales.saleDate}, 1, 7) = ${currentMonthStr}`
+        )
+      : or(
+          // Case A: Billed in this cycle but captured after cutoff (e.g. day 28 billed in October)
+          and(
+            sql`${copies.nexudusSaleId} IS NOT NULL`,
+            or(
+              eq(nexudusSales.month, currentMonthStr),
+              sql`substr(${nexudusSales.saleDate}, 1, 7) = ${currentMonthStr}`
+            ),
+            gt(copies.datetime, toStr)
+          ),
+          // Case B: Pertaining to this cycle by physical date range [fromStr, toStr]
+          // EXCEPT if already billed in an earlier cycle
+          and(
+            gte(copies.datetime, fromStr),
+            lte(copies.datetime, toStr),
+            or(
+              isNull(copies.nexudusSaleId),
+              sql`NOT ((${nexudusSales.month} < ${currentMonthStr} OR substr(${nexudusSales.saleDate}, 1, 7) < ${currentMonthStr}) AND ${nexudusSales.month} != ${currentMonthStr})`
+            )
+          )
+        );
 
-    const copyQuery = copyDateFilter
-      ? db.select({
-          userId: copies.userId,
-          a4Color: sql<number>`SUM(${copies.a4Color})`,
-          a4Bw: sql<number>`SUM(${copies.a4Bw})`,
-          a3Color: sql<number>`SUM(${copies.a3Color})`,
-          a3Bw: sql<number>`SUM(${copies.a3Bw})`,
-          unbilledA4Color: sql<number>`SUM(CASE WHEN ${copies.nexudusSaleId} IS NULL THEN ${copies.a4Color} ELSE 0 END)`,
-          unbilledA4Bw: sql<number>`SUM(CASE WHEN ${copies.nexudusSaleId} IS NULL THEN ${copies.a4Bw} ELSE 0 END)`,
-          unbilledA3Color: sql<number>`SUM(CASE WHEN ${copies.nexudusSaleId} IS NULL THEN ${copies.a3Color} ELSE 0 END)`,
-          unbilledA3Bw: sql<number>`SUM(CASE WHEN ${copies.nexudusSaleId} IS NULL THEN ${copies.a3Bw} ELSE 0 END)`,
-          billedA4Color: sql<number>`SUM(CASE WHEN ${copies.nexudusSaleId} IS NOT NULL THEN ${copies.a4Color} ELSE 0 END)`,
-          billedA4Bw: sql<number>`SUM(CASE WHEN ${copies.nexudusSaleId} IS NOT NULL THEN ${copies.a4Bw} ELSE 0 END)`,
-          billedA3Color: sql<number>`SUM(CASE WHEN ${copies.nexudusSaleId} IS NOT NULL THEN ${copies.a3Color} ELSE 0 END)`,
-          billedA3Bw: sql<number>`SUM(CASE WHEN ${copies.nexudusSaleId} IS NOT NULL THEN ${copies.a3Bw} ELSE 0 END)`,
-        }).from(copies).where(copyDateFilter).groupBy(copies.userId)
-      : db.select({
-          userId: copies.userId,
-          a4Color: sql<number>`SUM(${copies.a4Color})`,
-          a4Bw: sql<number>`SUM(${copies.a4Bw})`,
-          a3Color: sql<number>`SUM(${copies.a3Color})`,
-          a3Bw: sql<number>`SUM(${copies.a3Bw})`,
-          unbilledA4Color: sql<number>`SUM(CASE WHEN ${copies.nexudusSaleId} IS NULL THEN ${copies.a4Color} ELSE 0 END)`,
-          unbilledA4Bw: sql<number>`SUM(CASE WHEN ${copies.nexudusSaleId} IS NULL THEN ${copies.a4Bw} ELSE 0 END)`,
-          unbilledA3Color: sql<number>`SUM(CASE WHEN ${copies.nexudusSaleId} IS NULL THEN ${copies.a3Color} ELSE 0 END)`,
-          unbilledA3Bw: sql<number>`SUM(CASE WHEN ${copies.nexudusSaleId} IS NULL THEN ${copies.a3Bw} ELSE 0 END)`,
-          billedA4Color: sql<number>`SUM(CASE WHEN ${copies.nexudusSaleId} IS NOT NULL THEN ${copies.a4Color} ELSE 0 END)`,
-          billedA4Bw: sql<number>`SUM(CASE WHEN ${copies.nexudusSaleId} IS NOT NULL THEN ${copies.a4Bw} ELSE 0 END)`,
-          billedA3Color: sql<number>`SUM(CASE WHEN ${copies.nexudusSaleId} IS NOT NULL THEN ${copies.a3Color} ELSE 0 END)`,
-          billedA3Bw: sql<number>`SUM(CASE WHEN ${copies.nexudusSaleId} IS NOT NULL THEN ${copies.a3Bw} ELSE 0 END)`,
-        }).from(copies).groupBy(copies.userId);
+    const copyQuery = db.select({
+      userId: copies.userId,
+      a4Color: sql<number>`SUM(${copies.a4Color})`,
+      a4Bw: sql<number>`SUM(${copies.a4Bw})`,
+      a3Color: sql<number>`SUM(${copies.a3Color})`,
+      a3Bw: sql<number>`SUM(${copies.a3Bw})`,
+      unbilledA4Color: sql<number>`SUM(CASE WHEN ${copies.nexudusSaleId} IS NULL THEN ${copies.a4Color} ELSE 0 END)`,
+      unbilledA4Bw: sql<number>`SUM(CASE WHEN ${copies.nexudusSaleId} IS NULL THEN ${copies.a4Bw} ELSE 0 END)`,
+      unbilledA3Color: sql<number>`SUM(CASE WHEN ${copies.nexudusSaleId} IS NULL THEN ${copies.a3Color} ELSE 0 END)`,
+      unbilledA3Bw: sql<number>`SUM(CASE WHEN ${copies.nexudusSaleId} IS NULL THEN ${copies.a3Bw} ELSE 0 END)`,
+      billedA4Color: sql<number>`SUM(CASE WHEN ${copies.nexudusSaleId} IS NOT NULL THEN ${copies.a4Color} ELSE 0 END)`,
+      billedA4Bw: sql<number>`SUM(CASE WHEN ${copies.nexudusSaleId} IS NOT NULL THEN ${copies.a4Bw} ELSE 0 END)`,
+      billedA3Color: sql<number>`SUM(CASE WHEN ${copies.nexudusSaleId} IS NOT NULL THEN ${copies.a3Color} ELSE 0 END)`,
+      billedA3Bw: sql<number>`SUM(CASE WHEN ${copies.nexudusSaleId} IS NOT NULL THEN ${copies.a3Bw} ELSE 0 END)`,
+    })
+    .from(copies)
+    .leftJoin(nexudusSales, eq(copies.nexudusSaleId, nexudusSales.id))
+    .where(periodFilter)
+    .groupBy(copies.userId);
 
     const copyResults = await copyQuery;
     const copiesByUser: Record<string, any> = {};

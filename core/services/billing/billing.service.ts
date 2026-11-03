@@ -239,7 +239,7 @@ export const billingService = {
     const report = await reportsService.getMonthlyAccumulationForUser(userId, { from, to, includeAllPending, period });
     if (!report) throw new Error('No report data found for user');
 
-    const monthStr = report.period.month || report.period.from.slice(0, 7);
+    const monthStr = report.period.month || report.period.to.slice(0, 7);
     const settings = await settingsService.getAllSettings();
     const typeToProductIdMap: Record<string, string> = {
       'a4Bw': settings.nexudus_product_id_a4bw,

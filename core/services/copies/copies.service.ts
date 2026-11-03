@@ -13,7 +13,7 @@ export const copiesService = {
             toDate = periodDates.toStr;
         }
 
-        const records = await copiesRepository.findCopiesByUserId(userId, fromDate, toDate);
+        const records = await copiesRepository.findCopiesByUserId(userId, fromDate, toDate, period);
         return records.map((record: any) => ({
             id: record.id,
             datetime: record.datetime,

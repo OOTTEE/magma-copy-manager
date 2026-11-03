@@ -1,9 +1,40 @@
 import { db } from '../db';
-import { copies, users } from '../db/schema';
-import { eq, and, sql, desc, inArray } from 'drizzle-orm';
+import { copies, users, nexudusSales } from '../db/schema';
+import { eq, and, or, sql, gte, lte, gt, isNull, desc, inArray, getTableColumns } from 'drizzle-orm';
 
 export const copiesRepository = {
-    findCopiesByUserId: async (userId: string, from?: string, to?: string) => {
+    findCopiesByUserId: async (userId: string, from?: string, to?: string, period?: string) => {
+        if (period && from && to) {
+            const periodFilter = or(
+                // Case A: Billed in this cycle but captured after cutoff (e.g. day 28 billed in October)
+                and(
+                    sql`${copies.nexudusSaleId} IS NOT NULL`,
+                    or(
+                        eq(nexudusSales.month, period),
+                        sql`substr(${nexudusSales.saleDate}, 1, 7) = ${period}`
+                    ),
+                    gt(copies.datetime, to)
+                ),
+                // Case B: Pertaining to this cycle by physical date range [from, to]
+                // EXCEPT if already billed in an earlier cycle
+                and(
+                    gte(copies.datetime, from),
+                    lte(copies.datetime, to),
+                    or(
+                        isNull(copies.nexudusSaleId),
+                        sql`NOT ((${nexudusSales.month} < ${period} OR substr(${nexudusSales.saleDate}, 1, 7) < ${period}) AND ${nexudusSales.month} != ${period})`
+                    )
+                )
+            );
+
+            return await db
+                .select(getTableColumns(copies))
+                .from(copies)
+                .leftJoin(nexudusSales, eq(copies.nexudusSaleId, nexudusSales.id))
+                .where(and(eq(copies.userId, userId), periodFilter))
+                .orderBy(desc(copies.datetime));
+        }
+
         let conditions = [eq(copies.userId, userId)];
         if (from) conditions.push(sql`${copies.datetime} >= ${from}`);
         if (to) conditions.push(sql`${copies.datetime} <= ${to}`);

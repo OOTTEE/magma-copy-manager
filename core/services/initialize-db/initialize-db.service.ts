@@ -29,6 +29,16 @@ export const initializeDbService = {
                     sqlite.prepare("UPDATE sync_logs SET process_type = 'billing' WHERE summary LIKE '%Facturación%' OR summary LIKE '%Cobro%' OR summary LIKE '%Procesados%'").run();
                     logger.info('InitializeDB: Applied auto-migration: Added process_type column to sync_logs table.');
                 }
+
+                // Data patch: normalize sales created on 2026-10-29 that fell back to month '2026-09'
+                try {
+                    const res = sqlite.prepare("UPDATE nexudus_sales SET month = '2026-10' WHERE sale_date LIKE '2026-10-29%' AND month = '2026-09'").run();
+                    if (res.changes > 0) {
+                        logger.info(`InitializeDB: Normalized ${res.changes} sales from 2026-10-29 to month 2026-10.`);
+                    }
+                } catch {
+                    // Ignore if nexudus_sales table does not exist yet
+                }
             } catch (schemaErr: any) {
                 logger.warn({ err: schemaErr.message }, 'InitializeDB: Schema check warning');
             }

@@ -1,9 +1,10 @@
 import { db } from '../../db';
-import { nexudusSales, syncLogs, systemNotifications, users } from '../../db/schema';
+import { nexudusSales, syncLogs, systemNotifications, users, consumptionDistributions } from '../../db/schema';
 import { sql, desc, eq, and } from 'drizzle-orm';
 import { autoSyncService } from '../../services/automation/auto-sync.service';
 import { billingJobService } from '../../services/billing/billing-job.service';
 import { reportsService } from '../../services/reports/reports.service';
+import { usersService } from '../../services/users/users.service';
 import { randomUUID } from 'crypto';
 
 /**
@@ -95,9 +96,35 @@ export const dashboardFacade = {
     getCustomerDashboardData: async (userId: string) => {
         const now = new Date();
         const year = now.getFullYear().toString();
-        const month = `${year}-${(now.getMonth() + 1).toString().padStart(2, '0')}`;
+        const nowMonthStr = `${year}-${(now.getMonth() + 1).toString().padStart(2, '0')}`;
 
-        // 1. Monthly evolution (YTD) - Consolidates total quantity per month
+        // 1. Pending consumption and current period info
+        const pendingReport = await reportsService.getMonthlyAccumulationForUser(userId);
+        const currentMonth = pendingReport?.period?.month || nowMonthStr;
+
+        // 2. Multi-account detection
+        const userAccounts = await usersService.getNexudusAccounts(userId);
+        const accountsCount = userAccounts.length;
+        const isMultiAccount = accountsCount > 1;
+
+        // 3. Current period usage object
+        const currentPeriod = {
+            month: currentMonth,
+            from: pendingReport?.period?.from || `${currentMonth}-01`,
+            to: pendingReport?.period?.to || `${currentMonth}-28`,
+            total: pendingReport?.data?.total || 0,
+            a4Bw: pendingReport?.data?.a4Bw || 0,
+            a4Color: pendingReport?.data?.a4Color || 0,
+            a3Bw: pendingReport?.data?.a3Bw || 0,
+            a3Color: pendingReport?.data?.a3Color || 0,
+            sra3Bw: pendingReport?.data?.sra3Bw || 0,
+            sra3Color: pendingReport?.data?.sra3Color || 0,
+            isOverAllocated: Boolean(pendingReport?.data?.isOverAllocated),
+            syncedCopies: pendingReport?.syncedCopies || 0,
+            pendingCopies: pendingReport?.pendingCopies || 0
+        };
+
+        // 4. Monthly evolution (YTD) - Consolidates total quantity per month
         const ytdMonthlyExpenses = await db
             .select({
                 month: nexudusSales.month,
@@ -111,17 +138,17 @@ export const dashboardFacade = {
             .groupBy(nexudusSales.month)
             .orderBy(nexudusSales.month);
 
-        // 2. Current Month Usage
+        // 5. Current Month Usage
         const currentMonthUsageRes = await db
             .select({ count: sql<number>`SUM(${nexudusSales.quantity})` })
             .from(nexudusSales)
             .where(and(
                 eq(nexudusSales.userId, userId),
-                eq(nexudusSales.month, month)
+                eq(nexudusSales.month, currentMonth)
             ))
             .get();
 
-        // 3. YTD Total
+        // 6. YTD Total
         const ytdTotalRes = await db
             .select({ total: sql<number>`SUM(${nexudusSales.quantity})` })
             .from(nexudusSales)
@@ -131,8 +158,7 @@ export const dashboardFacade = {
             ))
             .get();
 
-        // 4. Recent "Invoices" (sessions of sales)
-        // We use the same grouping logic as the admin billing history
+        // 7. Recent "Invoices" (sessions of sales)
         const recentSessions = await db.all(sql`
             SELECT 
                 ns.month as month,
@@ -146,19 +172,163 @@ export const dashboardFacade = {
             LIMIT 5
         `);
 
-        // Map sessions to the format expected by RecentInvoicesWidget
-        const recentInvoices = recentSessions.map((s: any) => ({
+        const recentInvoices = (recentSessions || []).map((s: any) => ({
             id: s.date,
             from: s.month,
             to: s.date,
-            total: s.total, // Pages for now
+            total: s.total,
             status: 'paid'
         }));
 
-        // 5. Pending consumption for distribution
-        const pendingReport = await reportsService.getMonthlyAccumulationForUser(userId);
+        // 8. Historical Closed Cycles: All past sales grouped by month and account
+        const pastSales = await db
+            .select({
+                month: nexudusSales.month,
+                type: nexudusSales.type,
+                quantity: nexudusSales.quantity,
+                nexudusAccountId: nexudusSales.nexudusAccountId,
+                saleDate: nexudusSales.saleDate
+            })
+            .from(nexudusSales)
+            .where(and(
+                eq(nexudusSales.userId, userId),
+                sql`${nexudusSales.month} != ${currentMonth}`
+            ))
+            .orderBy(desc(nexudusSales.month))
+            .all();
+
+        const pastDistributions = await db
+            .select({
+                month: consumptionDistributions.month,
+                nexudusAccountId: consumptionDistributions.nexudusAccountId,
+                concept: consumptionDistributions.concept
+            })
+            .from(consumptionDistributions)
+            .where(and(
+                eq(consumptionDistributions.userId, userId),
+                sql`${consumptionDistributions.month} != ${currentMonth}`
+            ))
+            .all();
+
+        // Map accounts for quick metadata resolution
+        const accountMetadata = new Map<string, { id: string; nexudusUserId: string; accountName: string; isDefault: number }>();
+        for (const acc of userAccounts) {
+            accountMetadata.set(acc.id, {
+                id: acc.id,
+                nexudusUserId: acc.nexudusUserId,
+                accountName: acc.accountName || `Cuenta ${acc.nexudusUserId}`,
+                isDefault: acc.isDefault
+            });
+        }
+
+        // Group past sales by month
+        const cyclesMap = new Map<string, {
+            month: string;
+            saleDate: string;
+            totalCopies: number;
+            accounts: Map<string, {
+                accountId: string;
+                nexudusUserId: string;
+                accountName: string;
+                isDefault: number;
+                totalCopies: number;
+                a4Bw: number;
+                a4Color: number;
+                a3Bw: number;
+                a3Color: number;
+                sra3Bw: number;
+                sra3Color: number;
+                concepts: Set<string>;
+            }>;
+        }>();
+
+        for (const s of (pastSales || [])) {
+            if (!cyclesMap.has(s.month)) {
+                cyclesMap.set(s.month, {
+                    month: s.month,
+                    saleDate: s.saleDate,
+                    totalCopies: 0,
+                    accounts: new Map()
+                });
+            }
+            const cycle = cyclesMap.get(s.month)!;
+            cycle.totalCopies += s.quantity;
+            if (s.saleDate > cycle.saleDate) cycle.saleDate = s.saleDate;
+
+            const accId = s.nexudusAccountId || 'default';
+            if (!cycle.accounts.has(accId)) {
+                const meta = accountMetadata.get(accId);
+                cycle.accounts.set(accId, {
+                    accountId: accId,
+                    nexudusUserId: meta?.nexudusUserId || accId,
+                    accountName: meta?.accountName || (meta?.nexudusUserId ? `Cuenta ${meta.nexudusUserId}` : 'Cuenta Principal'),
+                    isDefault: meta ? meta.isDefault : 1,
+                    totalCopies: 0,
+                    a4Bw: 0,
+                    a4Color: 0,
+                    a3Bw: 0,
+                    a3Color: 0,
+                    sra3Bw: 0,
+                    sra3Color: 0,
+                    concepts: new Set<string>()
+                });
+            }
+            const accEntry = cycle.accounts.get(accId)!;
+            accEntry.totalCopies += s.quantity;
+            if (s.type === 'a4Bw') accEntry.a4Bw += s.quantity;
+            else if (s.type === 'a4Color') accEntry.a4Color += s.quantity;
+            else if (s.type === 'a3Bw') accEntry.a3Bw += s.quantity;
+            else if (s.type === 'a3Color') accEntry.a3Color += s.quantity;
+            else if (s.type === 'sra3Bw') accEntry.sra3Bw += s.quantity;
+            else if (s.type === 'sra3Color') accEntry.sra3Color += s.quantity;
+        }
+
+        // Attach concepts from distributions
+        for (const dist of (pastDistributions || [])) {
+            const cycle = cyclesMap.get(dist.month);
+            if (cycle && dist.concept) {
+                const accEntry = cycle.accounts.get(dist.nexudusAccountId);
+                if (accEntry) {
+                    accEntry.concepts.add(dist.concept);
+                }
+            }
+        }
+
+        const formatMonthName = (m: string) => {
+            const [y, mon] = m.split('-');
+            const d = new Date(parseInt(y, 10), parseInt(mon, 10) - 1, 1);
+            const str = d.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
+            return str.charAt(0).toUpperCase() + str.slice(1);
+        };
+
+        const historicalCycles = Array.from(cyclesMap.values()).map(c => ({
+            month: c.month,
+            periodName: formatMonthName(c.month),
+            saleDate: c.saleDate,
+            totalCopies: c.totalCopies,
+            accountsCount: c.accounts.size,
+            accounts: Array.from(c.accounts.values()).map(a => ({
+                accountId: a.accountId,
+                nexudusUserId: a.nexudusUserId,
+                accountName: a.accountName,
+                isDefault: a.isDefault,
+                totalCopies: a.totalCopies,
+                a4Bw: a.a4Bw,
+                a4Color: a.a4Color,
+                a3Bw: a.a3Bw,
+                a3Color: a.a3Color,
+                sra3Bw: a.sra3Bw,
+                sra3Color: a.sra3Color,
+                concepts: Array.from(a.concepts)
+            }))
+        }));
 
         return {
+            userId,
+            isMultiAccount,
+            accountsCount,
+            currentPeriod,
+            historicalCycles,
             ytdMonthlyExpenses,
             currentMonthUsage: { count: Number(currentMonthUsageRes?.count || 0) },
             ytdTotal: Number(ytdTotalRes?.total || 0),

@@ -31,6 +31,15 @@ vi.mock('../../services/reports/reports.service', () => ({
     }
 }));
 
+vi.mock('../../services/users/users.service', () => ({
+    usersService: {
+        getNexudusAccounts: vi.fn().mockResolvedValue([
+            { id: 'acc-1', nexudusUserId: '1001', accountName: 'Cuenta Principal', isDefault: 1 },
+            { id: 'acc-2', nexudusUserId: '1002', accountName: 'Cuenta Secundaria', isDefault: 0 }
+        ])
+    }
+}));
+
 describe('DashboardFacade', () => {
     const userId = 'user-123';
 
@@ -62,6 +71,10 @@ describe('DashboardFacade', () => {
         expect(result.currentMonthUsage.count).toBe(30);
         expect(result.ytdTotal).toBe(350);
         expect(result.ytdMonthlyExpenses).toHaveLength(3);
+        expect(result.isMultiAccount).toBe(true);
+        expect(result.accountsCount).toBe(2);
+        expect(result.currentPeriod).toBeDefined();
+        expect(result.historicalCycles).toBeDefined();
 
         vi.useRealTimers();
     });

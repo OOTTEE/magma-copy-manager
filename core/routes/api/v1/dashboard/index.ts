@@ -134,7 +134,99 @@ const dashboardRoute: FastifyPluginAsync = async (fastify) => {
     fastify.get('/customer', {
         schema: {
             tags: ['Dashboard'],
-            description: 'Get personal usage statistics and recent sales for the customer.'
+            description: 'Get personal usage statistics and recent sales for the customer.',
+            response: {
+                200: {
+                    type: 'object',
+                    properties: {
+                        userId: { type: 'string' },
+                        isMultiAccount: { type: 'boolean' },
+                        accountsCount: { type: 'number' },
+                        currentPeriod: {
+                            type: 'object',
+                            properties: {
+                                month: { type: 'string' },
+                                from: { type: 'string' },
+                                to: { type: 'string' },
+                                total: { type: 'number' },
+                                a4Bw: { type: 'number' },
+                                a4Color: { type: 'number' },
+                                a3Bw: { type: 'number' },
+                                a3Color: { type: 'number' },
+                                sra3Bw: { type: 'number' },
+                                sra3Color: { type: 'number' },
+                                isOverAllocated: { type: 'boolean' },
+                                syncedCopies: { type: 'number' },
+                                pendingCopies: { type: 'number' }
+                            }
+                        },
+                        historicalCycles: {
+                            type: 'array',
+                            items: {
+                                type: 'object',
+                                properties: {
+                                    month: { type: 'string' },
+                                    periodName: { type: 'string' },
+                                    saleDate: { type: 'string' },
+                                    totalCopies: { type: 'number' },
+                                    accountsCount: { type: 'number' },
+                                    accounts: {
+                                        type: 'array',
+                                        items: {
+                                            type: 'object',
+                                            properties: {
+                                                accountId: { type: 'string' },
+                                                nexudusUserId: { type: 'string' },
+                                                accountName: { type: 'string' },
+                                                isDefault: { type: 'number' },
+                                                totalCopies: { type: 'number' },
+                                                a4Bw: { type: 'number' },
+                                                a4Color: { type: 'number' },
+                                                a3Bw: { type: 'number' },
+                                                a3Color: { type: 'number' },
+                                                sra3Bw: { type: 'number' },
+                                                sra3Color: { type: 'number' },
+                                                concepts: { type: 'array', items: { type: 'string' } }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        ytdMonthlyExpenses: {
+                            type: 'array',
+                            items: {
+                                type: 'object',
+                                properties: {
+                                    month: { type: 'string' },
+                                    total: { type: 'number' }
+                                }
+                            }
+                        },
+                        currentMonthUsage: {
+                            type: 'object',
+                            properties: {
+                                count: { type: 'number' }
+                            }
+                        },
+                        ytdTotal: { type: 'number' },
+                        recentInvoices: {
+                            type: 'array',
+                            items: {
+                                type: 'object',
+                                properties: {
+                                    id: { type: 'string' },
+                                    from: { type: 'string' },
+                                    to: { type: 'string' },
+                                    total: { type: 'number' },
+                                    status: { type: 'string' }
+                                }
+                            }
+                        },
+                        pendingConsumption: { type: ['object', 'null'], additionalProperties: true }
+                    }
+                }
+            }
         },
         preValidation: [fastify.authenticate]
     }, async (request) => {

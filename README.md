@@ -269,4 +269,4 @@ The container packages:
 ---
 
 ## 📄 License
-This project is licensed under the [ISC License](LICENSE).
+This project is licensed under the [MIT License](LICENSE).

@@ -1,11 +1,38 @@
-**.iml
-**.idea
-*/**/node_modules
-*/**/dist
-*/**/build
-*/**.db
-*/**.env
+# IDE & Editors
+*.iml
+.idea/
+.vscode/
+
+# Dependencies
 node_modules/
+**/node_modules/
+
+# Build & Dist
+dist/
+**/dist/
+build/
+**/build/
+
+# Environment & Secrets (Crucial)
+.env
+.env.*
+*.env
+**/.env
+**/.env.*
+**/prod.env
+
+# Certificates and keys
+*.pem
+*.key
+*.cert
+*.pfx
+
+# SQLite Databases & Storage
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+*.bak*
 storage/
-data
-core/data
+data/
+core/data/

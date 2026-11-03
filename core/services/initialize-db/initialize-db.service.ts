@@ -30,6 +30,12 @@ export const initializeDbService = {
                     logger.info('InitializeDB: Applied auto-migration: Added process_type column to sync_logs table.');
                 }
 
+                const distCols = sqlite.prepare("PRAGMA table_info(consumption_distributions)").all();
+                if (distCols.length > 0 && !distCols.some((col: any) => col.name === 'concept')) {
+                    sqlite.prepare("ALTER TABLE consumption_distributions ADD COLUMN concept TEXT").run();
+                    logger.info('InitializeDB: Applied auto-migration: Added concept column to consumption_distributions table.');
+                }
+
                 // Data patch: normalize sales created on 2026-10-29 that fell back to month '2026-09'
                 try {
                     const res = sqlite.prepare("UPDATE nexudus_sales SET month = '2026-10' WHERE sale_date LIKE '2026-10-29%' AND month = '2026-09'").run();

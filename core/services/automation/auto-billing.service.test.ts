@@ -2,8 +2,14 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { autoBillingService } from './auto-billing.service';
 import { copiesFacade } from '../../facades/copies/copies.facade';
 import { billingFacade } from '../../facades/billing/billing.facade';
+import { nexudusService } from '../nexudus/nexudus.service';
 import { db } from '../../db';
-import { users, syncLogs } from '../../db/schema';
+
+vi.mock('../nexudus/nexudus.service', () => ({
+    nexudusService: {
+        ensureAuthenticated: vi.fn().mockResolvedValue('mock-token'),
+    }
+}));
 
 vi.mock('../../facades/copies/copies.facade', () => ({
     copiesFacade: {
@@ -14,7 +20,6 @@ vi.mock('../../facades/copies/copies.facade', () => ({
 vi.mock('../../facades/billing/billing.facade', () => ({
     billingFacade: {
         syncUserConsumption: vi.fn(),
-        syncWithNexudus: vi.fn(),
     }
 }));
 
@@ -43,14 +48,17 @@ describe('AutoBillingService', () => {
         vi.clearAllMocks();
     });
 
-    it('should retry print sync up to 3 times on failure', async () => {
+    it('should retry print sync up to 3 times on failure and proceed with billing (non-fatal)', async () => {
         vi.mocked(copiesFacade.syncPrinterCopies).mockRejectedValue(new Error('Printer Offline'));
-        mockAll.mockResolvedValue([]);
+        mockAll.mockResolvedValue([
+            { id: 'u1', username: 'user1', role: 'customer' }
+        ] as any);
+        vi.mocked(billingFacade.syncUserConsumption).mockResolvedValue({ userId: 'u1', salesCreated: 1 } as any);
 
-        // Mock setTimeout for 5000ms retry to 0ms to speed up test without breaking stream workers
+        // Mock setTimeout for fast testing without breaking thread workers
         const originalSetTimeout = global.setTimeout;
         vi.spyOn(global, 'setTimeout').mockImplementation((fn: any, ms?: number, ...args: any[]) => {
-            if (ms === 5000) {
+            if (ms === 3000) {
                 return originalSetTimeout(fn, 0, ...args);
             }
             return originalSetTimeout(fn, ms, ...args);
@@ -59,10 +67,14 @@ describe('AutoBillingService', () => {
         const result = await autoBillingService.runJob(adminUser);
 
         expect(copiesFacade.syncPrinterCopies).toHaveBeenCalledTimes(3);
-        expect(result.status).toBe('failed');
+        expect(nexudusService.ensureAuthenticated).toHaveBeenCalledTimes(1);
+        // Scraper was offline, so printer warning marks status as partial, but billing still ran!
+        expect(result.status).toBe('partial');
+        expect(billingFacade.syncUserConsumption).toHaveBeenCalledWith(adminUser, 'u1');
+        expect(result.results[0].salesCreated).toBe(1);
     });
 
-    it('should orchestrate full flow for customers', async () => {
+    it('should orchestrate full billing flow for customers without redundant batch loop', async () => {
         vi.mocked(copiesFacade.syncPrinterCopies).mockResolvedValue({ 
             status: 'success',
             syncedCount: 1,
@@ -75,23 +87,19 @@ describe('AutoBillingService', () => {
             { id: 'a1', username: 'admin', role: 'admin' }
         ] as any);
 
-        vi.mocked(billingFacade.syncUserConsumption).mockResolvedValue({ userId: 'uX', salesCreated: 1 } as any);
-        vi.mocked(billingFacade.syncWithNexudus).mockResolvedValue({ results: [] } as any);
+        vi.mocked(billingFacade.syncUserConsumption).mockResolvedValue({ userId: 'uX', salesCreated: 2 } as any);
 
         const result = await autoBillingService.runJob(adminUser);
 
         expect(result.status).toBe('success');
         expect(result.results).toHaveLength(2); // Only customers
         
-        // Users: Sincronización directa
+        // Users: Sincronización directa y atómica
         expect(billingFacade.syncUserConsumption).toHaveBeenCalledWith(adminUser, 'u1');
         expect(billingFacade.syncUserConsumption).toHaveBeenCalledWith(adminUser, 'u2');
-        
-        // Nexudus Batch Sync
-        expect(billingFacade.syncWithNexudus).toHaveBeenCalledWith(adminUser);
     });
 
-    it('should handle partial failures (one user fails, others continue)', async () => {
+    it('should handle partial failures with individual user retry (one user fails, others continue)', async () => {
         vi.mocked(copiesFacade.syncPrinterCopies).mockResolvedValue({ 
             status: 'success',
             syncedCount: 1,
@@ -104,15 +112,14 @@ describe('AutoBillingService', () => {
         ] as any);
 
         vi.mocked(billingFacade.syncUserConsumption)
-            .mockRejectedValueOnce(new Error('Sync Error'))
+            .mockRejectedValueOnce(new Error('Sync Error 1'))
+            .mockRejectedValueOnce(new Error('Sync Error 2'))
             .mockResolvedValueOnce({ userId: 'u2', salesCreated: 1 } as any);
-        
-        vi.mocked(billingFacade.syncWithNexudus).mockResolvedValue({ results: [] } as any);
 
         const result = await autoBillingService.runJob(adminUser);
 
         expect(result.status).toBe('partial');
         expect(result.results[0].billing).toBe('failed');
-        expect(result.results[1].billing).toBe('success');
+        expect(result.results[1].billing).toContain('success');
     });
 });

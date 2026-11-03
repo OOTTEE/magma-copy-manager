@@ -2,6 +2,7 @@ import * as cron from 'node-cron';
 import { copiesFacade } from '../../facades/copies/copies.facade';
 import { billingFacade } from '../../facades/billing/billing.facade';
 import { settingsService } from '../settings/settings.service';
+import { nexudusService } from '../nexudus/nexudus.service';
 import { db } from '../../db';
 import { syncLogs, users } from '../../db/schema';
 import { randomUUID } from 'crypto';
@@ -13,7 +14,8 @@ import { serverConfig } from '../../config/server.config';
  * AutoBilling Service
  *
  * Orchestrates the automated monthly billing process.
- * Handles cron scheduling, retries, and sequential task execution.
+ * Handles cron scheduling, non-blocking hardware sync, atomic per-user execution,
+ * and unified audit logging.
  */
 export class AutoBillingService {
     private scheduledTask: cron.ScheduledTask | null = null;
@@ -65,84 +67,80 @@ export class AutoBillingService {
         const results: any[] = [];
         let status: 'success' | 'failed' | 'partial' = 'success';
         let fatalErrorStr = '';
+        let printerWarning: string | null = null;
 
         logger.info({ logId, startTime }, 'AutoBilling: Starting job');
 
         try {
-            // Phase 1: Sync printer copies with 3 retries
+            // Step 1: Pro-active Nexudus Authentication verification
+            try {
+                await nexudusService.ensureAuthenticated();
+            } catch (authErr: any) {
+                logger.warn({ error: authErr.message }, 'AutoBilling: Pre-flight Nexudus auth warning');
+            }
+
+            // Step 2: Sync printer copies with up to 3 retries (NON-BLOCKING)
+            // If physical printer is asleep or offline, we log a warning but DO NOT cancel billing
             for (let attempt = 1; attempt <= 3; attempt++) {
                 try {
                     logger.info({ attempt }, 'AutoBilling: Syncing printer copies...');
                     await copiesFacade.syncPrinterCopies(requestingUser);
+                    printerWarning = null;
                     break;
                 } catch (err: any) {
                     logger.warn({ attempt, error: err.message }, 'AutoBilling: Print sync attempt failed');
-                    if (attempt === 3) throw new Error(`Print sync failed after 3 attempts: ${err.message}`);
-                    await new Promise(resolve => setTimeout(resolve, 5000));
+                    if (attempt === 3) {
+                        printerWarning = `Impresora no respondió tras 3 intentos (${err.message}). Se continuó facturación con lecturas consolidadas.`;
+                        logger.warn(printerWarning);
+                    } else {
+                        await new Promise(resolve => setTimeout(resolve, 3000));
+                    }
                 }
             }
 
-            // Phase 2: Local Processing
+            // Step 3: Single Consolidated Billing Batch per User
             const allUsers = await db.select().from(users).all();
-            const customers = allUsers.filter((u: any) => u.role === 'customer');
+            const customers = allUsers.filter((u: any) => u.role === 'customer' && !u.isIgnored);
 
             for (const user of customers) {
                 const userResult = {
                     userId: user.id,
                     username: user.username,
                     billing: 'pending',
-                    nexudus: 'n/a',
+                    salesCreated: 0,
                     error: null as string | null
                 };
 
-                try {
-                    // Magma Nexudus First: Sincronizar directamente consumos
+                // Isolated per-user execution with 1 individual retry on transient network errors
+                for (let tryIdx = 1; tryIdx <= 2; tryIdx++) {
                     try {
-                        await billingFacade.syncUserConsumption(requestingUser, user.id);
-                        userResult.billing = 'success';
+                        const syncRes = await billingFacade.syncUserConsumption(requestingUser, user.id);
+                        userResult.salesCreated = syncRes?.salesCreated || 0;
+                        userResult.billing = userResult.salesCreated > 0 
+                            ? `success (${userResult.salesCreated} sales)` 
+                            : 'skipped (no new sales)';
+                        break;
                     } catch (err: any) {
-                        if (err.message.includes('No consumption') || err.message.includes('0 copies')) {
+                        const errMsg = err.message || '';
+                        if (errMsg.includes('No consumption') || errMsg.includes('0 copies')) {
                             userResult.billing = 'skipped (no activity)';
-                        } else if (err.message.includes('already synced')) {
+                            break;
+                        } else if (errMsg.includes('already synced')) {
                             userResult.billing = 'skipped (already synced)';
+                            break;
+                        } else if (tryIdx === 1) {
+                            logger.warn({ username: user.username, error: errMsg }, 'AutoBilling: User sync attempt 1 failed, retrying in 3s...');
+                            await new Promise(resolve => setTimeout(resolve, 3000));
                         } else {
-                            throw err;
-                        }
-                    }
-                } catch (err: any) {
-                    logger.error({ username: user.username, error: err.message }, 'AutoBilling: Error syncing consumption');
-                    userResult.billing = 'failed';
-                    userResult.error = err.message;
-                    status = 'partial';
-                }
-
-                results.push(userResult);
-            }
-
-            // Phase 3: Nexudus Synchronization (Batch)
-            logger.info('AutoBilling: Starting Nexudus synchronization...');
-            try {
-                const syncResult = await billingFacade.syncWithNexudus(requestingUser);
-
-                for (const syncItem of syncResult.results) {
-                    const existing = results.find(r => r.userId === syncItem.userId);
-                    if (existing) {
-                        existing.nexudus = syncItem.salesCreated > 0
-                            ? `success (${syncItem.salesCreated} sales)`
-                            : syncItem.skipped > 0
-                                ? 'skipped (already synced)'
-                                : 'n/a (no data)';
-
-                        if (syncItem.errors > 0) {
-                            existing.nexudus = `failed (${syncItem.errors} errors)`;
+                            logger.error({ username: user.username, error: errMsg }, 'AutoBilling: Error syncing consumption for user');
+                            userResult.billing = 'failed';
+                            userResult.error = errMsg;
                             status = 'partial';
                         }
                     }
                 }
-            } catch (err: any) {
-                logger.error(err, 'AutoBilling: Nexudus Batch Sync Failed');
-                status = 'partial';
-                results.push({ nexudusBatchError: err.message });
+
+                results.push(userResult);
             }
 
         } catch (jobError: any) {
@@ -162,23 +160,29 @@ export class AutoBillingService {
                 structuredErrors.push({ username: 'Sistema', error: fatalErrorStr });
             }
 
+            if (printerWarning) {
+                structuredErrors.push({ username: 'Servidor Impresión', error: printerWarning });
+                if (status === 'success') {
+                    status = 'partial';
+                }
+            }
+
             for (const r of results) {
-                if (r.error || (r.nexudus && r.nexudus.includes('failed'))) {
+                if (r.error || r.billing === 'failed') {
                     structuredErrors.push({
                         userId: r.userId,
                         username: r.username,
-                        error: r.error || r.nexudus
+                        error: r.error || 'Error al facturar en Nexudus'
                     });
-                } else if (r.nexudus && r.nexudus.includes('success')) {
+                } else if (r.salesCreated > 0) {
                     structuredChanged.push({
                         userId: r.userId,
                         username: r.username,
-                        details: r.nexudus
+                        details: r.billing,
+                        salesCreated: r.salesCreated
                     });
                 } else if (r.userId) {
                     unchangedCount++;
-                } else if (r.nexudusBatchError) {
-                    structuredErrors.push({ username: 'Nexudus API', error: r.nexudusBatchError });
                 }
             }
 
@@ -186,7 +190,7 @@ export class AutoBillingService {
             const summary = status === 'success'
                 ? `Procesados ${results.length} usuarios con éxito.`
                 : status === 'partial'
-                    ? `Procesados con errores en algunos usuarios (${structuredErrors.length} fallos).`
+                    ? `Procesados con incidencias (${structuredErrors.length} advertencias/fallos).`
                     : `Error fatal en el proceso: ${fatalMsg}`;
 
             const logDetails = {

@@ -168,13 +168,33 @@ export class NexudusService {
       throw new Error('Nexudus API URL not configured in settings.');
     }
 
-    this.api = this.createApiClient(baseUrl);
+    if (!this.api) {
+      this.api = this.createApiClient(baseUrl);
+    }
 
     if (!this.token) {
       await this.login();
     } else {
       this.api.setSecurityData(this.token);
     }
+  }
+
+  /**
+   * Proactively verifies and refreshes Nexudus authentication before running batch jobs.
+   * Guarantees a fresh token so that the batch doesn't hit 401 expiration races.
+   */
+  async ensureAuthenticated(): Promise<string> {
+    const baseUrl = await settingsService.getSetting('nexudus_url');
+    if (!baseUrl) {
+      throw new Error('Nexudus API URL not configured in settings.');
+    }
+
+    if (!this.api) {
+      this.api = this.createApiClient(baseUrl);
+    }
+
+    logger.info('Nexudus: Proactively authenticating before batch execution...');
+    return await this.login();
   }
 
   /**
@@ -186,17 +206,23 @@ export class NexudusService {
     const finalEmail = email || await settingsService.getSetting('nexudus_email');
     const finalPassword = password || await settingsService.getSecretSetting('nexudus_password');
 
+    if (!baseUrl) {
+      throw new Error('Nexudus API URL not configured in settings.');
+    }
+
     if (!finalEmail || !finalPassword) {
-      throw new Error('Nexudus email or password not configured.');
+      throw new Error('Nexudus email or password not configured in settings.');
+    }
+
+    if (!this.api) {
+      this.api = this.createApiClient(baseUrl);
     }
 
     // IMPORTANT: Clear old security data to ensure login request doesn't send expired Bearer token
-    if (this.api) {
-      this.api.setSecurityData(null);
-    }
+    this.api.setSecurityData(null);
 
     try {
-      const response = await this.api!.api.tokenCreate({
+      const response = await this.api.api.tokenCreate({
         grant_type: "password",
         username: finalEmail,
         password: finalPassword,

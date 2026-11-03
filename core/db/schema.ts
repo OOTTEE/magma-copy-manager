@@ -16,6 +16,7 @@ export const userNexudusAccounts = sqliteTable('user_nexudus_accounts', {
   id: text('id').primaryKey(),
   userId: text('user_id').notNull().references(() => users.id),
   nexudusUserId: text('nex_user_id').notNull(), // El ID real de Nexudus
+  accountName: text('account_name'), // Nombre amigable de la cuenta de Nexudus (cacheado)
   isDefault: integer('is_default').notNull().default(0),
   createdOn: text('created_on').notNull(),
 });

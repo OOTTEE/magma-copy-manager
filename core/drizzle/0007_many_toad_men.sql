@@ -1,0 +1,1 @@
+ALTER TABLE `user_nexudus_accounts` ADD `account_name` text;

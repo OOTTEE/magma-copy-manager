@@ -300,11 +300,11 @@ export const billingService = {
       await emailService.sendNotification({
         subject: `[Magma] Alerta de Sobreasignación: ${report.data.username}`,
         title: `Cierre Bloqueado por Sobreasignación`,
-        message: `El usuario ${report.data.username} tiene ${totalDistributed} copias declaradas en su bitácora, superando las ${totalPhysical} copias reales capturadas por la impresora en el período ${monthStr}. No se han emitido cargos a Nexudus para este usuario.`,
+        message: `El usuario ${report.data.username} tiene ${totalDistributed} copias declaradas en su reparto de copias, superando las ${totalPhysical} copias reales capturadas por la impresora en el período ${monthStr}. No se han emitido cargos a Nexudus para este usuario.`,
         type: 'warning'
       });
 
-      const err = new Error(`Sobreasignación de copias: El usuario ${report.data.username} tiene ${totalDistributed} copias declaradas en su bitácora, superando las ${totalPhysical} copias registradas por la impresora. Sincronización bloqueada.`);
+      const err = new Error(`Sobreasignación de copias: El usuario ${report.data.username} tiene ${totalDistributed} copias declaradas en su reparto de copias, superando las ${totalPhysical} copias registradas por la impresora. Sincronización bloqueada.`);
       (err as any).statusCode = 400;
       (err as any).isOverAllocated = true;
       throw err;
@@ -323,7 +323,7 @@ export const billingService = {
       tasksPerAccount[accountId][type].quantity += quantity;
     };
 
-    // A. Procesar partidas asignadas en bitácora
+    // A. Procesar partidas asignadas en el reparto de copias
     for (const dist of savedDistributions) {
       registerTask(dist.nexudusAccountId, dist.type, dist.quantity);
     }

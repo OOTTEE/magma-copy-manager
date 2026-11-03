@@ -28,6 +28,7 @@ const nexudusAccountSchema = {
     id: { type: 'string' },
     userId: { type: 'string' },
     nexudusUserId: { type: 'string' },
+    accountName: { type: 'string', nullable: true },
     isDefault: { type: 'number' },
     createdOn: { type: 'string' }
   }
@@ -211,7 +212,7 @@ const usersRoute: FastifyPluginAsync = async (fastify) => {
     return reply.send(result);
   });
 
-  fastify.post<{ Params: { id: string }, Body: { nexudusUserId: string } }>('/:id/nexudus-accounts', {
+  fastify.post<{ Params: { id: string }, Body: { nexudusUserId: string; accountName?: string } }>('/:id/nexudus-accounts', {
     schema: {
       description: 'Add a new Nexudus account to a user.',
       tags: ['Users'],
@@ -223,7 +224,10 @@ const usersRoute: FastifyPluginAsync = async (fastify) => {
       body: {
         type: 'object',
         required: ['nexudusUserId'],
-        properties: { nexudusUserId: { type: 'string' } }
+        properties: {
+          nexudusUserId: { type: 'string' },
+          accountName: { type: 'string' }
+        }
       },
       response: {
         201: nexudusAccountSchema,
@@ -235,7 +239,7 @@ const usersRoute: FastifyPluginAsync = async (fastify) => {
     preValidation: [fastify.authenticate, fastify.requireRole('admin')]
   }, async (request, reply) => {
     const user = request.user as { id: string; role: string };
-    const result = await usersFacade.addNexudusAccount(user, request.params.id, request.body.nexudusUserId);
+    const result = await usersFacade.addNexudusAccount(user, request.params.id, request.body.nexudusUserId, request.body.accountName);
     return reply.status(201).send(result);
   });
 

@@ -119,14 +119,14 @@ export const usersFacade = {
     /**
      * Adds a new Nexudus account to a user.
      */
-    addNexudusAccount: async (requestingUser: { id: string; role: string }, userId: string, nexudusUserId: string) => {
+    addNexudusAccount: async (requestingUser: { id: string; role: string }, userId: string, nexudusUserId: string, accountName?: string) => {
         if (requestingUser.role !== 'admin') {
             const error = new Error('Only admins can link Nexudus accounts.');
             (error as any).statusCode = 403;
             throw error;
         }
 
-        return await usersService.addNexudusAccount(userId, nexudusUserId);
+        return await usersService.addNexudusAccount(userId, nexudusUserId, accountName);
     },
 
     /**

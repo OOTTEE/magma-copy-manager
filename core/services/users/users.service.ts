@@ -5,6 +5,7 @@ import { db } from '../../db';
 import { userNexudusAccounts } from '../../db/schema';
 import { eq, and } from 'drizzle-orm';
 import { sanitizeUsername } from '../../lib/string.utils';
+import { nexudusService } from '../nexudus/nexudus.service';
 
 export const usersService = {
   getAll: async () => await usersRepository.findAll(),
@@ -48,15 +49,47 @@ export const usersService = {
   },
 
   getNexudusAccounts: async (userId: string) => {
-    return await db.select().from(userNexudusAccounts).where(eq(userNexudusAccounts.userId, userId)).all();
+    const accounts = await db.select().from(userNexudusAccounts).where(eq(userNexudusAccounts.userId, userId)).all();
+    
+    // Lazily resolve and persist missing account names from Nexudus
+    for (const acc of accounts) {
+      if (!acc.accountName && acc.nexudusUserId && !isNaN(Number(acc.nexudusUserId))) {
+        try {
+          const cw = await nexudusService.getCoworkerById(Number(acc.nexudusUserId));
+          const resolvedName = (cw as any)?.FullName || (cw as any)?.ToStringText || (cw as any)?.CompanyName;
+          if (resolvedName) {
+            acc.accountName = resolvedName;
+            await db.update(userNexudusAccounts)
+              .set({ accountName: resolvedName })
+              .where(eq(userNexudusAccounts.id, acc.id))
+              .run();
+          }
+        } catch {
+          // Ignore if API is offline or coworker not found
+        }
+      }
+    }
+
+    return accounts;
   },
 
-  addNexudusAccount: async (userId: string, nexudusUserId: string) => {
+  addNexudusAccount: async (userId: string, nexudusUserId: string, accountName?: string) => {
+    let resolvedName = accountName;
+    if (!resolvedName && nexudusUserId && !isNaN(Number(nexudusUserId))) {
+      try {
+        const cw = await nexudusService.getCoworkerById(Number(nexudusUserId));
+        resolvedName = (cw as any)?.FullName || (cw as any)?.ToStringText || (cw as any)?.CompanyName;
+      } catch {
+        // Ignore
+      }
+    }
+
     const id = crypto.randomUUID();
     const newAccount = {
       id,
       userId,
       nexudusUserId,
+      accountName: resolvedName || null,
       isDefault: 0,
       createdOn: new Date().toISOString()
     };
@@ -91,6 +124,16 @@ export const usersService = {
   syncNexudusAccount: async (userId: string, nexudusUserId: string) => {
     if (!nexudusUserId) return;
 
+    let resolvedName: string | null = null;
+    if (!isNaN(Number(nexudusUserId))) {
+      try {
+        const cw = await nexudusService.getCoworkerById(Number(nexudusUserId));
+        resolvedName = (cw as any)?.FullName || (cw as any)?.ToStringText || (cw as any)?.CompanyName || null;
+      } catch {
+        // Ignore
+      }
+    }
+
     db.transaction((tx: any) => {
       // 1. Check if it already exists
       const existing = tx.select()
@@ -109,9 +152,15 @@ export const usersService = {
           id: crypto.randomUUID(),
           userId,
           nexudusUserId,
+          accountName: resolvedName,
           isDefault: 1,
           createdOn: new Date().toISOString()
         }).run();
+      } else if (resolvedName && !existing[0].accountName) {
+        tx.update(userNexudusAccounts)
+          .set({ accountName: resolvedName })
+          .where(eq(userNexudusAccounts.id, existing[0].id))
+          .run();
       }
 
       // 2. Set this one as default and others as non-default for this user

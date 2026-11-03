@@ -105,7 +105,7 @@ interface ReportState {
 
   // Actions
   fetchPeriods: (force?: boolean) => Promise<void>;
-  fetchPeriodReport: (period: string, force?: boolean) => Promise<void>;
+  fetchPeriodReport: (period: string, force?: boolean, silent?: boolean) => Promise<void>;
   togglePeriodExpanded: (period: string) => void;
   fetchOrphans: (period?: string) => Promise<OrphanUser[]>;
   toggleUserIgnored: (userId: string, isIgnored: boolean) => Promise<void>;
@@ -168,12 +168,14 @@ export const useReportStore = create<ReportState>((set, get) => ({
     }
   },
 
-  fetchPeriodReport: async (period: string, force = false) => {
+  fetchPeriodReport: async (period: string, force = false, silent = false) => {
     if (get().loadingPeriodReports[period] && !force) return;
 
-    set(state => ({
-      loadingPeriodReports: { ...state.loadingPeriodReports, [period]: true }
-    }));
+    if (!silent) {
+      set(state => ({
+        loadingPeriodReports: { ...state.loadingPeriodReports, [period]: true }
+      }));
+    }
 
     try {
       const { data, error: apiError } = await api.GET('/api/v1/reports/monthly', {
@@ -204,9 +206,11 @@ export const useReportStore = create<ReportState>((set, get) => ({
     } catch (err: unknown) {
       console.error(`[ReportStore] Error fetching report for ${period}:`, err);
     } finally {
-      set(state => ({
-        loadingPeriodReports: { ...state.loadingPeriodReports, [period]: false }
-      }));
+      if (!silent) {
+        set(state => ({
+          loadingPeriodReports: { ...state.loadingPeriodReports, [period]: false }
+        }));
+      }
     }
   },
 

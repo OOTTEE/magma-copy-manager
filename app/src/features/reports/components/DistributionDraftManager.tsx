@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { api } from '../../../services/api';
 import { NexudusAccountBadge } from '../../users/components/NexudusAccountBadge';
+import { useUserStore } from '../../../store/userStore';
 
 export const ALL_COPY_TYPES = [
     { key: 'a4Bw', label: 'A4 B/N', color: 'slate' },
@@ -46,6 +47,7 @@ interface NexudusAccount {
     id: string;
     userId: string;
     nexudusUserId: string;
+    accountName?: string | null;
     isDefault: number;
 }
 
@@ -76,6 +78,24 @@ export const DistributionDraftManager: React.FC<DistributionDraftManagerProps> =
     const [concept, setConcept] = useState<string>('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [deletingId, setDeletingId] = useState<string | null>(null);
+
+    const { coworkers, fetchCoworkerById } = useUserStore();
+
+    // Preload coworker names for accounts if not already cached
+    useEffect(() => {
+        accounts.forEach(acc => {
+            if (acc.nexudusUserId && !acc.accountName) {
+                fetchCoworkerById(acc.nexudusUserId);
+            }
+        });
+    }, [accounts, fetchCoworkerById]);
+
+    const getAccountDisplayName = useCallback((acc: NexudusAccount) => {
+        if (acc.accountName) return acc.accountName;
+        const cw = coworkers.find(c => c.id?.toString() === acc.nexudusUserId);
+        if (cw?.fullName) return cw.fullName;
+        return `Cuenta ${acc.nexudusUserId}`;
+    }, [coworkers]);
 
     const defaultAccount = useMemo(() => accounts.find(a => a.isDefault === 1) || accounts[0], [accounts]);
     const secondaryAccounts = useMemo(() => accounts.filter(a => a.id !== defaultAccount?.id), [accounts, defaultAccount]);
@@ -127,7 +147,7 @@ export const DistributionDraftManager: React.FC<DistributionDraftManagerProps> =
             setAccounts((accountsRes.data as unknown as NexudusAccount[]) || []);
             setEntries((entriesRes.data as unknown as DistributionEntry[]) || []);
         } catch {
-            setError('Error al cargar la bitácora de reparto.');
+            setError('Error al cargar el reparto de copias.');
         } finally {
             setIsLoading(false);
         }
@@ -193,7 +213,7 @@ export const DistributionDraftManager: React.FC<DistributionDraftManagerProps> =
         return (
             <div className="py-12 flex flex-col items-center justify-center gap-3 text-slate-400">
                 <Loader2 className="animate-spin text-indigo-500" size={28} />
-                <span className="text-xs font-bold uppercase tracking-wider">Cargando bitácora de asignaciones...</span>
+                <span className="text-xs font-bold uppercase tracking-wider">Cargando reparto de copias...</span>
             </div>
         );
     }
@@ -411,7 +431,7 @@ export const DistributionDraftManager: React.FC<DistributionDraftManagerProps> =
                                 >
                                     {secondaryAccounts.map(acc => (
                                         <option key={acc.id} value={acc.id} className="dark:bg-slate-900">
-                                            Cuenta: {acc.nexudusUserId}
+                                            {getAccountDisplayName(acc)} (ID: {acc.nexudusUserId})
                                         </option>
                                     ))}
                                 </select>

@@ -178,18 +178,25 @@ export const PeriodAccordionCard: React.FC<PeriodAccordionCardProps> = ({
       {/* Accordion Body */}
       {isExpanded && (
         <div className="border-t border-slate-100 dark:border-white/5 bg-slate-50/30 dark:bg-black/10 animate-in fade-in duration-300">
-          {isLoading ? (
+          {!reportData && isLoading ? (
             <div className="py-16 flex flex-col items-center justify-center gap-3 text-slate-400">
               <Loader2 className="animate-spin text-indigo-500" size={24} />
               <span className="text-xs font-bold uppercase tracking-widest">Cargando desglose de usuarios...</span>
             </div>
           ) : (
-            <PeriodUserTable
-              data={reportData?.data || []}
-              period={period.period}
-              onCharge={(userId) => onOpenChargeUser(userId, period.period)}
-              onRefresh={() => fetchPeriodReport(period.period, true)}
-            />
+            <div className="relative">
+              {isLoading && (
+                <div className="absolute top-0 left-0 right-0 h-0.5 bg-indigo-500/20 overflow-hidden z-10">
+                  <div className="h-full bg-indigo-500 animate-pulse w-full" />
+                </div>
+              )}
+              <PeriodUserTable
+                data={reportData?.data || []}
+                period={period.period}
+                onCharge={(userId) => onOpenChargeUser(userId, period.period)}
+                onRefresh={() => fetchPeriodReport(period.period, true, true)}
+              />
+            </div>
           )}
         </div>
       )}

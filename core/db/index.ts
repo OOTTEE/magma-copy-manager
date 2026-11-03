@@ -14,6 +14,14 @@ const dbPath = serverConfig.databaseUrl;
 // especially critical for ":memory:" databases.
 if (!globalForDb.sqlite) {
     globalForDb.sqlite = new Database(dbPath.replace('file:', ''));
+    try {
+        const nexAccCols = globalForDb.sqlite.prepare("PRAGMA table_info(user_nexudus_accounts)").all();
+        if (nexAccCols.length > 0 && !nexAccCols.some((col: any) => col.name === 'account_name')) {
+            globalForDb.sqlite.prepare("ALTER TABLE user_nexudus_accounts ADD COLUMN account_name TEXT").run();
+        }
+    } catch {
+        // Table might not exist yet during initial setup
+    }
 }
 
 if (!globalForDb.db) {

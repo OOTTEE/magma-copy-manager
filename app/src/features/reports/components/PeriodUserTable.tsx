@@ -146,7 +146,7 @@ export const PeriodUserTable: React.FC<PeriodUserTableProps> = ({
                     ) : item.isOverAllocated ? (
                       <button
                         onClick={() => toggleExpand(item.id, 'distribution')}
-                        title="Sobreasignación: Las copias declaradas en la bitácora superan las capturadas en la impresora"
+                        title="Sobreasignación: Las copias declaradas en el reparto de copias superan las capturadas en la impresora"
                         className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20 hover:bg-rose-500/20 transition-colors animate-pulse"
                       >
                         <AlertTriangle size={12} />
@@ -195,7 +195,7 @@ export const PeriodUserTable: React.FC<PeriodUserTableProps> = ({
                         disabled={item.total === 0 || isFullyBilled || Boolean(item.isOverAllocated)}
                         title={
                           item.isOverAllocated
-                            ? 'Publicación bloqueada: las copias asignadas en bitácora superan las de la impresora'
+                            ? 'Publicación bloqueada: las copias asignadas en el reparto de copias superan las de la impresora'
                             : isFullyBilled 
                             ? 'Todas las copias ya han sido publicadas en Nexudus' 
                             : 'Publicar copias en Nexudus'
@@ -238,7 +238,7 @@ export const PeriodUserTable: React.FC<PeriodUserTableProps> = ({
                               }`}
                             >
                               <Sliders size={13} />
-                              <span>Bitácora de Reparto ({item.accountsCount} cuentas)</span>
+                              <span>Reparto de copias ({item.accountsCount} cuentas)</span>
                             </button>
                           )}
 

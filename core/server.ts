@@ -14,13 +14,14 @@ const server = buildApp({
 const start = async () => {
     try {
         logger.info(`Environment: ${process.env.NODE_ENV || 'development'}`);
-        logger.info(`DB: ${process.env.DATABASE_URL || 'null'}`);
+        logger.info(`Database: ${serverConfig.databaseUrl}`);
         await initializeDbService.initialize();
         await autoBillingService.init();
         await autoSyncService.init();
-        await server.listen({ port: serverConfig.port, host: '0.0.0.0' });
+        const address = await server.listen({ port: serverConfig.port, host: '0.0.0.0' });
+        logger.info(`🚀 Magma Server listening on ${address}`);
     } catch (err) {
-        server.log.error(err);
+        logger.error(err, 'Failed to start server');
         process.exit(1);
     }
 };

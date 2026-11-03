@@ -1,5 +1,4 @@
 import * as cron from 'node-cron';
-import { copiesFacade } from '../../facades/copies/copies.facade';
 import { billingFacade } from '../../facades/billing/billing.facade';
 import { settingsService } from '../settings/settings.service';
 import { nexudusService } from '../nexudus/nexudus.service';
@@ -14,8 +13,8 @@ import { serverConfig } from '../../config/server.config';
  * AutoBilling Service
  *
  * Orchestrates the automated monthly billing process.
- * Handles cron scheduling, non-blocking hardware sync, atomic per-user execution,
- * and unified audit logging.
+ * Focuses purely on billing accumulated database copies to Nexudus.
+ * Physical printer scraping runs independently in AutoSyncService.
  */
 export class AutoBillingService {
     private scheduledTask: cron.ScheduledTask | null = null;
@@ -67,7 +66,6 @@ export class AutoBillingService {
         const results: any[] = [];
         let status: 'success' | 'failed' | 'partial' = 'success';
         let fatalErrorStr = '';
-        let printerWarning: string | null = null;
 
         logger.info({ logId, startTime }, 'AutoBilling: Starting job');
 
@@ -79,26 +77,8 @@ export class AutoBillingService {
                 logger.warn({ error: authErr.message }, 'AutoBilling: Pre-flight Nexudus auth warning');
             }
 
-            // Step 2: Sync printer copies with up to 3 retries (NON-BLOCKING)
-            // If physical printer is asleep or offline, we log a warning but DO NOT cancel billing
-            for (let attempt = 1; attempt <= 3; attempt++) {
-                try {
-                    logger.info({ attempt }, 'AutoBilling: Syncing printer copies...');
-                    await copiesFacade.syncPrinterCopies(requestingUser);
-                    printerWarning = null;
-                    break;
-                } catch (err: any) {
-                    logger.warn({ attempt, error: err.message }, 'AutoBilling: Print sync attempt failed');
-                    if (attempt === 3) {
-                        printerWarning = `Impresora no respondió tras 3 intentos (${err.message}). Se continuó facturación con lecturas consolidadas.`;
-                        logger.warn(printerWarning);
-                    } else {
-                        await new Promise(resolve => setTimeout(resolve, 3000));
-                    }
-                }
-            }
-
-            // Step 3: Single Consolidated Billing Batch per User
+            // Step 2: Consolidated Billing Batch per User
+            // Operates on the consolidated copies already scraped by AutoSyncService
             const allUsers = await db.select().from(users).all();
             const customers = allUsers.filter((u: any) => u.role === 'customer' && !u.isIgnored);
 
@@ -158,13 +138,6 @@ export class AutoBillingService {
 
             if (fatalErrorStr) {
                 structuredErrors.push({ username: 'Sistema', error: fatalErrorStr });
-            }
-
-            if (printerWarning) {
-                structuredErrors.push({ username: 'Servidor Impresión', error: printerWarning });
-                if (status === 'success') {
-                    status = 'partial';
-                }
             }
 
             for (const r of results) {

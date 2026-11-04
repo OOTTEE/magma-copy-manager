@@ -1,5 +1,6 @@
 import { FastifyInstance } from 'fastify';
 import { authService } from '../../services/auth/auth.service';
+import { usersRepository } from '../../repositories/users.repository';
 
 /**
  * Facade for Authentication domain.
@@ -35,5 +36,43 @@ export const authFacade = {
      */
     logout: async (refreshToken: string) => {
         return await authService.logout(refreshToken);
+    },
+
+    /**
+     * Impersonates a target user by issuing credentials for that user.
+     * Only administrators can impersonate non-admin users.
+     */
+    impersonateUser: async (
+        fastify: FastifyInstance,
+        requestingUser: { id: string; role: string },
+        targetUserId: string
+    ) => {
+        if (!requestingUser || requestingUser.role !== 'admin') {
+            const error = new Error('Forbidden: Only administrators can impersonate users');
+            (error as any).statusCode = 403;
+            (error as any).errorType = 'forbidden';
+            throw error;
+        }
+
+        const targetUser = await usersRepository.findById(targetUserId);
+        if (!targetUser) {
+            const error = new Error('User not found');
+            (error as any).statusCode = 404;
+            (error as any).errorType = 'not_found';
+            throw error;
+        }
+
+        if (targetUser.role === 'admin') {
+            const error = new Error('Cannot impersonate an administrator');
+            (error as any).statusCode = 400;
+            (error as any).errorType = 'bad_request';
+            throw error;
+        }
+
+        return await authService.impersonateUser(fastify, {
+            id: targetUser.id,
+            username: targetUser.username,
+            role: targetUser.role
+        });
     }
 };

@@ -97,6 +97,54 @@ const authRoute: FastifyPluginAsync = async (fastify) => {
     await authFacade.logout(refreshToken);
     return reply.code(204).send();
   });
+
+  /**
+   * POST /api/v1/auth/impersonate
+   * Allows an admin to impersonate a customer without credentials.
+   */
+  fastify.post('/impersonate', {
+    schema: {
+      tags: ['Auth'],
+      description: 'Allows an administrator to impersonate a customer without credentials.',
+      body: {
+        type: 'object',
+        required: ['userId'],
+        properties: {
+          userId: { type: 'string' }
+        }
+      },
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            accessToken: { type: 'string' },
+            refreshToken: { type: 'string' },
+            role: { type: 'string' },
+            username: { type: 'string' },
+            userId: { type: 'string' }
+          }
+        },
+        400: { type: 'object', properties: { message: { type: 'string' } } },
+        401: { type: 'object', properties: { message: { type: 'string' } } },
+        403: { type: 'object', properties: { message: { type: 'string' } } },
+        404: { type: 'object', properties: { message: { type: 'string' } } }
+      }
+    },
+    preValidation: [fastify.authenticate, fastify.requireRole('admin')]
+  }, async (request, reply) => {
+    const requestingUser = request.user as { id: string; role: string };
+    const { userId } = request.body as { userId: string };
+
+    try {
+      const result = await authFacade.impersonateUser(fastify, requestingUser, userId);
+      return reply.send(result);
+    } catch (err: any) {
+      const statusCode = err.statusCode || 500;
+      return reply.code(statusCode).send({
+        message: err.message || 'Error executing impersonation'
+      });
+    }
+  });
 };
 
 export default authRoute;

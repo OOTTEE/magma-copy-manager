@@ -1,7 +1,9 @@
+import { useState } from "react";
 import { NavLink } from "react-router-dom";
 import { useUIStore } from "../../store/uiStore";
 import { useAuthStore } from "../../store/authStore";
 import { BrandLogo } from "../BrandLogo";
+import { UserSelectorModal } from "../../features/users/components/UserSelectorModal";
 import {
   BarChart,
   Users,
@@ -10,6 +12,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Activity,
+  Eye,
 } from "lucide-react";
 
 interface NavItem {
@@ -36,7 +39,8 @@ const NAV_ITEMS: NavItem[] = [
  */
 export const Sidebar = () => {
   const { isSidebarCollapsed, toggleSidebar, version } = useUIStore();
-  const { logout, user, role } = useAuthStore();
+  const { logout, user, role, impersonatingFrom } = useAuthStore();
+  const [isSelectorOpen, setIsSelectorOpen] = useState(false);
 
   const filteredNavItems = NAV_ITEMS.filter(item => {
     if (item.adminOnly && role !== 'admin') return false;
@@ -97,6 +101,37 @@ export const Sidebar = () => {
         ))}
       </nav>
 
+      {/* Impersonation Entry Point (Admin only, when not already impersonating) */}
+      {role === 'admin' && !impersonatingFrom && (
+        <div className="px-3 pb-3">
+          <button
+            onClick={() => setIsSelectorOpen(true)}
+            className={`
+              w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-all duration-200 group relative
+              bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/20 hover:border-amber-500/40 text-amber-300
+              ${isSidebarCollapsed ? "justify-center px-0" : ""}
+            `}
+            title="Ver como usuario (Modo Sombra)"
+          >
+            <Eye
+              size={18}
+              strokeWidth={2}
+              className="text-amber-400 group-hover:scale-110 transition-transform shrink-0"
+            />
+            {!isSidebarCollapsed && (
+              <span className="font-semibold text-xs tracking-wide truncate">
+                Ver como usuario
+              </span>
+            )}
+            {isSidebarCollapsed && (
+              <div className="absolute left-full ml-6 px-3 py-2 bg-[#221f1f] text-amber-300 text-xs rounded-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all whitespace-nowrap z-50 border border-amber-500/20 shadow-2xl">
+                Ver como usuario
+              </div>
+            )}
+          </button>
+        </div>
+      )}
+
       {/* Footer / User Profile Section */}
       <div className="p-4 mt-auto border-t border-white/5 bg-black/10">
         <div className={`flex items-center gap-3 ${isSidebarCollapsed ? "justify-center" : "px-2"}`}>
@@ -142,6 +177,12 @@ export const Sidebar = () => {
             )}
         </div>
       </div>
+
+      {/* User Selection Modal for Shadow Mode */}
+      <UserSelectorModal
+        isOpen={isSelectorOpen}
+        onClose={() => setIsSelectorOpen(false)}
+      />
     </aside>
   );
 };

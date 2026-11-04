@@ -59,6 +59,17 @@ export const authService = {
     },
 
     /**
+     * Issues a token pair for a target user under shadow/impersonation mode.
+     */
+    impersonateUser: async (fastify: FastifyInstance, targetUser: { id: string; username: string; role: string }) => {
+        const tokens = await authService.generateTokenPair(fastify, targetUser.id, targetUser.username, targetUser.role);
+        return {
+            ...tokens,
+            userId: targetUser.id
+        };
+    },
+
+    /**
      * Helper to generate and persist tokens.
      */
     generateTokenPair: async (fastify: FastifyInstance, userId: string, username: string, role: string) => {

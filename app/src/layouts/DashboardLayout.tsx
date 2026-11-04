@@ -1,6 +1,7 @@
 import { Outlet } from "react-router-dom";
 import { Sidebar } from "../components/layout/Sidebar";
 import { Header } from "../components/layout/Header";
+import { ImpersonationBanner } from "../components/layout/ImpersonationBanner";
 import { useAuthStore } from "../store/authStore";
 import { BrandLogo } from "../components/BrandLogo";
 
@@ -33,6 +34,9 @@ export const DashboardLayout = () => {
             <Sidebar />
 
             <div className="flex-1 flex flex-col min-w-0">
+                {/* Impersonation Banner (Active in Shadow Mode) */}
+                <ImpersonationBanner />
+
                 {/* Topbar: Title & DarkMode Toggle */}
                 <Header />
 

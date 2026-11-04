@@ -67,6 +67,7 @@ Magma nace para eliminar la fricción operativa en la gestión de costes de impr
 | 2026-11-03 | Monthly Report UX / Taxonomy | Consumable Publication Taxonomy (Visión A: Flujo Operativo Puro) | Sustitución de términos ambiguos por una taxonomía rigurosa y transparente: 'Copias publicadas' (refleja exclusiva y estrictamente las copias con ventas ya confirmadas y transmitidas a Nexudus), 'Copias pendientes' (remanente real pendiente de sincronizar: Totales - Publicadas) y 'Copias totales' (volumen capturado del período). Se desvinculan las columnas principales del reparto contable multi-cuenta, eliminando falsos positivos donde consumos no facturados aparecían como publicados. |
 | 2026-11-03 | Multi-Account Allocation | In-situ Allocation Ledger & Over-Allocation Safety Freeze | Rediseño de la herramienta de reparto para usuarios con múltiples cuentas Nexudus. Se sustituye la matriz rígida por una bitácora de entradas ('Allocation Ledger') donde el usuario o admin registra partidas hacia cuentas secundarias en cualquier momento del mes (con cantidad y motivo), mientras la cuenta principal absorbe el remanente. Protocolo de seguridad: si al cierre contable la suma declarada supera las copias reales de la impresora, el usuario se congela (no se publica en Nexudus), se muestra un indicador de sobreasignación en el reporte mensual y se despacha una alerta por correo al Administrador. |
 | 2026-11-03 | Customer Dashboard Redesign | Personal Multi-Account Hub & Historical Cycle Drill-down (Visión A) | Rediseño integral de la experiencia del coworker no administrador. Flujo continuo en una sola pantalla: en la parte superior se sitúa el ciclo actual con la herramienta de 'Reparto de copias' integrada (exclusiva para multicuenta, permitiendo desviar copias in-situ solo para el período en curso). En la parte inferior, una tabla cronológica de ciclos cerrados anteriores con filas clickeables tipo acordeón que despliegan el desglose de copias facturadas por cada cuenta vinculada. Para usuarios monocuenta, se mantiene una vista limpia sin herramientas de reparto. |
+| 2026-11-04 | User Impersonation | Admin Shadow Mode with Sidebar Selector (Visión A) | Implementación del modo 'Ver como usuario' (Shadow Mode). Acceso ubicado en el pie del menú lateral sobre el banner de usuario, mediante un modal de altura fija con lista scrollable y buscador instantáneo. La experiencia adopta la Visión A (takeover completo con banner flotante superior de aviso en tono ámbar y salida en 1 clic). Permite al Administrador operar activamente en nombre del cliente (asistencia de reparto, auditoría y resolución de incidencias sin requerir contraseñas). |
 
 ### 3. Reporte Mensual: La Pre-Auditoría (Drafting) y Cierre Periódico
 El reporte mensual evoluciona de una vista estática a un **Centro de Cierre y Planificación Contable**:
@@ -126,6 +127,27 @@ Rediseño de la pantalla de inicio del cliente no administrador estructurado en 
 - **Interacción Drill-down en Cierres Históricos**:
   - Al hacer clic sobre cualquier ciclo anterior en la tabla, la fila se despliega como un acordeón mostrando el desglose auditado de copias facturadas a cada cuenta vinculada (nombre de la cuenta, cantidad de copias imputadas y motivo registrado).
   - **Inmutabilidad Fiscal**: Los ciclos históricos son estrictamente de solo lectura, transmitiendo solidez y tranquilidad financiera al coworker.
+
+### 10. Modo Sombra de Administrador (User Impersonation / Shadow Mode)
+Herramienta de asistencia remota y auditoría operativa que permite al Administrador visualizar y operar la aplicación exactamente como un coworker específico:
+- **Punto de Entrada en Barra Lateral**:
+  - Ubicado en la parte inferior del menú lateral de administración, directamente sobre el bloque de perfil del usuario.
+  - Botón distinguido con icono de máscara/ojo y texto claro (*"Ver como usuario"*).
+- **Selector de Usuario (Modal de Exploración Ágil)**:
+  - Ventana modal de dimensiones fijas con lista scrollable optimizada.
+  - Buscador en tiempo real en la parte superior que filtra instantáneamente por nombre o identificador.
+  - Cada elemento de la lista muestra el avatar/icono, nombre del usuario, rol y cantidad de cuentas asociadas para facilitar la selección.
+- **Experiencia Inmersiva (Visión A: Takeover Completo)**:
+  - Al seleccionar un usuario, la aplicación transiciona al espacio personal del cliente (**"Mi Consumo"**).
+  - El menú de navegación se ajusta al contexto del cliente, permitiendo experimentar la herramienta con los mismos límites y visuales del usuario final.
+- **Barra de Alerta Flotante Superior (Safety Banner)**:
+  - Franja horizontal fija en la parte superior de la pantalla en tonos ámbar/aviso de alto contraste.
+  - Texto informativo visible en todo momento: *"Estás viendo la aplicación como **[Nombre del Coworker]** (Modo Soporte)"*.
+  - Botón de escape permanente: **`[Salir y Volver a Administrador]`**, que con un solo clic finaliza la suplantación y restaura la sesión del Administrador en su panel de control original.
+- **Capacidad Operativa Activa**:
+  - El Administrador puede tanto consultar datos como interactuar en nombre del cliente (por ejemplo, registrar o ajustar partidas de reparto de copias del ciclo activo si el usuario requiere asistencia).
+- **Seguridad Unidireccional**:
+  - Esta funcionalidad es un privilegio exclusivo y estricto del rol Administrador; los clientes no tienen constancia ni acceso a herramientas de cambio de perspectiva.
 
 ## Decisiones Estéticas (UX Premium)
 

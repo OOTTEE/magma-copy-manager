@@ -57,6 +57,13 @@
       "when": 1793743501322,
       "tag": "0007_many_toad_men",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1793881270336,
+      "tag": "0008_cuddly_stick",
+      "breakpoints": true
     }
   ]
 }

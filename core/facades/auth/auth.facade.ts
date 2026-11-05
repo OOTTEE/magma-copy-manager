@@ -74,5 +74,26 @@ export const authFacade = {
             username: targetUser.username,
             role: targetUser.role
         });
+    },
+
+    /**
+     * Requests a recovery magic link (anti-enumeration).
+     */
+    requestRecovery: async (username: string, origin?: string) => {
+        return await authService.requestRecovery(username, origin);
+    },
+
+    /**
+     * Validates a recovery magic link, unlocks the user, and signs standard session tokens.
+     */
+    verifyRecoveryToken: async (fastify: FastifyInstance, token: string) => {
+        return await authService.verifyRecoveryToken(fastify, token);
+    },
+
+    /**
+     * Updates user password and resets security lockout.
+     */
+    resetPassword: async (userId: string, newPass: string) => {
+        return await authService.resetPassword(userId, newPass);
     }
 };

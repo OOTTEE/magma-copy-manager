@@ -145,6 +145,123 @@ const authRoute: FastifyPluginAsync = async (fastify) => {
       });
     }
   });
+
+  /**
+   * POST /api/v1/auth/recovery
+   * Requests a one-time recovery link sent to user email (anti-enumeration).
+   */
+  fastify.post('/recovery', {
+    schema: {
+      tags: ['Auth'],
+      description: 'Requests a one-time magic link sent to user email for recovery and unlocking.',
+      body: {
+        type: 'object',
+        required: ['username'],
+        properties: {
+          username: { type: 'string' }
+        }
+      },
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            message: { type: 'string' }
+          }
+        }
+      }
+    }
+  }, async (request, reply) => {
+    const { username } = request.body as { username: string };
+    const origin = request.headers.origin || (request.headers.referer ? new URL(request.headers.referer).origin : undefined);
+    const result = await authFacade.requestRecovery(username, origin);
+    return reply.send(result);
+  });
+
+  /**
+   * POST /api/v1/auth/recovery/verify
+   * Verifies a recovery magic link, unlocks the account, and issues session tokens.
+   */
+  fastify.post('/recovery/verify', {
+    schema: {
+      tags: ['Auth'],
+      description: 'Verifies a recovery link, unlocks account, and returns authenticated session.',
+      body: {
+        type: 'object',
+        required: ['token'],
+        properties: {
+          token: { type: 'string' }
+        }
+      },
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            accessToken: { type: 'string' },
+            refreshToken: { type: 'string' },
+            role: { type: 'string' },
+            username: { type: 'string' },
+            userId: { type: 'string' },
+            mustResetPassword: { type: 'boolean' }
+          }
+        },
+        400: { type: 'object', properties: { message: { type: 'string' } } },
+        404: { type: 'object', properties: { message: { type: 'string' } } }
+      }
+    }
+  }, async (request, reply) => {
+    const { token } = request.body as { token: string };
+    try {
+      const result = await authFacade.verifyRecoveryToken(fastify, token);
+      return reply.send(result);
+    } catch (err: any) {
+      const statusCode = err.statusCode || 400;
+      return reply.code(statusCode).send({
+        message: err.message || 'El enlace de acceso es inválido o ha caducado.'
+      });
+    }
+  });
+
+  /**
+   * POST /api/v1/auth/reset-password
+   * Authenticated endpoint to change password and clear security lockout.
+   */
+  fastify.post('/reset-password', {
+    schema: {
+      tags: ['Auth'],
+      description: 'Updates current authenticated user password.',
+      body: {
+        type: 'object',
+        required: ['newPassword'],
+        properties: {
+          newPassword: { type: 'string', minLength: 8 }
+        }
+      },
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            message: { type: 'string' }
+          }
+        },
+        400: { type: 'object', properties: { message: { type: 'string' } } },
+        401: { type: 'object', properties: { message: { type: 'string' } } }
+      }
+    },
+    preValidation: [fastify.authenticate]
+  }, async (request, reply) => {
+    const user = request.user as { id: string };
+    const { newPassword } = request.body as { newPassword: string };
+
+    try {
+      const result = await authFacade.resetPassword(user.id, newPassword);
+      return reply.send(result);
+    } catch (err: any) {
+      const statusCode = err.statusCode || 400;
+      return reply.code(statusCode).send({
+        message: err.message || 'Error al actualizar la contraseña'
+      });
+    }
+  });
 };
 
 export default authRoute;

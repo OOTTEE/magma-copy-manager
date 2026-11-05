@@ -6,6 +6,9 @@ export const users = sqliteTable('users', {
   password: text('password').notNull(),
   role: text('role').notNull().default('customer'),
   printUser: text('print_user').notNull(),
+  email: text('email'),
+  failedLoginAttempts: integer('failed_login_attempts').notNull().default(0),
+  isLocked: integer('is_locked').notNull().default(0),
   /** @deprecated User nexudus_accounts instead */
   nexudusUser: text('nexudus_user'),
   a3NoPaperMode: integer('a3_no_paper_mode').notNull().default(0),
@@ -74,6 +77,15 @@ export const refreshTokens = sqliteTable('refresh_tokens', {
   expiresAt: text('expires_at').notNull(), // ISO Date
   revoked: integer('revoked').notNull().default(0), // 0=false, 1=true
   createdOn: text('created_on').notNull(),
+});
+
+export const passwordRecoveryTokens = sqliteTable('password_recovery_tokens', {
+  id: text('id').primaryKey(), // UUID
+  userId: text('user_id').notNull().references(() => users.id),
+  token: text('token').notNull().unique(), // Cryptographic token
+  expiresAt: text('expires_at').notNull(), // ISO Date
+  used: integer('used').notNull().default(0), // 0=false, 1=true
+  createdAt: text('created_at').notNull(),
 });
 
 export const systemNotifications = sqliteTable('system_notifications', {

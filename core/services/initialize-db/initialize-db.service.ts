@@ -22,6 +22,30 @@ export const initializeDbService = {
                     sqlite.prepare("ALTER TABLE users ADD COLUMN is_ignored INTEGER NOT NULL DEFAULT 0").run();
                     logger.info('InitializeDB: Applied auto-migration: Added is_ignored column to users table.');
                 }
+                if (userCols.length > 0 && !userCols.some((col: any) => col.name === 'email')) {
+                    sqlite.prepare("ALTER TABLE users ADD COLUMN email TEXT").run();
+                    logger.info('InitializeDB: Applied auto-migration: Added email column to users table.');
+                }
+                if (userCols.length > 0 && !userCols.some((col: any) => col.name === 'failed_login_attempts')) {
+                    sqlite.prepare("ALTER TABLE users ADD COLUMN failed_login_attempts INTEGER NOT NULL DEFAULT 0").run();
+                    logger.info('InitializeDB: Applied auto-migration: Added failed_login_attempts column to users table.');
+                }
+                if (userCols.length > 0 && !userCols.some((col: any) => col.name === 'is_locked')) {
+                    sqlite.prepare("ALTER TABLE users ADD COLUMN is_locked INTEGER NOT NULL DEFAULT 0").run();
+                    logger.info('InitializeDB: Applied auto-migration: Added is_locked column to users table.');
+                }
+
+                // Ensure password_recovery_tokens table exists
+                sqlite.prepare(`
+                    CREATE TABLE IF NOT EXISTS password_recovery_tokens (
+                        id TEXT PRIMARY KEY NOT NULL,
+                        user_id TEXT NOT NULL REFERENCES users(id),
+                        token TEXT NOT NULL UNIQUE,
+                        expires_at TEXT NOT NULL,
+                        used INTEGER DEFAULT 0 NOT NULL,
+                        created_at TEXT NOT NULL
+                    )
+                `).run();
 
                 const syncCols = sqlite.prepare("PRAGMA table_info(sync_logs)").all();
                 if (syncCols.length > 0 && !syncCols.some((col: any) => col.name === 'process_type')) {

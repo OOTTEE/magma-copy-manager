@@ -68,8 +68,16 @@ export function buildApp(opts: FastifyServerOptions = {}): FastifyInstance {
 
     // Global error handler for debugging tests
     app.setErrorHandler((error, request, reply) => {
+        const err = error as any;
+        const statusCode = err.statusCode || 500;
+        if (statusCode < 500) {
+            reply.status(statusCode).send({
+                message: err.message,
+                error: err.errorType || err.name || 'Client Error'
+            });
+            return;
+        }
         if (process.env.NODE_ENV === 'test') {
-            const err = error as any;
             console.error('Fastify Error:', err);
             reply.status(500).send({
                 error: 'Internal Server Error',

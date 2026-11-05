@@ -38,6 +38,26 @@ export const usersRepository = {
         await db.update(users).set(data).where(eq(users.id, id));
         return await usersRepository.findById(id);
     },
+    incrementFailedAttempts: async (userId: string, currentAttempts: number) => {
+        const nextAttempts = currentAttempts + 1;
+        const isLocked = nextAttempts >= 5 ? 1 : 0;
+        await db.update(users).set({
+            failedLoginAttempts: nextAttempts,
+            isLocked
+        }).where(eq(users.id, userId));
+        return { failedAttempts: nextAttempts, isLocked: Boolean(isLocked) };
+    },
+    resetFailedAttempts: async (userId: string) => {
+        await db.update(users).set({
+            failedLoginAttempts: 0
+        }).where(eq(users.id, userId));
+    },
+    unlockUser: async (userId: string) => {
+        await db.update(users).set({
+            failedLoginAttempts: 0,
+            isLocked: 0
+        }).where(eq(users.id, userId));
+    },
     delete: async (id: string) => {
         await db.delete(users).where(eq(users.id, id));
     }

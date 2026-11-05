@@ -96,6 +96,71 @@ export class EmailService {
     }
 
     /**
+     * Sends a one-time recovery magic link to a user.
+     */
+    async sendRecoveryEmail(options: {
+        to: string;
+        username: string;
+        recoveryUrl: string;
+        expiresMinutes?: number;
+    }) {
+        try {
+            const transporter = await this.getTransporter();
+            const expires = options.expiresMinutes || 15;
+            const fromUser = await settingsService.getSetting('smtp_user');
+
+            const html = `
+            <!DOCTYPE html>
+            <html>
+                <body style="background-color: #030712; color: #f3f4f6; font-family: 'Outfit', -apple-system, sans-serif; padding: 20px; margin: 0;">
+                    <div style="max-width: 600px; margin: 0 auto; background-color: #111827; border: 1px solid #1f2937; border-radius: 12px; overflow: hidden; border-top: 4px solid #f59e0b;">
+                        <div style="padding: 24px; border-bottom: 1px solid #1f2937; background-color: rgba(245, 158, 11, 0.05);">
+                            <h1 style="margin: 0; font-size: 20px; color: #f59e0b;">Acceso Seguro a Magma</h1>
+                            <p style="margin: 4px 0 0; color: #9ca3af; font-size: 14px;">Solicitud de Recuperación y Desbloqueo</p>
+                        </div>
+                        <div style="padding: 24px;">
+                            <p style="margin: 0 0 16px; font-size: 16px; color: #f3f4f6;">Hola <strong>${options.username}</strong>,</p>
+                            <p style="margin: 0 0 24px; line-height: 1.6; color: #d1d5db;">
+                                Hemos recibido una solicitud para acceder o desbloquear tu cuenta en Magma. Haz clic en el siguiente botón para iniciar sesión de forma segura y actualizar tu contraseña:
+                            </p>
+                            
+                            <div style="text-align: center; margin: 32px 0;">
+                                <a href="${options.recoveryUrl}" style="background-color: #f59e0b; color: #030712; text-decoration: none; padding: 14px 28px; font-weight: bold; font-size: 15px; border-radius: 8px; display: inline-block;">
+                                    Acceder y Desbloquear Cuenta
+                                </a>
+                            </div>
+
+                            <p style="margin: 24px 0 8px; font-size: 13px; color: #9ca3af;">
+                                ⚠️ <strong>Este enlace es de un solo uso y caduca en ${expires} minutos.</strong> Si tú no solicitaste este acceso, puedes ignorar este mensaje de forma segura.
+                            </p>
+                            <p style="margin: 8px 0 0; font-size: 12px; color: #6b7280; word-break: break-all;">
+                                Si el botón no funciona, copia y pega este enlace en tu navegador:<br/>
+                                <a href="${options.recoveryUrl}" style="color: #60a5fa;">${options.recoveryUrl}</a>
+                            </p>
+                        </div>
+                        <div style="padding: 24px; background-color: #030712; border-top: 1px solid #1f2937; text-align: center;">
+                            <p style="margin: 0; font-size: 12px; color: #6b7280;">Magma Coworking Operations • Mensaje de Seguridad</p>
+                        </div>
+                    </div>
+                </body>
+            </html>
+            `;
+
+            await transporter.sendMail({
+                from: `"Magma Seguridad" <${fromUser}>`,
+                to: options.to,
+                subject: `[Magma] Enlace de acceso y recuperación para ${options.username}`,
+                html,
+            });
+
+            logger.info({ to: options.to, username: options.username }, 'EmailService: Recovery email sent');
+        } catch (err: any) {
+            logger.error(err, 'EmailService: Failed to send recovery email');
+            throw err;
+        }
+    }
+
+    /**
      * Test SMTP connection.
      */
     async testConnection() {

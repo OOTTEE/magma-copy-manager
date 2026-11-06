@@ -96,18 +96,29 @@ flowchart TD
 - Magma implements a dynamic quota distribution engine: users and admins can split a month's copies across multiple linked Nexudus billing accounts.
 - **Mathematical Balance Invariant**: Enforces a strict 100% balance check prior to sync. Any remaining volume can be assigned with one click to the primary account.
 
-### 4. Billing Cycle Attribution & Historical Reconciliation
+### 4. Billing Cycle Attribution, Isolated Regularization & Living Rollback
 - Solves the complex problem of manual mid-month synchronizations:
   - If counters are scraped or billed out-of-cycle, Magma tracks sales precedence by querying historical Nexudus product IDs and transaction timestamps.
   - Prevents duplicate invoicing while guaranteeing that billed copies remain locked to their corresponding billing cycle invoice view.
+  - **Isolated Extemporaneous Billing**: Pending copies from historical closed periods can be regularized independently without recalculating past closed periods or contaminating active monthly readings.
+  - **Unified Operational Living Rollback Window**: Sychronization revocations (`rollback`) are governed by the operational month of execution. Any transaction emitted in the current calendar month remains reversible in 1 click; once the calendar month ends, records become strictly immutable.
   - Includes automated database self-healing for legacy unassigned sales records upon application boot.
 
-### 5. Resilient Automation & Observability Center
+### 5. Cross-Period User Discovery & Smart Accordion Focus
+- Administrators can search and audit any member's consumption history across all available billing cycles simultaneously directly from the Monthly Report.
+- **Smart Auto-Focus**: Cycles with member activity or pending balances auto-expand dynamically with dedicated consumption badges, while inactive periods remain gracefully collapsed and muted to minimize cognitive noise.
+- Preserves 100% of contextual actions (regularization, sync, granular printer readings) in-situ on the filtered user row.
+
+### 6. Admin Shadow Mode (Impersonation with High-Contrast Guard)
+- Allows administrators to seamlessly view and operate the application from a customer's perspective to assist with multi-account copy distributions or verify invoices.
+- Protected by an omnipresent high-contrast yellow safety banner with 1-click session restoration, preserving administrative tokens without credential re-prompting.
+
+### 7. Resilient Automation & Observability Center
 - Automated cron runners execute daily counter polling and end-of-period billing sweeps.
 - **Observability Hub**: Real-time audit logs track execution runtimes, changed user counts, raw diagnostics, and individual user-level error traces.
 - **Operator Overrides**: Immediate manual execution triggers with React portal-based modal overlays and optimistic button locking to prevent concurrent job races.
 
-### 6. Production-Grade Single Container Packaging
+### 8. Production-Grade Single Container Packaging
 - A multi-stage `Dockerfile` compiles the TypeScript backend and React SPA, pulls native Playwright dependencies and `better-sqlite3` bindings, and packages everything into a lean Node.js production image.
 - Fastify statically serves the production frontend build alongside the API, simplifying hosting to a single container running behind Traefik or Nginx.
 
@@ -262,9 +273,11 @@ The container packages:
 
 - **Cryptographic Hashing**: User credentials hashed using `argon2id`.
 - **Encryption at Rest**: Sensitive third-party API keys and hardware credentials encrypted using AES-256-GCM.
-- **Role-Based Access Control (RBAC)**: Strict separation between `admin` operators and `customer` self-service views.
+- **Active Brute-Force Defense**: Dynamic lockout protection for authentication endpoints (5 failed attempts locks user account for 15 minutes) with security audit logging.
+- **Single-Use Magic Link Account Recovery**: Cryptographically signed, time-limited one-time tokens for password recovery, hardened against concurrent consumption races and enumeration.
+- **Role-Based Access Control (RBAC)**: Strict separation between `admin` operators and `customer` self-service views, with audited impersonation safety rails.
 - **Rate-Limiting & Backpressure**: External Nexudus API calls regulated via `bottleneck` leaky-bucket queues to respect provider rate limits.
-- **Rollback Safety**: Every Nexudus invoice dispatch links generated transaction IDs to internal copy records, allowing deterministic rollbacks of entire billing batches if needed.
+- **Rollback Safety & Fiscal Immutability**: Every Nexudus invoice dispatch links generated transaction IDs to internal copy records, providing a living operational rollback window during the active calendar month before fiscal sealing.
 
 ---
 

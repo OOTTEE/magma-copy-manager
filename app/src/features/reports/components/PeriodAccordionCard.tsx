@@ -6,7 +6,8 @@ import {
   Clock, 
   Zap, 
   AlertTriangle, 
-  Loader2
+  Loader2,
+  User
 } from 'lucide-react';
 import { useReportStore, type PeriodSummary } from '../../../store/reportStore';
 import { PeriodUserTable } from './PeriodUserTable';
@@ -14,6 +15,7 @@ import { PeriodUserTable } from './PeriodUserTable';
 interface PeriodAccordionCardProps {
   period: PeriodSummary;
   isExpanded: boolean;
+  searchTerm?: string;
   onToggle: () => void;
   onSyncPeriod: (period: PeriodSummary) => void;
   onOpenChargeUser: (userId: string, period: string) => void;
@@ -23,6 +25,7 @@ interface PeriodAccordionCardProps {
 export const PeriodAccordionCard: React.FC<PeriodAccordionCardProps> = ({
   period,
   isExpanded,
+  searchTerm = '',
   onToggle,
   onSyncPeriod,
   onOpenChargeUser,
@@ -33,11 +36,34 @@ export const PeriodAccordionCard: React.FC<PeriodAccordionCardProps> = ({
   const reportData = periodReports[period.period];
   const isLoading = loadingPeriodReports[period.period];
 
+  const normalizedSearch = searchTerm.trim().toLowerCase();
+  const users = reportData?.data || [];
+  const matchingUsers = normalizedSearch
+    ? users.filter(u =>
+        u.username.toLowerCase().includes(normalizedSearch) ||
+        u.printUser.toLowerCase().includes(normalizedSearch) ||
+        Boolean(u.nexudusUser && u.nexudusUser.toLowerCase().includes(normalizedSearch))
+      )
+    : [];
+
+  const hasMatchingUser = normalizedSearch ? matchingUsers.length > 0 : false;
+  const matchingCopies = matchingUsers.reduce((acc, u) => acc + (u.total ?? 0), 0);
+  const matchingPending = matchingUsers.reduce((acc, u) => {
+    const synced = u.copies?.synced ?? 0;
+    return acc + Math.max(0, (u.total ?? 0) - synced);
+  }, 0);
+  const hasMatchingActivity = matchingCopies > 0 || matchingPending > 0;
+
+  // Auto-expand when active search finds relevant user activity
+  const isAutoExpanded = Boolean(normalizedSearch && hasMatchingActivity);
+  const effectiveExpanded = isExpanded || isAutoExpanded;
+  const isMuted = Boolean(normalizedSearch && !hasMatchingActivity);
+
   useEffect(() => {
-    if (isExpanded && !reportData && !isLoading) {
+    if (effectiveExpanded && !reportData && !isLoading) {
       fetchPeriodReport(period.period);
     }
-  }, [isExpanded, reportData, isLoading, period.period, fetchPeriodReport]);
+  }, [effectiveExpanded, reportData, isLoading, period.period, fetchPeriodReport]);
 
   const { metrics } = period;
   const isFullyBilled = period.status === 'billed';
@@ -45,7 +71,9 @@ export const PeriodAccordionCard: React.FC<PeriodAccordionCardProps> = ({
 
   return (
     <div className={`rounded-[2.5rem] border transition-all duration-300 overflow-hidden ${
-      isExpanded 
+      isMuted ? 'opacity-60 hover:opacity-100' : ''
+    } ${
+      effectiveExpanded 
         ? 'bg-white dark:bg-[#1a1818] border-indigo-500/30 shadow-2xl shadow-indigo-500/5' 
         : 'bg-white/80 dark:bg-white/[0.02] border-slate-200 dark:border-white/5 hover:border-slate-300 dark:hover:border-white/10 shadow-sm'
     }`}>
@@ -102,8 +130,32 @@ export const PeriodAccordionCard: React.FC<PeriodAccordionCardProps> = ({
           </div>
         </div>
 
-        {/* Center: Macro KPIs */}
+        {/* Center: Macro KPIs + Search Highlight */}
         <div className="flex flex-wrap items-center gap-4 lg:gap-6">
+          {/* Active Search Coworker Badge */}
+          {normalizedSearch && (
+            <div className={`px-4 py-2 rounded-2xl flex items-center gap-2.5 border transition-all ${
+              hasMatchingActivity
+                ? 'bg-indigo-50 dark:bg-indigo-500/10 border-indigo-200 dark:border-indigo-500/30 text-indigo-600 dark:text-indigo-400'
+                : 'bg-slate-50 dark:bg-white/[0.02] border-slate-200/50 dark:border-white/5 text-slate-400 dark:text-white/30'
+            }`}>
+              <div className={`w-7 h-7 rounded-xl flex items-center justify-center ${
+                hasMatchingActivity ? 'bg-indigo-500/15 text-indigo-500' : 'bg-slate-200/50 dark:bg-white/5 text-slate-400'
+              }`}>
+                <User size={14} />
+              </div>
+              <div>
+                <p className="text-[9px] font-black uppercase tracking-widest">
+                  {hasMatchingUser ? (matchingUsers.length === 1 ? matchingUsers[0].username : `${matchingUsers.length} coincidencias`) : 'Filtro'}
+                </p>
+                <p className="text-xs font-black font-mono">
+                  {hasMatchingUser ? `${matchingCopies} copias` : 'Sin registros'}
+                  {matchingPending > 0 && <span className="ml-1 text-amber-500 text-[10px]">({matchingPending} pend.)</span>}
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* Total Copias */}
           <div className="px-4 py-2 rounded-2xl bg-slate-50 dark:bg-white/[0.02] border border-slate-200/50 dark:border-white/5">
             <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 dark:text-white/30">
@@ -169,14 +221,14 @@ export const PeriodAccordionCard: React.FC<PeriodAccordionCardProps> = ({
             <span>Subir Mes a Nexudus</span>
           </button>
 
-          <div className={`p-2 rounded-2xl bg-slate-100 dark:bg-white/5 text-slate-400 transition-transform duration-300 ${isExpanded ? 'rotate-180 text-indigo-500' : ''}`}>
+          <div className={`p-2 rounded-2xl bg-slate-100 dark:bg-white/5 text-slate-400 transition-transform duration-300 ${effectiveExpanded ? 'rotate-180 text-indigo-500' : ''}`}>
             <ChevronDown size={18} />
           </div>
         </div>
       </div>
 
       {/* Accordion Body */}
-      {isExpanded && (
+      {effectiveExpanded && (
         <div className="border-t border-slate-100 dark:border-white/5 bg-slate-50/30 dark:bg-black/10 animate-in fade-in duration-300">
           {!reportData && isLoading ? (
             <div className="py-16 flex flex-col items-center justify-center gap-3 text-slate-400">
@@ -194,6 +246,7 @@ export const PeriodAccordionCard: React.FC<PeriodAccordionCardProps> = ({
                 data={reportData?.data || []}
                 period={period.period}
                 isClosed={!period.isCurrent}
+                searchTerm={searchTerm}
                 onCharge={(userId) => onOpenChargeUser(userId, period.period)}
                 onRefresh={() => fetchPeriodReport(period.period, true, true)}
               />

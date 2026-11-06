@@ -71,6 +71,7 @@ Magma nace para eliminar la fricción operativa en la gestión de costes de impr
 | 2026-11-04 | User Impersonation UX | High-Contrast Safety Banner (Visión A: Alerta Sólida) | Sustitución del banner translúcido de Modo Sombra por un bloque sólido de alta luminosidad (fondo ámbar cálido opaco con tipografía en negro carbón profundo). Garantiza contraste WCAG AAA e inequívoca visibilidad de seguridad sin interferencias visuales con la interfaz, con píldora de estado y botón de retorno en bloque oscuro contrastado. |
 | 2026-11-06 | Monthly Report / Historical Billing | Extemporaneous Isolated Billing for Closed Periods (Visión B Refinada) | Las copias pendientes en períodos contables cerrados no se agregan a otros ciclos. Se habilita una regularización extemporánea aislada que genera cargos independientes vinculados unívocamente al mes cerrado de origen. El contexto de datos de cada mes en el reporte mensual queda estrictamente aislado, erradicando la mezcla de lecturas entre el ciclo cerrado y el activo. |
 | 2026-11-06 | Rollback Policy / Living Cycle | Unified Operational Rollback Window (Visión A) | El criterio para permitir deshacer sincronizaciones (rollbacks) se basa en el momento de ejecución dentro del mes natural activo. Cualquier venta emitida en el mes en curso (consumos ordinarios o regularizaciones extemporáneas) puede anularse libremente mientras el mes actual no finalice. A fin de mes, todo queda sellado e inmutable. |
+| 2026-11-06 | Monthly Report UX / User Filter | Cross-Period User Search & Smart Accordion Focus (Visión A) | Incorporación de un buscador transversal por usuario en la cabecera del Reporte Mensual. Filtra reactivamente las filas de todos los períodos y auto-despliega de forma inteligente los ciclos donde el coworker tiene actividad o saldos pendientes, atenuando los períodos inactivos para ofrecer una auditoría histórica 360° sin fricción. |
 
 ### 3. Reporte Mensual: La Pre-Auditoría (Drafting) y Cierre Periódico
 El reporte mensual evoluciona de una vista estática a un **Centro de Cierre y Planificación Contable**:
@@ -173,6 +174,18 @@ Flexibilidad y tolerancia a errores durante la operativa mensual sin comprometer
   - Los balances y reportes se recalculan en tiempo real.
 - **Sello Definitivo a Fin de Mes**:
   - Al concluir el último día del mes natural en curso (23:59:59), todas las transacciones ejecutadas en ese mes quedan selladas con candado y su reversión queda terminantemente bloqueada en Magma.
+
+### 13. Búsqueda Transversal de Usuario y Enfoque Inteligente de Períodos (Visión A)
+Capacidad de auditoría y localización inmediata del historial de cualquier coworker a través de todos los ciclos contables dentro del Reporte Mensual:
+- **Buscador Reactivo Integrado en Cabecera**:
+  - Campo de búsqueda accesible y prominente en la barra de herramientas del Reporte Mensual con soporte para nombre o identificador de usuario y botón instantáneo de borrado (`[×]`).
+  - Filtrado en cascada en tiempo real: al escribir, todas las tablas de usuarios de los períodos cargados se sincronizan para mostrar únicamente al coworker seleccionado.
+- **Comportamiento Inteligente de Acordeones (Smart Accordion Focus)**:
+  - **Auto-Enfoque Activo**: Aquellos períodos mensuales donde el usuario consultado cuenta con consumos registrados, copias pendientes o regularizaciones se expanden de forma automática o reciben un indicador visual destacado para facilitar la inspección inmediata.
+  - **Minimización de Ruido**: Los ciclos contables donde el usuario no registra actividad ni copias se mantienen colapsados y adoptan un estado atenuado con indicación de *"Sin actividad en este ciclo"*, evitando el escaneo de tablas vacías.
+- **Preservación Integral de la Operativa por Ciclo**:
+  - La búsqueda no altera las acciones operativas existentes: el Administrador puede consultar las lecturas desglosadas de la impresora, ejecutar regularizaciones aisladas en meses cerrados o gestionar el reparto en el mes activo directamente desde la fila del usuario filtrado.
+  - Se mantiene íntegro el principio de aislamiento contable por período (Decisión #11), sin consolidaciones fiscales cruzadas entre meses.
 
 ## Decisiones Estéticas (UX Premium)
 

@@ -9,7 +9,9 @@ import {
     Loader2,
     AlertCircle,
     Calendar,
-    RefreshCw
+    RefreshCw,
+    Search,
+    X
 } from 'lucide-react';
 
 interface SimulationResult {
@@ -33,10 +35,15 @@ export const MonthlyReportPage = () => {
         isLoadingPeriods,
         error: storeError,
         expandedPeriods,
+        periodReports,
         fetchPeriods,
         fetchPeriodReport,
+        fetchAllPeriodReports,
         togglePeriodExpanded
     } = useReportStore();
+
+    // Cross-Period User Search Filter State
+    const [searchTerm, setSearchTerm] = useState('');
 
     // Individual Charge Modal State
     const [isChargeModalOpen, setIsChargeModalOpen] = useState(false);
@@ -64,6 +71,23 @@ export const MonthlyReportPage = () => {
     useEffect(() => {
         fetchPeriods();
     }, [fetchPeriods]);
+
+    useEffect(() => {
+        if (searchTerm.trim()) {
+            fetchAllPeriodReports();
+        }
+    }, [searchTerm, fetchAllPeriodReports]);
+
+    const normalizedSearch = searchTerm.trim().toLowerCase();
+    const hasAnyMatchingUserInLoadedPeriods = normalizedSearch
+        ? Object.values(periodReports).some(report =>
+            report?.data?.some(u =>
+                u.username.toLowerCase().includes(normalizedSearch) ||
+                u.printUser.toLowerCase().includes(normalizedSearch) ||
+                Boolean(u.nexudusUser && u.nexudusUser.toLowerCase().includes(normalizedSearch))
+            )
+        )
+        : true;
 
     // Handler to open individual user charge
     const handleOpenChargeUser = async (userId: string, period: string) => {
@@ -204,11 +228,32 @@ export const MonthlyReportPage = () => {
                     </p>
                 </div>
 
-                <div className="flex items-center gap-3">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                    {/* User Search Input */}
+                    <div className="relative flex items-center">
+                        <Search size={15} className="absolute left-3.5 text-slate-400 pointer-events-none" />
+                        <input
+                            type="text"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            placeholder="Filtrar por usuario..."
+                            className="w-full sm:w-64 md:w-80 pl-10 pr-9 py-2.5 rounded-2xl bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 text-xs text-slate-800 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all shadow-sm"
+                        />
+                        {searchTerm && (
+                            <button
+                                onClick={() => setSearchTerm('')}
+                                title="Limpiar filtro"
+                                className="absolute right-3 p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/10 transition-colors"
+                            >
+                                <X size={13} />
+                            </button>
+                        )}
+                    </div>
+
                     <button
                         onClick={() => fetchPeriods(true)}
                         disabled={isLoadingPeriods}
-                        className="flex items-center gap-2 px-5 py-3 rounded-2xl bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-700 dark:text-white/80 hover:bg-slate-50 dark:hover:bg-white/10 font-bold text-xs shadow-sm hover:shadow transition-all disabled:opacity-50 active:scale-95"
+                        className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-2xl bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-700 dark:text-white/80 hover:bg-slate-50 dark:hover:bg-white/10 font-bold text-xs shadow-sm hover:shadow transition-all disabled:opacity-50 active:scale-95"
                     >
                         <RefreshCw size={14} className={isLoadingPeriods ? 'animate-spin text-indigo-500' : ''} />
                         <span>Actualizar</span>
@@ -221,6 +266,22 @@ export const MonthlyReportPage = () => {
                 <div className="p-4 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 flex items-center gap-3 text-xs font-bold animate-in fade-in">
                     <AlertCircle size={18} className="shrink-0" />
                     <span>{storeError}</span>
+                </div>
+            )}
+
+            {/* No Match Global Banner */}
+            {normalizedSearch && !hasAnyMatchingUserInLoadedPeriods && (
+                <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-300 flex items-center justify-between gap-4 text-xs font-bold animate-in fade-in">
+                    <div className="flex items-center gap-2.5">
+                        <AlertCircle size={17} className="shrink-0 text-amber-500" />
+                        <span>No se encontraron coincidencias para «{searchTerm}» en los ciclos cargados.</span>
+                    </div>
+                    <button
+                        onClick={() => setSearchTerm('')}
+                        className="px-3 py-1 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-800 dark:text-amber-200 text-[11px] font-bold transition-colors"
+                    >
+                        Limpiar filtro
+                    </button>
                 </div>
             )}
 
@@ -250,6 +311,7 @@ export const MonthlyReportPage = () => {
                         <PeriodAccordionCard
                             key={period.period}
                             period={period}
+                            searchTerm={searchTerm}
                             isExpanded={Boolean(expandedPeriods[period.period])}
                             onToggle={() => togglePeriodExpanded(period.period)}
                             onSyncPeriod={handleOpenPeriodBulkSync}

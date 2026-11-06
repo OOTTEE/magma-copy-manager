@@ -21,6 +21,7 @@ interface PeriodUserTableProps {
   onCharge: (userId: string) => void;
   period: string;
   isClosed?: boolean;
+  searchTerm?: string;
   onRefresh?: () => void;
 }
 
@@ -29,6 +30,7 @@ export const PeriodUserTable: React.FC<PeriodUserTableProps> = ({
   onCharge,
   period,
   isClosed,
+  searchTerm = '',
   onRefresh
 }) => {
   const [expandedUserId, setExpandedUserId] = useState<string | null>(null);
@@ -43,11 +45,28 @@ export const PeriodUserTable: React.FC<PeriodUserTableProps> = ({
     }
   };
 
-  if (!data || data.length === 0) {
+  const normalizedSearch = searchTerm.trim().toLowerCase();
+  const filteredData = normalizedSearch
+    ? data.filter(u =>
+        u.username.toLowerCase().includes(normalizedSearch) ||
+        u.printUser.toLowerCase().includes(normalizedSearch) ||
+        Boolean(u.nexudusUser && u.nexudusUser.toLowerCase().includes(normalizedSearch))
+      )
+    : data;
+
+  if (!filteredData || filteredData.length === 0) {
     return (
       <div className="py-12 text-center text-slate-400 dark:text-white/40">
-        <p className="text-sm font-bold">No hay consumos vinculados en este período.</p>
-        <p className="text-xs mt-1">Los usuarios sin cuenta Nexudus están filtrados por defecto.</p>
+        <p className="text-sm font-bold">
+          {normalizedSearch 
+            ? `No se encontraron consumos para «${searchTerm}» en este período.`
+            : 'No hay consumos vinculados en este período.'}
+        </p>
+        <p className="text-xs mt-1">
+          {normalizedSearch
+            ? 'El usuario no tiene registros de actividad en este ciclo contable.'
+            : 'Los usuarios sin cuenta Nexudus están filtrados por defecto.'}
+        </p>
       </div>
     );
   }
@@ -66,7 +85,7 @@ export const PeriodUserTable: React.FC<PeriodUserTableProps> = ({
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-100/60 dark:divide-white/[0.03]">
-          {data.map(item => {
+          {filteredData.map(item => {
             const isExpanded = expandedUserId === item.id;
             const syncedCopies = item.copies?.synced ?? 0;
             const pendingCopies = Math.max(0, item.total - syncedCopies);

@@ -106,6 +106,7 @@ interface ReportState {
   // Actions
   fetchPeriods: (force?: boolean) => Promise<void>;
   fetchPeriodReport: (period: string, force?: boolean, silent?: boolean) => Promise<void>;
+  fetchAllPeriodReports: (force?: boolean) => Promise<void>;
   togglePeriodExpanded: (period: string) => void;
   fetchOrphans: (period?: string) => Promise<OrphanUser[]>;
   toggleUserIgnored: (userId: string, isIgnored: boolean) => Promise<void>;
@@ -212,6 +213,19 @@ export const useReportStore = create<ReportState>((set, get) => ({
         }));
       }
     }
+  },
+
+  fetchAllPeriodReports: async (force = false) => {
+    const periods = get().periods;
+    if (!periods || periods.length === 0) return;
+    await Promise.allSettled(
+      periods.map(p => {
+        if (!get().periodReports[p.period] || force) {
+          return get().fetchPeriodReport(p.period, force, true);
+        }
+        return Promise.resolve();
+      })
+    );
   },
 
   togglePeriodExpanded: (period: string) => {

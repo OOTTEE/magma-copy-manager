@@ -69,6 +69,8 @@ Magma nace para eliminar la fricción operativa en la gestión de costes de impr
 | 2026-11-03 | Customer Dashboard Redesign | Personal Multi-Account Hub & Historical Cycle Drill-down (Visión A) | Rediseño integral de la experiencia del coworker no administrador. Flujo continuo en una sola pantalla: en la parte superior se sitúa el ciclo actual con la herramienta de 'Reparto de copias' integrada (exclusiva para multicuenta, permitiendo desviar copias in-situ solo para el período en curso). En la parte inferior, una tabla cronológica de ciclos cerrados anteriores con filas clickeables tipo acordeón que despliegan el desglose de copias facturadas por cada cuenta vinculada. Para usuarios monocuenta, se mantiene una vista limpia sin herramientas de reparto. |
 | 2026-11-04 | User Impersonation | Admin Shadow Mode with Sidebar Selector (Visión A) | Implementación del modo 'Ver como usuario' (Shadow Mode). Acceso ubicado en el pie del menú lateral sobre el banner de usuario, mediante un modal de altura fija con lista scrollable y buscador instantáneo. La experiencia adopta la Visión A (takeover completo con banner flotante superior de aviso en tono ámbar y salida en 1 clic). Permite al Administrador operar activamente en nombre del cliente (asistencia de reparto, auditoría y resolución de incidencias sin requerir contraseñas). |
 | 2026-11-04 | User Impersonation UX | High-Contrast Safety Banner (Visión A: Alerta Sólida) | Sustitución del banner translúcido de Modo Sombra por un bloque sólido de alta luminosidad (fondo ámbar cálido opaco con tipografía en negro carbón profundo). Garantiza contraste WCAG AAA e inequívoca visibilidad de seguridad sin interferencias visuales con la interfaz, con píldora de estado y botón de retorno en bloque oscuro contrastado. |
+| 2026-11-06 | Monthly Report / Historical Billing | Extemporaneous Isolated Billing for Closed Periods (Visión B Refinada) | Las copias pendientes en períodos contables cerrados no se agregan a otros ciclos. Se habilita una regularización extemporánea aislada que genera cargos independientes vinculados unívocamente al mes cerrado de origen. El contexto de datos de cada mes en el reporte mensual queda estrictamente aislado, erradicando la mezcla de lecturas entre el ciclo cerrado y el activo. |
+| 2026-11-06 | Rollback Policy / Living Cycle | Unified Operational Rollback Window (Visión A) | El criterio para permitir deshacer sincronizaciones (rollbacks) se basa en el momento de ejecución dentro del mes natural activo. Cualquier venta emitida en el mes en curso (consumos ordinarios o regularizaciones extemporáneas) puede anularse libremente mientras el mes actual no finalice. A fin de mes, todo queda sellado e inmutable. |
 
 ### 3. Reporte Mensual: La Pre-Auditoría (Drafting) y Cierre Periódico
 El reporte mensual evoluciona de una vista estática a un **Centro de Cierre y Planificación Contable**:
@@ -149,6 +151,28 @@ Herramienta de asistencia remota y auditoría operativa que permite al Administr
   - El Administrador puede tanto consultar datos como interactuar en nombre del cliente (por ejemplo, registrar o ajustar partidas de reparto de copias del ciclo activo si el usuario requiere asistencia).
 - **Seguridad Unidireccional**:
   - Esta funcionalidad es un privilegio exclusivo y estricto del rol Administrador; los clientes no tienen constancia ni acceso a herramientas de cambio de perspectiva.
+
+### 11. Liquidación Aislada y Regularización Extemporánea de Períodos Cerrados (Visión B Refinada)
+Tratamiento riguroso de consumos pendientes en ciclos históricos sin contaminar los períodos activos ni alterar la contabilidad consolidada:
+- **Aislamiento Estricto de Contexto Temporal**: Cada tarjeta mensual en el Reporte Mensual opera de forma hermética sobre los datos de su propio período. Queda totalmente descartada la visualización o procesamiento cruzado de lecturas del ciclo actual cuando se consulta o actúa sobre un mes cerrado.
+- **Facturación Extemporánea Independiente (Cero Agregación a Otros Ciclos)**:
+  - Las copias no publicadas de un período cerrado no se refundan ni se suman a los totales de ningún otro ciclo contable.
+  - Al ejecutar la regularización de un usuario en un período cerrado, se genera una transacción y factura **completamente independiente y aislada**, imputada con la etiqueta y concepto exclusivo del mes de origen (ej: *"Regularización de consumo - [Mes Año]"*).
+- **Transparencia y Trazabilidad 1:1**:
+  - El ciclo activo en curso mantiene su balance transparente, reflejando exclusivamente los consumos de su propia ventana mensual.
+  - El coworker recibe un cargo nítido y segregado que explica exactamente a qué período histórico pertenecía ese remanente, facilitando la comprensión y evitando reclamos por variaciones inesperadas en la facturación ordinaria.
+
+### 12. Ventana de Rectificación Operativa Unificada en Ciclo Activo (Visión A)
+Flexibilidad y tolerancia a errores durante la operativa mensual sin comprometer la inmutabilidad de los cierres consolidados:
+- **Criterio Basado en el Momento de Ejecución**:
+  - La ventana de gracia para deshacer una sincronización y anular la venta en la pasarela externa se rige por el **mes natural en el que se ejecuta la acción**, no por el período de origen de las copias.
+  - Tanto los consumos ordinarios del ciclo activo como las regularizaciones extemporáneas de períodos anteriores ejecutadas durante el mes corriente disponen de la acción **`[Deshacer]`** activa en la bitácora de sincronización del coworker.
+- **Efecto de la Reversión**:
+  - La venta se elimina automáticamente de la pasarela externa (Nexudus).
+  - Las copias asociadas vuelven de inmediato al estado *"Pendientes"* en su respectivo período (sea el mes en curso o el mes cerrado regularizado).
+  - Los balances y reportes se recalculan en tiempo real.
+- **Sello Definitivo a Fin de Mes**:
+  - Al concluir el último día del mes natural en curso (23:59:59), todas las transacciones ejecutadas en ese mes quedan selladas con candado y su reversión queda terminantemente bloqueada en Magma.
 
 ## Decisiones Estéticas (UX Premium)
 

@@ -80,7 +80,7 @@ export const billingService = {
    * Simulates an invoice for a specific user based on current consumption.
    * Business Rule: No persistence, pure calculation.
    */
-  simulateInvoice: async (userId: string, options: { from?: string; to?: string; includeAllPending?: boolean } = {}) => {
+  simulateInvoice: async (userId: string, options: { from?: string; to?: string; includeAllPending?: boolean; period?: string } = {}) => {
     const report = await reportsService.getMonthlyAccumulationForUser(userId, options);
     if (!report || report.data.total === 0) {
       const error = new Error('No consumption data found for this user in the current period.');
@@ -128,10 +128,15 @@ export const billingService = {
       });
     }
 
+    const targetMonth = options.period || report.period.month || report.period.to.slice(0, 7);
+    const isClosed = isPeriodClosed(targetMonth);
+
     return {
       userId,
       username: data.username,
       period: report.period,
+      isClosedPeriod: isClosed,
+      targetPeriod: targetMonth,
       lines,
     };
   },
@@ -353,8 +358,10 @@ export const billingService = {
     const fechaActual = new Date().toISOString();
 
     let periodNoteStr = `Periodo: ${billingService.formatDate(inicioPeriodo)} - ${billingService.formatDate(fechaActual)}`;
-    if (includeAllPending) {
-        periodNoteStr = `Todas las copias pendientes hasta ${billingService.formatDate(fechaActual)}`;
+    if (isPeriodClosed(monthStr)) {
+      periodNoteStr = `Regularización copias - Período cerrado ${monthStr} (${billingService.formatDate(inicioPeriodo)} - ${billingService.formatDate(report.period.to)})`;
+    } else if (includeAllPending) {
+      periodNoteStr = `Todas las copias pendientes hasta ${billingService.formatDate(fechaActual)}`;
     }
 
     const saleDate = fechaActual;
@@ -549,9 +556,10 @@ export const billingService = {
     const sale = await db.select().from(nexudusSales).where(eq(nexudusSales.id, localId)).get();
     if (!sale) throw new Error('Sync record not found.');
 
-    // 1.1 Time-Bound Shield: Ensure the period's natural month has not passed
-    if (isPeriodClosed(sale.month)) {
-      const error = new Error(`No se puede revertir la sincronización: el período contable ${sale.month} ha finalizado. La facturación es inmutable tras el cierre de mes natural.`);
+    // 1.1 Time-Bound Shield: Ensure the execution month has not passed
+    const executionMonth = (sale.createdOn || sale.saleDate || sale.month).slice(0, 7);
+    if (isPeriodClosed(executionMonth)) {
+      const error = new Error(`No se puede revertir la sincronización: el mes de ejecución ${executionMonth} ha finalizado. La facturación es inmutable tras el cierre de mes natural.`);
       (error as any).statusCode = 400;
       throw error;
     }

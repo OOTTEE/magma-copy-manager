@@ -193,6 +193,7 @@ export const PeriodAccordionCard: React.FC<PeriodAccordionCardProps> = ({
               <PeriodUserTable
                 data={reportData?.data || []}
                 period={period.period}
+                isClosed={!period.isCurrent}
                 onCharge={(userId) => onOpenChargeUser(userId, period.period)}
                 onRefresh={() => fetchPeriodReport(period.period, true, true)}
               />

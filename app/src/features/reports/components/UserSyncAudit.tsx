@@ -65,8 +65,6 @@ export const UserSyncAudit: React.FC<UserSyncAuditProps> = ({
     const [isRollingBack, setIsRollingBack] = useState(false);
     const [pendingRollbackIds, setPendingRollbackIds] = useState<string[] | null>(null);
 
-    const isClosed = isPeriodClosed(period);
-
     const copyTypeLabels: Record<string, string> = {
         'A4_BW': 'A4 B/N',
         'A4_COLOR': 'A4 Color',
@@ -189,12 +187,12 @@ export const UserSyncAudit: React.FC<UserSyncAuditProps> = ({
             )}
 
             {/* Closed Period Banner */}
-            {isClosed && records.length > 0 && (
+            {records.length > 0 && records.every(r => isPeriodClosed((r.createdOn || r.saleDate || r.month || '').slice(0, 7))) && (
                 <div className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-300">
                     <Lock size={16} className="shrink-0 text-amber-500" />
                     <div className="text-xs">
                         <span className="font-bold">Facturación consolidada e inmutable:</span>{' '}
-                        El mes natural de este ciclo contable ha finalizado. La facturación real ya se ha ejecutado en Nexudus y no se permite deshacer la sincronización.
+                        El mes natural en el que se ejecutaron estas ventas ha finalizado. La facturación ya es irrevocable en Nexudus y no se permite deshacer la sincronización.
                     </div>
                 </div>
             )}
@@ -223,6 +221,8 @@ export const UserSyncAudit: React.FC<UserSyncAuditProps> = ({
                 <div className="flex flex-col gap-3">
                     {records.map((record, index) => {
                         const allItemIds = record.items.map(i => i.id);
+                        const executionMonth = (record.createdOn || record.saleDate || record.month || '').slice(0, 7);
+                        const isRecordLocked = isPeriodClosed(executionMonth);
 
                         return (
                             <div
@@ -238,7 +238,7 @@ export const UserSyncAudit: React.FC<UserSyncAuditProps> = ({
                                     </div>
 
                                     {/* Action button */}
-                                    {isClosed ? (
+                                    {isRecordLocked ? (
                                         <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-[11px] font-bold bg-slate-100 dark:bg-white/5 text-slate-400 cursor-not-allowed">
                                             <Lock size={12} />
                                             <span>Mes Cerrado</span>

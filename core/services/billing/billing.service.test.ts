@@ -4,15 +4,27 @@ import { reportsService } from '../reports/reports.service';
 import { settingsService } from '../settings/settings.service';
 import { distributionsRepository } from '../../repositories/distributions.repository';
 import { emailService } from '../notifications/email.service';
+import { nexudusService } from '../nexudus/nexudus.service';
 import { db } from '../../db';
 
 vi.mock('../reports/reports.service');
 vi.mock('../settings/settings.service');
 vi.mock('../../repositories/distributions.repository');
 vi.mock('../notifications/email.service');
+vi.mock('../nexudus/nexudus.service');
 vi.mock('../../db', () => ({
     db: {
         select: vi.fn(),
+        transaction: vi.fn((cb: any) => cb({
+            update: vi.fn().mockReturnValue({
+                set: vi.fn().mockReturnValue({
+                    where: vi.fn().mockReturnValue({ run: vi.fn() })
+                })
+            }),
+            delete: vi.fn().mockReturnValue({
+                where: vi.fn().mockReturnValue({ run: vi.fn() })
+            })
+        }))
     }
 }));
 
@@ -93,5 +105,82 @@ describe('syncUserConsumption (Over-Allocation Safety Protocol)', () => {
             title: 'Cierre Bloqueado por Sobreasignación',
             subject: expect.stringContaining('Alerta de Sobreasignación')
         }));
+    });
+});
+
+describe('simulateInvoice (Contextual & Historical Isolation)', () => {
+    it('should forward period option to reportsService and identify closed periods', async () => {
+        vi.mocked(reportsService.getMonthlyAccumulationForUser).mockResolvedValue({
+            period: { month: '2026-01', from: '2026-01-01', to: '2026-01-31' },
+            data: {
+                username: 'historical_user',
+                total: 10,
+                a4Color: 5,
+                a4Bw: 5,
+                a3Color: 0,
+                a3Bw: 0,
+                sra3Color: 0,
+                sra3Bw: 0
+            }
+        } as any);
+
+        vi.mocked(settingsService.getAllSettings).mockResolvedValue({} as any);
+
+        const result = await billingService.simulateInvoice('user-1', { period: '2026-01' });
+
+        expect(reportsService.getMonthlyAccumulationForUser).toHaveBeenCalledWith('user-1', { period: '2026-01' });
+        expect(result.isClosedPeriod).toBe(true);
+        expect(result.targetPeriod).toBe('2026-01');
+        expect(result.lines).toHaveLength(2);
+    });
+});
+
+describe('rollbackSyncEvent (Operational Living Window)', () => {
+    it('should allow rollback of a regularized historical period if executed within current open month', async () => {
+        // Today is within current open month
+        const currentMonth = new Date().toISOString().slice(0, 7);
+        const todayIso = new Date().toISOString();
+
+        vi.mocked(db.select).mockReturnValue({
+            from: vi.fn().mockReturnValue({
+                where: vi.fn().mockReturnValue({
+                    get: vi.fn().mockResolvedValue({
+                        id: 'sale-1',
+                        userId: 'u1',
+                        month: '2026-01', // Historical closed period
+                        nexudusSaleId: '999',
+                        saleDate: todayIso,
+                        createdOn: todayIso
+                    })
+                })
+            })
+        } as any);
+
+        vi.mocked(nexudusService.deleteCoworkerProduct).mockResolvedValue({ WasSuccessful: true } as any);
+
+        const result = await billingService.rollbackSyncEvent('sale-1');
+        expect(result).toEqual({ localId: 'sale-1', remoteId: 999, status: 'rolled_back' });
+        expect(nexudusService.deleteCoworkerProduct).toHaveBeenCalledWith(999);
+    });
+
+    it('should block rollback if the execution month has already closed', async () => {
+        // Executed in an ancient month
+        vi.mocked(db.select).mockReturnValue({
+            from: vi.fn().mockReturnValue({
+                where: vi.fn().mockReturnValue({
+                    get: vi.fn().mockResolvedValue({
+                        id: 'sale-old',
+                        userId: 'u1',
+                        month: '2025-01',
+                        nexudusSaleId: '888',
+                        saleDate: '2025-01-10T10:00:00Z',
+                        createdOn: '2025-01-10T10:00:00Z'
+                    })
+                })
+            })
+        } as any);
+
+        await expect(billingService.rollbackSyncEvent('sale-old'))
+            .rejects.toThrow('el mes de ejecución 2025-01 ha finalizado. La facturación es inmutable tras el cierre de mes natural.');
     });
 });

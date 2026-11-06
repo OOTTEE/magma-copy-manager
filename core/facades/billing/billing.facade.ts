@@ -7,7 +7,7 @@ import { distributionsRepository } from '../../repositories/distributions.reposi
  * Coordinates invoice simulation and financial data visualization.
  */
 export const billingFacade = {
-  simulateInvoice: async (requestingUser: { id: string; role: string }, userId: string, options: { from?: string; to?: string; includeAllPending?: boolean } = {}) => {
+  simulateInvoice: async (requestingUser: { id: string; role: string }, userId: string, options: { from?: string; to?: string; includeAllPending?: boolean; period?: string } = {}) => {
     if (requestingUser.role !== 'admin') {
       const error = new Error('Unauthorized access to billing simulation.');
       (error as any).statusCode = 403;

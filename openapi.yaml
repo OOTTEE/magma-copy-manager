@@ -549,6 +549,11 @@ paths:
         - schema:
             type: string
           in: query
+          name: period
+          required: false
+        - schema:
+            type: string
+          in: query
           name: from
           required: false
         - schema:
@@ -577,6 +582,10 @@ paths:
                   userId:
                     type: string
                   username:
+                    type: string
+                  isClosedPeriod:
+                    type: boolean
+                  targetPeriod:
                     type: string
                   period:
                     type: object

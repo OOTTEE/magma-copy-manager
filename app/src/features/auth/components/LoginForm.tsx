@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { api } from "../../../services/api";
 import { useAuthStore } from "../../../store/authStore";
@@ -32,44 +32,51 @@ export const LoginForm = () => {
 
     const login = useAuthStore((state) => state.login);
     const navigate = useNavigate();
+    const attemptedTokenRef = useRef<string | null>(null);
 
     // Auto-detect and verify recoveryToken from email link
     useEffect(() => {
-        if (recoveryToken) {
-            const verifyToken = async () => {
-                setIsVerifyingRecovery(true);
-                setError(null);
-                try {
-                    const { data, error: apiError } = await api.POST('/api/v1/auth/recovery/verify', {
-                        body: { token: recoveryToken }
-                    });
+        if (!recoveryToken) return;
 
-                    if (apiError || !data) {
-                        throw new Error((apiError as any)?.message || 'El enlace de acceso es inválido o ha caducado.');
-                    }
-
-                    // Log in the user atomically with verified tokens
-                    login(
-                        data.accessToken || '',
-                        data.refreshToken || '',
-                        data.username || '',
-                        data.role || 'customer'
-                    );
-
-                    setVerifiedUsername(data.username || '');
-                    setViewMode('reset_password');
-                    // Clean URL query param without full page reload
-                    setSearchParams({}, { replace: true });
-                } catch (err: any) {
-                    setError(err.message || 'El enlace de acceso es inválido o ha caducado.');
-                    setViewMode('login');
-                } finally {
-                    setIsVerifyingRecovery(false);
-                }
-            };
-
-            verifyToken();
+        // Prevent duplicate execution (e.g. React StrictMode double-mount in dev)
+        if (attemptedTokenRef.current === recoveryToken) {
+            return;
         }
+        attemptedTokenRef.current = recoveryToken;
+
+        const verifyToken = async () => {
+            setIsVerifyingRecovery(true);
+            setError(null);
+            try {
+                const { data, error: apiError } = await api.POST('/api/v1/auth/recovery/verify', {
+                    body: { token: recoveryToken }
+                });
+
+                if (apiError || !data) {
+                    throw new Error((apiError as any)?.message || 'El enlace de acceso es inválido o ha caducado.');
+                }
+
+                // Log in the user atomically with verified tokens
+                login(
+                    data.accessToken || '',
+                    data.refreshToken || '',
+                    data.username || '',
+                    data.role || 'customer'
+                );
+
+                setVerifiedUsername(data.username || '');
+                setViewMode('reset_password');
+                // Clean URL query param without full page reload
+                setSearchParams({}, { replace: true });
+            } catch (err: any) {
+                setError(err.message || 'El enlace de acceso es inválido o ha caducado.');
+                setViewMode('login');
+            } finally {
+                setIsVerifyingRecovery(false);
+            }
+        };
+
+        verifyToken();
     }, [recoveryToken, login, setSearchParams]);
 
     const handleSubmit = async (e: React.FormEvent) => {

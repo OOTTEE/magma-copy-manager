@@ -15,7 +15,9 @@ import {
 interface SimulationResult {
     userId: string;
     username: string;
-    period: { from: string; to: string };
+    period: { from: string; to: string; month?: string; allPending?: boolean };
+    isClosedPeriod?: boolean;
+    targetPeriod?: string;
     lines: Array<{ concept: string; quantity: number }>;
 }
 
@@ -77,6 +79,7 @@ export const MonthlyReportPage = () => {
                 params: {
                     path: { id: userId },
                     query: {
+                        period,
                         from: undefined,
                         to: undefined,
                         includeAllPending: false

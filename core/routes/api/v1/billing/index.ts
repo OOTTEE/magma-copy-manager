@@ -19,6 +19,7 @@ const billingRoute: FastifyPluginAsync = async (fastify) => {
       querystring: {
         type: 'object',
         properties: {
+          period: { type: 'string' },
           from: { type: 'string' },
           to: { type: 'string' },
           includeAllPending: { type: 'boolean' }
@@ -30,6 +31,8 @@ const billingRoute: FastifyPluginAsync = async (fastify) => {
           properties: {
             userId: { type: 'string' },
             username: { type: 'string' },
+            isClosedPeriod: { type: 'boolean' },
+            targetPeriod: { type: 'string' },
             period: {
               type: 'object',
               properties: {
@@ -63,12 +66,13 @@ const billingRoute: FastifyPluginAsync = async (fastify) => {
   }, async (request, reply) => {
     const requestingUser = request.user as { id: string; role: string };
     const { id } = request.params as { id: string };
-    const query = request.query as { from?: string; to?: string; includeAllPending?: boolean | string };
+    const query = request.query as { period?: string; from?: string; to?: string; includeAllPending?: boolean | string };
 
     const includeAllPending = query.includeAllPending === true || query.includeAllPending === 'true';
 
     try {
       const simulation = await billingFacade.simulateInvoice(requestingUser, id, {
+          period: query.period,
           from: query.from,
           to: query.to,
           includeAllPending

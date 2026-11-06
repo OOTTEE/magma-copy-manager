@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { X, Zap, AlertTriangle, Loader2, FileText, Share2, Check } from 'lucide-react';
+import { X, Zap, AlertTriangle, Loader2, FileText, Share2, Check, Clock } from 'lucide-react';
 import { api } from '../../../services/api';
 import { NexudusAccountBadge } from '../../users/components/NexudusAccountBadge';
 
@@ -19,7 +19,9 @@ interface SimulationLine {
 interface SimulationResult {
   userId: string;
   username: string;
-  period: { from: string; to: string };
+  period: { from: string; to: string; month?: string; allPending?: boolean };
+  isClosedPeriod?: boolean;
+  targetPeriod?: string;
   lines: SimulationLine[];
 }
 
@@ -61,10 +63,17 @@ export const ChargeModal: React.FC<ChargeModalProps> = ({
   };
 
   const getDefaultNote = (
-    period: { from: string; to: string; allPending?: boolean } | undefined,
-    lastSyncDate?: string | null
+    period: { from: string; to: string; month?: string; allPending?: boolean } | undefined,
+    lastSyncDate?: string | null,
+    isClosed?: boolean,
+    targetPeriod?: string
   ) => {
     if (!period) return '';
+
+    if (isClosed) {
+      const monthLabel = targetPeriod || period.month || '';
+      return `Regularización copias - Período cerrado ${monthLabel} (${formatDateDDMMYYYY(period.from)} - ${formatDateDDMMYYYY(period.to)})`;
+    }
     
     if (period.allPending) {
         return 'Vínculación de todas las copias pendientes (periodos anteriores)';
@@ -80,7 +89,7 @@ export const ChargeModal: React.FC<ChargeModalProps> = ({
   // Reset note and fetch accounts when data changes
   useEffect(() => {
     if (data) {
-      setNote(getDefaultNote(data.period, (data as any).lastSyncDate));
+      setNote(getDefaultNote(data.period, (data as any).lastSyncDate, data.isClosedPeriod, data.targetPeriod));
       
       const fetchAccounts = async () => {
         setIsLoadingAccounts(true);
@@ -138,16 +147,20 @@ export const ChargeModal: React.FC<ChargeModalProps> = ({
           {/* Header */}
           <div className="flex items-center justify-between px-8 pt-8 pb-6 border-b border-slate-100 dark:border-white/5">
             <div className="flex items-center gap-4">
-              <div className="p-3 rounded-2xl bg-[#f15a24]/10 text-[#f15a24] border border-[#f15a24]/20">
-                <Zap size={22} strokeWidth={2} />
+              <div className={`p-3 rounded-2xl border ${
+                data?.isClosedPeriod
+                  ? 'bg-amber-500/10 text-amber-500 border-amber-500/20'
+                  : 'bg-[#f15a24]/10 text-[#f15a24] border-[#f15a24]/20'
+              }`}>
+                {data?.isClosedPeriod ? <Clock size={22} strokeWidth={2} /> : <Zap size={22} strokeWidth={2} />}
               </div>
               <div>
                 <h2 className="text-xl font-black text-slate-800 dark:text-white tracking-tight">
-                  Vincular Copias
+                  {data?.isClosedPeriod ? 'Regularización Extemporánea' : 'Vincular Copias'}
                 </h2>
                 {data && (
                   <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-white/20 mt-0.5">
-                    {data.username}
+                    {data.username} {data.targetPeriod ? `• Período ${data.targetPeriod}` : ''}
                   </p>
                 )}
               </div>
@@ -177,6 +190,21 @@ export const ChargeModal: React.FC<ChargeModalProps> = ({
             {/* Simulation lines */}
             {!isLoadingData && data && (
               <>
+                {/* Closed Period Extemporaneous Banner */}
+                {data.isClosedPeriod && (
+                  <div className="flex items-start gap-3 px-5 py-4 bg-amber-500/10 rounded-2xl border border-amber-500/20">
+                    <AlertTriangle size={18} className="text-amber-500 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-xs font-black text-amber-600 dark:text-amber-400 uppercase tracking-wider">
+                        Período Histórico Cerrado
+                      </p>
+                      <p className="text-xs text-amber-700/90 dark:text-amber-300/90 mt-0.5 leading-relaxed font-medium">
+                        Este proceso creará una venta/factura independiente para el período cerrado {data.targetPeriod || ''} en Nexudus, sin alterar ni sumar consumos al ciclo actual en curso.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
                 {/* Period badge */}
                 <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-white/30">
                   <span>Periodo:</span>
@@ -263,7 +291,7 @@ export const ChargeModal: React.FC<ChargeModalProps> = ({
                       Nota en Nexudus
                     </label>
                     <button 
-                      onClick={() => setNote(getDefaultNote(data.period))}
+                      onClick={() => setNote(getDefaultNote(data.period, (data as any).lastSyncDate, data.isClosedPeriod, data.targetPeriod))}
                       className="text-[10px] font-bold text-indigo-500 hover:text-indigo-600 transition-colors uppercase tracking-widest"
                     >
                       Restablecer
@@ -304,19 +332,21 @@ export const ChargeModal: React.FC<ChargeModalProps> = ({
               disabled={isLoadingData || isCharging || !data || !!error || !selectedAccountId}
               className={`flex items-center gap-2 px-7 py-3 rounded-2xl text-sm font-black transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed ${
                 !isCharging && data && !error && selectedAccountId
-                  ? 'bg-[#f15a24] text-white shadow-lg shadow-[#f15a24]/30 hover:brightness-110'
+                  ? data.isClosedPeriod
+                    ? 'bg-amber-600 text-white shadow-lg shadow-amber-600/30 hover:bg-amber-700'
+                    : 'bg-[#f15a24] text-white shadow-lg shadow-[#f15a24]/30 hover:brightness-110'
                   : 'bg-slate-200 text-slate-400 dark:bg-white/10 dark:text-white/30'
               }`}
             >
               {isCharging ? (
                 <>
                   <Loader2 size={16} className="animate-spin" />
-                  Vinculando...
+                  {data?.isClosedPeriod ? 'Regularizando...' : 'Vinculando...'}
                 </>
               ) : (
                 <>
                   <Zap size={16} />
-                  Vincular en Nexudus
+                  {data?.isClosedPeriod ? 'Emitir Regularización' : 'Vincular en Nexudus'}
                 </>
               )}
             </button>

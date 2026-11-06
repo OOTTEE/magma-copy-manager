@@ -20,6 +20,7 @@ interface PeriodUserTableProps {
   data: ReportUserData[];
   onCharge: (userId: string) => void;
   period: string;
+  isClosed?: boolean;
   onRefresh?: () => void;
 }
 
@@ -27,6 +28,7 @@ export const PeriodUserTable: React.FC<PeriodUserTableProps> = ({
   data, 
   onCharge,
   period,
+  isClosed,
   onRefresh
 }) => {
   const [expandedUserId, setExpandedUserId] = useState<string | null>(null);
@@ -190,21 +192,39 @@ export const PeriodUserTable: React.FC<PeriodUserTableProps> = ({
                         </button>
                       )}
 
-                      <button
-                        onClick={() => onCharge(item.id)}
-                        disabled={item.total === 0 || isFullyBilled || Boolean(item.isOverAllocated)}
-                        title={
-                          item.isOverAllocated
-                            ? 'Publicación bloqueada: las copias asignadas en el reparto de copias superan las de la impresora'
-                            : isFullyBilled 
-                            ? 'Todas las copias ya han sido publicadas en Nexudus' 
-                            : 'Publicar copias en Nexudus'
-                        }
-                        className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold bg-[#f15a24] hover:bg-[#d94e1d] text-white shadow-md shadow-[#f15a24]/20 transition-all disabled:opacity-40 disabled:pointer-events-none active:scale-95"
-                      >
-                        <UploadCloud size={13} />
-                        <span>Subir</span>
-                      </button>
+                      {isClosed && pendingCopies > 0 ? (
+                        <button
+                          onClick={() => onCharge(item.id)}
+                          disabled={item.total === 0 || isFullyBilled || Boolean(item.isOverAllocated)}
+                          title={
+                            item.isOverAllocated
+                              ? 'Publicación bloqueada: sobreasignación detectada'
+                              : isFullyBilled
+                              ? 'Todas las copias ya han sido regularizadas en Nexudus'
+                              : `Regularizar período ${period}: crear venta extemporánea independiente en Nexudus`
+                          }
+                          className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white shadow-md shadow-amber-600/20 transition-all disabled:opacity-40 disabled:pointer-events-none active:scale-95"
+                        >
+                          <Zap size={13} />
+                          <span>Regularizar</span>
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => onCharge(item.id)}
+                          disabled={item.total === 0 || isFullyBilled || Boolean(item.isOverAllocated)}
+                          title={
+                            item.isOverAllocated
+                              ? 'Publicación bloqueada: las copias asignadas en el reparto de copias superan las de la impresora'
+                              : isFullyBilled 
+                              ? 'Todas las copias ya han sido publicadas en Nexudus' 
+                              : 'Publicar copias en Nexudus'
+                          }
+                          className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold bg-[#f15a24] hover:bg-[#d94e1d] text-white shadow-md shadow-[#f15a24]/20 transition-all disabled:opacity-40 disabled:pointer-events-none active:scale-95"
+                        >
+                          <UploadCloud size={13} />
+                          <span>Subir</span>
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
